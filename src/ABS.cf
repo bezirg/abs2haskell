@@ -129,7 +129,6 @@ SSuspend. Stm ::= "suspend" ";" ;
 SSkip. Stm ::= "skip" ";" ;
 SAssert. Stm ::= "assert" PureExp ";" ;
 
-
 EOr.      PureExp1 ::= PureExp1 "||" PureExp2 ;
 EAnd.     PureExp2 ::= PureExp2 "&&" PureExp3 ;
 EEq.     PureExp3 ::= PureExp3 "==" PureExp4 ;
@@ -151,6 +150,7 @@ ENaryCall. PureExp8 ::= Ident "[" [PureExp] "]" ;
 ELit.    PureExp8 ::= Literal ;
 LNull.   Literal ::= "null" ;
 LThis.   Literal ::= "this" ;
+LWhereAmI.  Literal ::= "whereami" ;
 LStr.    Literal ::= String ;
 LInt.    Literal ::= Integer ;
 EVar.    PureExp8 ::= Ident ;
@@ -168,6 +168,7 @@ ThisSyncCall. EffExp ::= "this" "." Ident "(" [PureExp] ")" ;
 AsyncCall. EffExp ::= PureExp "!" Ident "(" [PureExp] ")" ;
 ThisAsyncCall. EffExp ::= "this" "!" Ident "(" [PureExp] ")" ;
 Get. EffExp ::= PureExp "." "get" ;
+Spawn. EffExp ::= PureExp "spawn" Type "(" [PureExp] ")" ;
 
 separator PureExp "," ;
  

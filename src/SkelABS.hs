@@ -220,6 +220,7 @@ transLiteral :: Literal -> Result
 transLiteral x = case x of
   LNull  -> failure x
   LThis  -> failure x
+  LWhereAmI  -> failure x
   LStr str  -> failure x
   LInt n  -> failure x
 
@@ -233,6 +234,7 @@ transEffExp x = case x of
   AsyncCall pureexp id pureexps  -> failure x
   ThisAsyncCall id pureexps  -> failure x
   Get pureexp  -> failure x
+  Spawn pureexp type' pureexps  -> failure x
 
 
 transExp :: Exp -> Result

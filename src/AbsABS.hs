@@ -180,6 +180,7 @@ data Guard =
 data Literal =
    LNull
  | LThis
+ | LWhereAmI
  | LStr String
  | LInt Integer
   deriving (Eq,Ord,Show)
@@ -192,6 +193,7 @@ data EffExp =
  | AsyncCall PureExp Ident [PureExp]
  | ThisAsyncCall Ident [PureExp]
  | Get PureExp
+ | Spawn PureExp Type [PureExp]
   deriving (Eq,Ord,Show)
 
 data Exp =
