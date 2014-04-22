@@ -1,0 +1,27 @@
+module DC;
+
+fimport * from OpenNebula;
+fimport NodeId from Control.Distributed.Process;
+
+// this file is to generate the interface for DC
+// later move it to Haskell's FFI
+
+interface IDC {
+    Unit shutdown();
+    Triple<Rat,Rat,Rat> getLoad();
+}
+
+class DC(Int cpu, Int memory) implements IDC {
+      Int load = 0;
+      Int vmId = -1; // will correctly be set in init block on vm_allocate
+      Maybe<NodeId> nodeId = Nothing;  // will be initialized later, by an ACK
+      {
+
+      }
+      Unit shutdown() {
+
+      }
+      Triple<Rat,Rat,Rat> getLoad() { // unix style average load, (last minute, 5mins , 15 mins)
+          return Triple(1/2,1/2,1/2); // stub
+      }
+}
