@@ -50,9 +50,11 @@ class Cls1(List<Int> k) implements Interf1 {
     // inference in monadic code
     {
     _ x = 3;
+    Int y = 4; // type inference is optional
     x = x+y;
-    k = Cons(x, Cons(y, k)); // prepend x and y for k
-    _ m = length(k) + length(z);
+    _ l = Cons(x, Cons(y, Nil));
+    _ s = length(l) + 4;
+    _ b = m > 3;
     }
 
     Int plus(Int left, Int right) {

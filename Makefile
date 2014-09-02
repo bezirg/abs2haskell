@@ -13,6 +13,9 @@ grammar:
 	mkdir -p dist/grammar_test/
 	cd src; ghc --make TestABS.hs -o ../dist/grammar_test/TestABS
 
+tags:
+	find src -name "*hs" | xargs hasktags
+
 doc:
 	pandoc -t html -s README.md -o README.html	
 	pandoc -t html -s doc/TODO.md -o doc/TODO.html
