@@ -9,12 +9,30 @@ build-type:            Simple
 cabal-version:         >= 1.8
                       
 library
-  build-depends:      base, array, transformers, containers>=0.5.0.0, cmdargs, filepath, directory, haskell-src-exts, monad-coroutine==0.8,
+  build-depends:      base,
+                      array,
+                      transformers<0.4,
+                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+                      containers>=0.5.0.0,
+                      cmdargs,
+                      filepath,
+                      directory,
+                      -- hse 1.16, datatype-incompatible
+                      haskell-src-exts<1.16,
+                      monad-coroutine>=0.8,
                       -- for contacting OpenNebula through XML-RPC
-                      opennebula, base64-string, network-info, xml, utf8-string,
+                      opennebula, 
+                      base64-string, 
+                      network-info, 
+                      xml, 
+                      utf8-string,
                       -- for cloud abs / distributed communication of Haskell nodes
-                      distributed-process==0.5.0, network-transport==0.4.0.0, rank1dynamic==0.2.0.0, network-transport-tcp==0.4.0, distributed-static==0.3.0.0,
-                      binary==0.7.1.0, template-haskell==2.9.0.0
+                      distributed-process==0.5.0, 
+                      network-transport==0.4.0.0, 
+                      rank1dynamic==0.2.0.0, 
+                      network-transport-tcp==0.4.0, 
+                      distributed-static==0.3.0.0,
+                      binary==0.7.1.0
   exposed-modules:    
                      -- imitating the abslang.abs
                      ABSPrelude,
@@ -45,14 +63,65 @@ library
 
 executable abs2haskell
   main-is:             Transpile.hs
-  build-depends:       base, array, transformers, containers>=0.5.0.0, cmdargs, filepath, directory, haskell-src-exts, monad-coroutine==0.8
+  -- same build-depends as library
+  build-depends:      base,
+                      array,
+                      transformers<0.4,
+                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+                      containers>=0.5.0.0,
+                      cmdargs,
+                      filepath,
+                      directory,
+                      -- hse 1.16, datatype-incompatible
+                      haskell-src-exts<1.16,
+                      monad-coroutine>=0.8,
+                      -- for contacting OpenNebula through XML-RPC
+                      opennebula, 
+                      base64-string, 
+                      network-info, 
+                      xml, 
+                      utf8-string,
+                      -- for cloud abs / distributed communication of Haskell nodes
+                      distributed-process==0.5.0, 
+                      network-transport==0.4.0.0, 
+                      rank1dynamic==0.2.0.0, 
+                      network-transport-tcp==0.4.0, 
+                      distributed-static==0.3.0.0,
+                      binary==0.7.1.0
+
   --ghc-options:         -rtsopts -threaded -ddump-splices -F -pgmF she
-  hs-source-dirs:      src
+  hs-source-dirs:     src
 
 test-suite test
-  type:                exitcode-stdio-1.0
-  main-is:             Test.hs
-  build-depends:       base, array, transformers, containers>=0.5.0.0, cmdargs, filepath, directory, haskell-src-exts, monad-coroutine==0.8, test-framework, test-framework-hunit, test-framework-th, HUnit
+  type:               exitcode-stdio-1.0
+  main-is:            Test.hs
+  build-depends:      base,
+                      array,
+                      transformers<0.4,
+                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+                      containers>=0.5.0.0,
+                      cmdargs,
+                      filepath,
+                      directory,
+                      -- hse 1.16, datatype-incompatible
+                      haskell-src-exts<1.16,
+                      monad-coroutine>=0.8,
+                      test-framework, 
+                      test-framework-hunit, 
+                      test-framework-th, 
+                      HUnit,
+                      -- for contacting OpenNebula through XML-RPC
+                      opennebula, 
+                      base64-string, 
+                      network-info, 
+                      xml, 
+                      utf8-string,
+                      -- for cloud abs / distributed communication of Haskell nodes
+                      distributed-process==0.5.0, 
+                      network-transport==0.4.0.0, 
+                      rank1dynamic==0.2.0.0, 
+                      network-transport-tcp==0.4.0, 
+                      distributed-static==0.3.0.0,
+                      binary==0.7.1.0
   ghc-options:
-  hs-source-dirs:      src, test                        
-
+  hs-source-dirs:     src, test                        
