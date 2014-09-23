@@ -4,6 +4,6 @@ ghc:
   - 7.6
 install:
   - cabal install happy-1.19.4  # haskell-src-exts requires happy
-  - cd haxr-browser --flags="-network-uri" && cabal install # install forked haxr, dep of opennebula
+  - cd haxr-browser && cabal install --flags="-network-uri" # install forked haxr, dep of opennebula
   - cd ../opennebula && cabal install # install opennebula, dep of abs2haskell
   - cd .. && cabal install --only-dependencies --enable-tests # install also deps for testing
