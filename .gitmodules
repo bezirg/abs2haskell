@@ -1,0 +1,6 @@
+[submodule "opennebula"]
+	path = opennebula
+	url = git://github.com/bezirg/opennebula
+[submodule "haxr-browser"]
+	path = haxr-browser
+	url = git://github.com/bezirg/haxr
