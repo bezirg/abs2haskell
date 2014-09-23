@@ -32,9 +32,7 @@ library
                       rank1dynamic==0.2.0.0, 
                       network-transport-tcp==0.4.0, 
                       distributed-static==0.3.0.0,
-                      binary==0.7.1.0,
-                      -- resolution helper for travis conflict (distributed-process vs test-framework)
-                      random==1.0.*
+                      binary==0.7.1.0
   exposed-modules:    
                      -- imitating the abslang.abs
                      ABSPrelude,
@@ -89,9 +87,7 @@ executable abs2haskell
                       rank1dynamic==0.2.0.0, 
                       network-transport-tcp==0.4.0, 
                       distributed-static==0.3.0.0,
-                      binary==0.7.1.0,
-                      -- resolution helper for travis conflict (distributed-process vs test-framework)
-                      random==1.0.*
+                      binary==0.7.1.0
 
   --ghc-options:         -rtsopts -threaded -ddump-splices -F -pgmF she
   hs-source-dirs:     src
@@ -126,9 +122,7 @@ test-suite test
                       rank1dynamic==0.2.0.0, 
                       network-transport-tcp==0.4.0, 
                       distributed-static==0.3.0.0,
-                      binary==0.7.1.0,
-                      -- resolution helper for travis conflict (distributed-process vs test-framework)
-                      random==1.0.*
+                      binary==0.7.1.0
 
   ghc-options:
   hs-source-dirs:     src, test                        

@@ -6,8 +6,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq happy # haskell-src-exts requires happy
 install:
-  - cabal install 'mtl<2.2' # fix for transformers dep
-  - cabal install 'network<2.5' # fix for network-transport-tcp deps
-  - cd haxr-browser && cabal install --flags="-network-uri" # install forked haxr, dep of opennebula
-  - cd ../opennebula && cabal install # install opennebula, dep of abs2haskell
-  - cd .. && cabal install --only-dependencies --enable-tests # install also deps for testing
+  - cabal sandbox init
+  - cabal sandbox add-source haxr-browser
+  - cabal sandbox add-source opennebula
+  - cabal install --only-dependencies --enable-tests # install also deps for testing
