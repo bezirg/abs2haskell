@@ -12,3 +12,7 @@ install:
   - cabal sandbox add-source haxr-browser
   - cabal sandbox add-source opennebula
   - cabal install --only-dependencies --enable-tests # install also deps for testing
+notifications:
+  email:
+    on_success: always
+    on_failure: always
