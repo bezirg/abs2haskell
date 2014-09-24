@@ -6,28 +6,28 @@ The compiler itself is written in haskell and distributed as a normal Haskell pa
 
 Therefore to build abs2haskell you need either
 
-1) a recent release of the [Haskell platform](https://www.haskell.org/platform/) (version >= 2013.2.0.0),
+1) a recent release of the [Haskell platform](https://www.haskell.org/platform/) (version >= 2014.2.0.0),
 
 2) the GHC compiler accompanied by the Cabal packaging system:
 
-    - GHC compiler (version >=7.6)
-    - Cabal package (version >=1.4)
-    - `cabal-install` program. The compiler depends on other community
-packages/libraries. This program will automatically fetch
-and install any library dependencies.
+    - GHC compiler (version >=7.8)
+    - Cabal package (version >=1.18)
+    - `cabal-install` (version >=1.18)
+
+The compiler depends on other community packages/libraries. This program will automatically fetch and install any library dependencies.
 
 ## Building and installing the compiler
 
 If you have the above installed then simply run inside the `abs2haskell/` directory:
 
 ~~~
+make
 sudo make install
 ~~~
 
 ## Running the compiler to generate Haskell code
 
-After install the compiler, you should
-have the program `abs2haskell` under your `PATH`.
+After installing the compiler, you should have the program `abs2haskell` under your `PATH`.
 
 Examples of running:
 
@@ -44,8 +44,7 @@ abs2haskell examples/   # will compile all ABS files under examples directory
 ~~~
 
 
-The compiler will generate ".hs" files for each compiled ABS module.
-No other runtime system libraries and dependencies will be generated.
+The compiler will generate ".hs" files for each compiled ABS module. No other runtime system libraries and dependencies will be generated.
 
 
 
@@ -73,13 +72,10 @@ You will need
 - The `alex` Haskell lexer (do `cabal install alex`)
 - The `happy` Haskell parser (do `cabal install happy`)
 
-The grammar lies under `src/ABS.cf`.
-After your modifications, run:
+The grammar lies under `src/ABS.cf`. After your modifications, run:
 
 ~~~
 make grammar
 ~~~
 
-to generate the Haskell source files.
-Then you do `make`, so the abs2haskell compiler can pickup
-any changes of the grammar.
+to generate the Haskell source files. Then you (re)run `make`, so the abs2haskell compiler can pickup any changes of the grammar.
