@@ -29,3 +29,4 @@ examples/*.ast
 examples/*.out
 examples/*.hs
 
+/cabal.config
