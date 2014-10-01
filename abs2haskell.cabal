@@ -8,6 +8,11 @@ stability:             provisional
 build-type:            Simple
 cabal-version:         >= 1.8
                       
+Source-repository this
+  type:     git
+  location: git://github.com/bezirg/abs2haskell.git
+  branch: cloud
+
 library
   build-depends:      base,
                       array,
