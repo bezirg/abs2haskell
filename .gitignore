@@ -25,7 +25,9 @@ src/LexABS.x.bak
 /src/TestABS.hs.bak
 /src/ErrM.hs.bak
 /src/AbsABS.hs.bak
-TestABS.hs
+/src/PrintABS.hs.bak
+/src/SkelABS.hs.bak
+src/TestABS.hs
 
 # output of abs2haskell on ABS examples
 examples/*.ast

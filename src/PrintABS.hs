@@ -349,7 +349,7 @@ instance Print Literal where
   prt i e = case e of
    LNull  -> prPrec i 0 (concatD [doc (showString "null")])
    LThis  -> prPrec i 0 (concatD [doc (showString "this")])
-   LWhereAmI  -> prPrec i 0 (concatD [doc (showString "whereami")])
+   LThisDC  -> prPrec i 0 (concatD [doc (showString "thisDC")])
    LStr str -> prPrec i 0 (concatD [prt 0 str])
    LInt n -> prPrec i 0 (concatD [prt 0 n])
 
@@ -363,7 +363,7 @@ instance Print EffExp where
    AsyncCall pureexp id pureexps -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString "!") , prt 0 id , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
    ThisAsyncCall id pureexps -> prPrec i 0 (concatD [doc (showString "this") , doc (showString "!") , prt 0 id , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
    Get pureexp -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString ".") , doc (showString "get")])
-   Spawn pureexp type' pureexps -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString "spawn") , prt 0 type' , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
+   Spawns pureexp type' pureexps -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString "spawns") , prt 0 type' , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
 
 
 instance Print Exp where

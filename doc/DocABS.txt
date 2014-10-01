@@ -42,8 +42,8 @@ The reserved words used in ABS are the following:
   | ``get`` | ``if`` | ``implements`` | ``import``
   | ``in`` | ``interface`` | ``let`` | ``local``
   | ``module`` | ``new`` | ``null`` | ``return``
-  | ``skip`` | ``spawn`` | ``suspend`` | ``then``
-  | ``this`` | ``type`` | ``whereami`` | ``while``
+  | ``skip`` | ``spawns`` | ``suspend`` | ``then``
+  | ``this`` | ``thisDC`` | ``type`` | ``while``
 
 The symbols used in ABS are the following:
   | < | > | _ | ,
@@ -213,7 +213,7 @@ All other symbols are terminals.
   |  |  **|**  | //PureExp9// 
   | //Literal// | -> | ``null`` 
   |  |  **|**  | ``this`` 
-  |  |  **|**  | ``whereami`` 
+  |  |  **|**  | ``thisDC`` 
   |  |  **|**  | //String// 
   |  |  **|**  | //Integer// 
   | //PureExp9// | -> | ``(`` //PureExp// ``)`` 
@@ -225,7 +225,7 @@ All other symbols are terminals.
   |  |  **|**  | //PureExp// ``!`` //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | ``this`` ``!`` //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` ``get`` 
-  |  |  **|**  | //PureExp// ``spawn`` //Type// ``(`` //[PureExp]// ``)`` 
+  |  |  **|**  | //PureExp// ``spawns`` //Type// ``(`` //[PureExp]// ``)`` 
   | //[PureExp]// | -> | **eps**
   |  |  **|**  | //PureExp// 
   |  |  **|**  | //PureExp// ``,`` //[PureExp]// 

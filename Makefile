@@ -27,7 +27,7 @@ dist/grammar_test/TestABS: src/ABS.cf # run when grammar changes
 	cd src; mv DocABS.txt ../doc # move the generated grammar documentation
 	cd src; happy -gca ParABS.y; alex -g LexABS.x # generates Haskell parse-example to parse ABS code
 	@mkdir -p dist/grammar_test/
-	cd src; ghc --make TestABS.hs -o ../dist/grammar_test/TestABS # compiles the Haskell parse-ABS-example
+	cd src; ghc --make TestABS.hs -o ../dist/grammar_test/TestABS; rm -rf *.o *.hi TestABS.hs # compiles the Haskell parse-ABS-example
 
 clean:
 	-cabal sandbox delete
