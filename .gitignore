@@ -6,6 +6,7 @@ TAGS
 # cabal sandbox related
 .cabal-sandbox/
 cabal.sandbox.config
+/cabal.config
 
 # doc related
 doc/*.html
@@ -21,12 +22,17 @@ src/ParABS.y
 src/LexABS.x
 src/ParABS.y.bak
 src/LexABS.x.bak
-DocABS.*
+/src/TestABS.hs.bak
+/src/ErrM.hs.bak
+/src/AbsABS.hs.bak
 TestABS.hs
 
 # output of abs2haskell on ABS examples
 examples/*.ast
 examples/*.out
 examples/*.hs
+examples/*_flymake.abs
 
-/cabal.config
+
+
+

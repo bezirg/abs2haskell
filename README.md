@@ -66,11 +66,17 @@ ghc --make -threaded examples/BenchMaps.hs # put the generated haskell file that
 
 ## (Optional) Building the Grammar
 
-You will need
+For the grammar you will need the following programs:
 
 - The [bnf converter](http://bnfc.digitalgrammars.com/)
-- The `alex` Haskell lexer (do `cabal install alex`)
-- The `happy` Haskell parser (do `cabal install happy`)
+- The `alex` Haskell lexer
+- The `happy` Haskell parser
+
+To install the above dependencies type:
+
+~~~
+cabal install 'BNFC>=2.7' alex 'happy>=1.19'
+~~~
 
 The grammar lies under `src/ABS.cf`. After your modifications, run:
 
@@ -79,3 +85,24 @@ make grammar
 ~~~
 
 to generate the Haskell source files. Then you (re)run `make`, so the abs2haskell compiler can pickup any changes of the grammar.
+
+
+## (Optional) Building the Documentation
+
+For the documentation you will need heed the following programs:
+
+- The [pandoc documentation converter](http://johnmacfarlane.net/pandoc/)
+- The [haddock haskell documentation tool](http://www.haskell.org/haddock/)
+
+To install the above dependencies type:
+
+~~~
+cabal install 'pandoc>=13' haddock
+~~~
+
+To generate the documentation run:
+
+~~~
+make doc
+~~~
+

@@ -1,7 +1,7 @@
 PREFIX=/usr/local/bin
 
 build: deps
-	cabal install --only-dependencies
+	cabal install --only-dependencies --force-reinstalls
 	cabal configure
 	cabal build
 
@@ -24,7 +24,7 @@ test:
 grammar: dist/grammar_test/TestABS
 dist/grammar_test/TestABS: src/ABS.cf # run when grammar changes
 	cd src; bnfc -haskell ABS.cf # generates haskell-source parser, lexer, and helper code
-	cd src; mv DocABS.tex ../doc # move the generated grammar documentation
+	cd src; mv DocABS.txt ../doc # move the generated grammar documentation
 	cd src; happy -gca ParABS.y; alex -g LexABS.x # generates Haskell parse-example to parse ABS code
 	@mkdir -p dist/grammar_test/
 	cd src; ghc --make TestABS.hs -o ../dist/grammar_test/TestABS # compiles the Haskell parse-ABS-example
@@ -33,11 +33,12 @@ clean:
 	-cabal sandbox delete
 	-rm -rf dist/
 	-rm -f src/ParABS.y src/LexABS.x src/TestABS.* src/*.bak # cleanup bnfc intermediate code
-	-rm -f src/*.hi src/*.o # remove any compiled example
-	-rm -f doc/DocABS.aux doc/DocABS.log doc/DocABS.pdf
-doc:
+	-rm -f src/*.hi src/*.o examples/*.hi examples/*.o # remove any compiled example
+	-rm -f doc/*.html
+
+doc: 
 	pandoc -t html -s README.md -o README.html	
 	pandoc -t html -s doc/TODO.md -o doc/TODO.html
-	cd doc; pdflatex DocABS.tex
+	pandoc -f t2t -t html -s doc/DocABS.txt -o doc/GrammarDocumentation.html
 
 .PHONY: build install deps test grammar clean doc
