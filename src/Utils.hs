@@ -1,5 +1,6 @@
 module Utils where
 
+import Conf (conf, ast)
 import System.FilePath ((</>), replaceExtension)
 import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
 import ParABS (myLexer, pProgram)
@@ -28,6 +29,7 @@ parseABSFile absFilePath = do
   let parseABS = pProgram $ myLexer absSource
   case parseABS of
     Ok res -> do
-      writeFile (replaceExtension absFilePath ".ast") (show  res)
+      -- if --ast option is enabled, print ABSFile.ast, containing the AST haskell datatype
+      when (ast conf) $ writeFile (replaceExtension absFilePath ".ast") (show  res)
       return (absFilePath, res)
     Bad _errorString -> error "Error in parsing" -- TODO: move to exceptions

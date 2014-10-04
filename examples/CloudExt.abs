@@ -1,0 +1,29 @@
+module CloudExt;
+
+import * from DC;
+
+interface Interf1 {
+    Int yourLoad();
+    IDC wherareyou();
+}
+
+class Cls1(Int param) implements Interf1 {
+    Int yourLoad() {
+       return thisDC.getLoad(); 
+   }
+    IDC whereareyou() {
+        return thisDC;
+    }
+}
+
+{
+    IDC my_dc = thisDC;
+    Int load = wherami.getLoad();
+    IDC dc = new DC(cpu,memory);
+    // Not implemented yet
+    // Interf1 o1 = dc spawns Cls1(3);
+    // Fut<Int> l1 = o1 ! yourLoad();
+    // FUT<IDC> dc1 = o1 ! wherareyou();
+    // assert dc1 == dc;
+    assert my_dc != dc;
+}
