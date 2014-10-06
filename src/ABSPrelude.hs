@@ -18,7 +18,8 @@ module ABSPrelude
      (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not, (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%),
      M.Map, M.empty, put, insertAssoc, lookupUnsafe, removeKey,
      length,
-     listArray, replace, elemAt, Prelude.repeat, Array
+     listArray, replace, elemAt, Prelude.repeat, Array,
+     list
     )
         where
 
@@ -99,3 +100,7 @@ type Array = UArray.UArray
 -- a reference to a null object
 null :: ObjectRef Null
 null = NullRef
+
+-- Dummy for list n-ary constructors
+list :: [a] -> [a]
+list = Prelude.id
