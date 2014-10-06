@@ -1,11 +1,10 @@
-module EmptyNew;
+module EmptyOO;
 
 interface Interf1 {
 
 }
 
-class Cls {
-  Int x = 0;
+class Cls implements Interf1 {
 
 }
 

@@ -1,0 +1,55 @@
+module StatefulOO;
+
+interface Interf1 {
+	Unit inc(Int n);
+	}
+
+interface Interf2 extends Interf1 {
+	Unit dec_one();
+    Unit dec(Int m);
+	Bool check();
+	}
+
+
+class Class1(Int p1, Int p2, Int x) implements Interf2 {
+	Interf2 o2 = null;
+	{	
+		this.x = this.x +1;
+	    this.x = this.x +1;
+	}
+	Unit inc(Int n) {
+        this.x=this.x+n;
+	}
+	Unit dec(Int m) {
+	    this.x=this.x-m;
+	}
+    Unit dec_one() {
+        this.dec(1); // this must be synchronous, otherwise race condition
+    }
+	Bool check() {
+        return (this.x==0);
+	}
+}
+
+{
+	Interf2 o1 = new Class1(1,2,-2);
+
+    Fut<Bool> f = o1 ! check();
+    Bool c = f.get;
+    assert c;
+
+	o1 ! inc(1);
+    o1 ! dec_one();
+
+    f = o1 ! check();
+    c = f.get;
+    assert c;
+
+    o1 ! inc(1);
+    o1 ! dec(5);
+    
+    f = o1 ! check();
+    c = f.get;
+    
+    assert not(c);
+}

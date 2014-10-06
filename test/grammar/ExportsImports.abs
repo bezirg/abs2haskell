@@ -1,4 +1,8 @@
-module Imports;
+module ExportsImports;
+
+export Mplo;
+export *;
+export Mpli from Mplo;
 
 import f,g from ABSModule;
 import * from AnotherABSModule;

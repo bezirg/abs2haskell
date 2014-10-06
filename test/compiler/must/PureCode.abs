@@ -1,4 +1,4 @@
-module Functions;
+module PureCode;
 
 def _ getLeft(_ e) = left(e);
 
@@ -19,5 +19,12 @@ def List<Pair<Int, Bool>> changeToFalse_(Int j, Int n, Int last, Int offset, Lis
 
 
 {
+  Int y = f(3);
+  assert(y==11);
 
+  Either<Int,Bool> e1 = Left(3);
+  assert(getLeft(e));
+
+  Either<Bool,Bool> e2 = Right(False);
+  assert(either(e));
 }

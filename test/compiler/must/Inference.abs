@@ -54,7 +54,6 @@ class Cls1(List<Int> k) implements Interf1 {
     x = x+y;
     _ l = Cons(x, Cons(y, Nil));
     _ s = length(l) + 4;
-    _ b = m > 3;
     }
 
     Int plus(Int left, Int right) {
@@ -66,7 +65,8 @@ class Cls1(List<Int> k) implements Interf1 {
 {
     Interf1 o1 = new Cls1(Nil); 
     // _ o2 = new Cls1(Nil); // cannot infer because the result o2 is of of an interface type, should generate an error
-    _ res = o1.plus(3,4); // can infer it since the result is of a non-interface type
+    _ f = o1 ! plus(3,4); // can infer it since the result is of a non-interface type
+    _ res = f.get;
     res = res + 1;
 }
 

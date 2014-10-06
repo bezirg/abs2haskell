@@ -1,0 +1,27 @@
+module AwaitOnFields;
+
+interface Interf1 {
+  Bool m1();
+  Unit inc();
+}
+
+class Cls1 implements Interf1 {
+  Int x = 3;
+  
+  Bool m1() {
+  	 await (x==5);
+  	 return True;
+ }
+  Unit inc() {
+    this.x = this.x + 1;
+  }
+}
+
+{
+  Interf1 o1 = new Cls1();
+  Fut<Bool> f = o1 ! m1();
+  o1 ! inc();
+  o1 ! inc();
+  Bool r = f.get;
+  assert r;
+}

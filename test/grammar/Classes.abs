@@ -1,4 +1,4 @@
-module InstanceGeneration;
+module Classes;
 
 interface Interf1 {
     Unit method1();

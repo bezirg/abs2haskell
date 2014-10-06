@@ -1,4 +1,4 @@
-module HetList;
+module Subtyping2;
 
 interface Interf1 {
     Unit method1();
@@ -25,4 +25,5 @@ class Cls2 implements Interf2 {
     Interf1 o1 = new Cls1();
     Interf2 o2 = new Cls2();
     List<Interf1> x = Cons(o1,Cons(o2,Nil));
+    assert(length(x) == 2);
 }

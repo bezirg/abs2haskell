@@ -1,0 +1,8 @@
+module Fail2;
+
+interface I {} 
+
+{ Bool testresult = False;
+  I i = null;
+  if (i == null) testresult = True;
+ }

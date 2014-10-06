@@ -1,4 +1,4 @@
-module Test1;
+module Futures;
 
 interface Interf1 {
 	Int method1(Int n, Int m);

@@ -29,11 +29,12 @@ src/LexABS.x.bak
 /src/SkelABS.hs.bak
 src/TestABS.hs
 
-# output of abs2haskell on ABS examples
-examples/*.ast
-examples/*.out
-examples/*.hs
-examples/*_flymake.abs
+# output of abs2haskell on ABS tests
+*.ast
+*.out
+*.hs
+*.stderr
+*_flymake.abs
 
 
 

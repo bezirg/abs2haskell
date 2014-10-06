@@ -1,0 +1,13 @@
+module ExpAsStmErrorInMainline;
+
+data A = A;
+
+def Rat f(Int i) = 1/0;
+
+{
+ A;
+ 1+4;
+ f(3);
+ f(4) + 5;
+ return f(3);
+}

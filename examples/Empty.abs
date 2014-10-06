@@ -1,8 +1,0 @@
-module Empty;
-
-
-{
-
-assert (3==4);
-
-}

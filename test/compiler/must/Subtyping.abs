@@ -1,4 +1,4 @@
-module SubtypingVolker;
+module Subtyping;
 
 interface A { }
 interface B extends A { }

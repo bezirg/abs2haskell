@@ -21,13 +21,13 @@ test:
 	cabal install --only-dependencies --enable-tests
 	cabal test
 
-grammar: dist/grammar_test/TestABS
-dist/grammar_test/TestABS: src/ABS.cf # run when grammar changes
+grammar: dist/build/testGrammar/testGrammar
+dist/build/testGrammar/testGrammar: src/ABS.cf # run when grammar changes
 	cd src; bnfc -haskell ABS.cf # generates haskell-source parser, lexer, and helper code
 	cd src; mv DocABS.txt ../doc # move the generated grammar documentation
 	cd src; happy -gca ParABS.y; alex -g LexABS.x # generates Haskell parse-example to parse ABS code
-	@mkdir -p dist/grammar_test/
-	cd src; ghc --make TestABS.hs -o ../dist/grammar_test/TestABS; rm -rf *.o *.hi TestABS.hs # compiles the Haskell parse-ABS-example
+	@mkdir -p dist/build/testGrammar/
+	cd src; ghc --make TestABS.hs -o ../dist/build/testGrammar/testGrammar; rm -rf *.o *.hi TestABS.hs # compiles the Haskell parse-ABS-example
 
 clean:
 	-cabal sandbox delete

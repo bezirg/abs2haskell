@@ -1,4 +1,4 @@
-module Test2;
+module TestMaps;
 
 interface IArray{
 	Int sum();
@@ -33,18 +33,18 @@ class CArray (Int n)implements IArray{
 
 {
 // IArray a1 = new Array(1);
-// IArray a2 = new Array(10);
+IArray a2 = new CArray(10);
 IArray a3 = new local CArray(100);
 
 // Fut<Int> f1 = a1!sum();
-// Fut<Int> f2 = a2!sum();
+Fut<Int> f2 = a2!sum();
 Int x = a3.sum();
 
 assert x ==4500;
 
-// await f2?;
-// x = f2.get;
-// assert x==450;
+await f2?;
+x = f2.get;
+assert x==450;
 
 
 }

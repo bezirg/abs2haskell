@@ -1,0 +1,11 @@
+module Parens;
+
+def Int f() = (3 + 4) * 5;
+def Int g() = 3 + 4 * 5;
+
+{
+  Int i = f();
+  assert(i == 35);
+  Int j = g();
+  assert(j == 23);
+}

@@ -97,9 +97,9 @@ executable abs2haskell
   --ghc-options:         -rtsopts -threaded -ddump-splices -F -pgmF she
   hs-source-dirs:     src
 
-test-suite test
+test-suite test_runtime
   type:               exitcode-stdio-1.0
-  main-is:            Test.hs
+  main-is:            TestRuntime.hs
   build-depends:      base,
                       array,
                       transformers<0.4,
@@ -130,4 +130,4 @@ test-suite test
                       binary==0.7.1.0
 
   ghc-options:
-  hs-source-dirs:     src, test                        
+  hs-source-dirs:     src, test/runtime                        
