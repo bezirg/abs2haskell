@@ -3,7 +3,6 @@
 module ABSPrelude 
     (module Base,
      module Core,
-     module Utils,
      Prelude.return, Exception.evaluate, Prelude.error,
      lift, liftM,
      newIORef, modifyIORef', readIORef, when, mapMonad,
@@ -26,7 +25,6 @@ module ABSPrelude
 import qualified Prelude as Prelude
 import Base
 import Core
-import Utils
 
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (when, liftM, liftM2)
