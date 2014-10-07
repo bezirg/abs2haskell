@@ -1,6 +1,6 @@
 {-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses #-}
 
-module Base where
+module Lang.ABS.Runtime.Base where
 
 import Data.IORef (IORef)
 import Control.Concurrent (ThreadId)

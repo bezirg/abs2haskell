@@ -1,6 +1,6 @@
-module Core where
+module Lang.ABS.Runtime.Core where
 
-import Base
+import Lang.ABS.Runtime.Base
 import Data.List (foldl')
 import Control.Monad (when)
 import Control.Concurrent (ThreadId, myThreadId, forkIO)
@@ -8,7 +8,7 @@ import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, writeList2Chan, Chan)
 import Control.Monad.Trans.Class
-import qualified Control.Monad.Trans.RWS as RWS (runRWST, execRWST, modify, RWST, withRWST)
+import qualified Control.Monad.Trans.RWS as RWS (runRWST, modify, RWST, withRWST)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
 import System.Exit (exitSuccess)

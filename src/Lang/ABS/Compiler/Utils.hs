@@ -1,6 +1,6 @@
-module Utils where
+module Lang.ABS.Compiler.Utils where
 
-import Conf (conf, ast)
+import Lang.ABS.Compiler.Conf (conf, ast)
 import System.FilePath ((</>), replaceExtension)
 import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
 import ParABS (myLexer, pProgram)

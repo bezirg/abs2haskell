@@ -4,11 +4,11 @@
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
-module DC where
+module Lang.ABS.StdLib.DC where
 
 import qualified Control.Monad.Trans.RWS as RWS
-import Prim
-import ABSPrelude
+import Lang.ABS.Runtime
+import Lang.ABS.StdLib.Prelude
 
 -- added
 import OpenNebula

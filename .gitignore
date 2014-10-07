@@ -32,7 +32,6 @@ src/TestABS.hs
 # output of abs2haskell on ABS tests
 *.ast
 *.out
-*.hs
 *.stderr
 *_flymake.abs
 

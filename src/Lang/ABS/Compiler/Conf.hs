@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Conf where
+module Lang.ABS.Compiler.Conf
+    (conf
+    ,Conf (..)
+    ) where
 
 import System.IO.Unsafe (unsafePerformIO)
 import System.Console.CmdArgs
 
-conf = unsafePerformIO getConf
-
-getConf = cmdArgs confOpt
+conf = unsafePerformIO (cmdArgs confOpt)
 
 data Conf = Conf {
       files :: [FilePath]

@@ -1,9 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, NoImplicitPrelude #-}
 
-module ABSPrelude 
-    (module Base,
-     module Core,
-     Prelude.return, Exception.evaluate, Prelude.error,
+module Lang.ABS.StdLib.Prelude 
+    (Prelude.return, Exception.evaluate, Prelude.error,
      lift, liftM,
      newIORef, modifyIORef', readIORef, when, mapMonad,
      newChan, writeChan, writeList2Chan, newEmptyMVar,
@@ -23,11 +21,10 @@ module ABSPrelude
         where
 
 import qualified Prelude as Prelude
-import Base
-import Core
+import Lang.ABS.Runtime.Base
 
 import Control.Monad.Trans.Class (lift)
-import Control.Monad (when, liftM, liftM2)
+import Control.Monad (when, liftM)
 import qualified Control.Exception.Base as Exception (evaluate)
 import Data.IORef (newIORef, modifyIORef', readIORef)
 import Control.Concurrent (newChan, writeChan, writeList2Chan, newEmptyMVar)

@@ -1,6 +1,6 @@
-module Prim where
+module Lang.ABS.Runtime.Prim where
 
-import Base
+import Lang.ABS.Runtime.Base
 
 import Control.Monad (liftM, when)
 import Data.IORef (readIORef)

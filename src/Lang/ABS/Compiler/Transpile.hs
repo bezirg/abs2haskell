@@ -2,8 +2,8 @@
 
 module Main where
 
-import Conf
-import Utils (parseABSFiles)
+import Lang.ABS.Compiler.Conf
+import Lang.ABS.Compiler.Utils (parseABSFiles)
 import qualified AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import Language.Haskell.Exts.SrcLoc (noLoc)
@@ -79,7 +79,7 @@ main = do
                      [
                       HS.ImportDecl {HS.importLoc = noLoc, HS.importModule = HS.ModuleName "Control.Monad.Trans.RWS", HS.importQualified = True, HS.importSrc = False, HS.importPkg = Nothing, HS.importAs = Just (HS.ModuleName "RWS"), HS.importSpecs = Nothing},
                       HS.ImportDecl {HS.importLoc = noLoc, 
-                                     HS.importModule = HS.ModuleName "Prim", 
+                                     HS.importModule = HS.ModuleName "Lang.ABS.Runtime", 
                                      HS.importSrc = False, 
                                      HS.importQualified = False,
                                      HS.importPkg = Nothing,
@@ -87,7 +87,7 @@ main = do
                                      HS.importSpecs = Nothing
                                     },
                       HS.ImportDecl {HS.importLoc = noLoc, 
-                                     HS.importModule = HS.ModuleName "ABSPrelude", 
+                                     HS.importModule = HS.ModuleName "Lang.ABS.StdLib", 
                                      HS.importSrc = False, 
                                      HS.importQualified = False,
                                      HS.importPkg = Nothing,
