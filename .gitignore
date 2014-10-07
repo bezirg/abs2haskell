@@ -30,11 +30,12 @@ src/LexABS.x.bak
 src/TestABS.hs
 
 # output of abs2haskell on ABS tests
-*.ast
-*.out
+test/compiler/*/*.hs
+test/compiler/*/*.out
 *.stderr
+
+# extra files
+
+*.ast
 *_flymake.abs
-
-
-
 
