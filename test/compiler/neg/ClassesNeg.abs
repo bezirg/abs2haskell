@@ -1,0 +1,24 @@
+module ClassesNeg;
+
+interface Interf1 {
+
+}
+
+interface Interf2 {
+
+}
+
+class C1 implements Interf1 {
+
+
+}
+
+class C2 implements Interf2 {
+
+}
+
+{
+  Interf1 o1 = new C1();
+  Interf2 o2 = new C2();
+  assert (o1==o2);
+}

@@ -16,7 +16,7 @@ module Lang.ABS.Compiler.Include
      Data.Map.Strict.updateLookupWithKey,
      Prelude.undefined,
      (Prelude.=<<), (Prelude.>>=), Prelude.fromIntegral,
-     ifthenM, ifthenelseM, 
+     withReaderT
     )
  where
 
@@ -29,13 +29,10 @@ import Data.IORef
 import Control.Monad.Coroutine
 import Control.Concurrent
 import Data.Map.Strict
+import qualified Control.Monad.Trans.RWS as RWS
 
+-- util function, used in code generation
+withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
+withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
 
-ifthenM :: Monad m => m Bool -> m () -> m ()
-ifthenM texp stm_then = texp Prelude.>>= (\ e -> when e stm_then)
-
-ifthenelseM :: Monad m => m Bool -> m b -> m b -> m b
-ifthenelseM texp stm_then stm_else = texp Prelude.>>= (\ e -> if e 
-                                                            then stm_then
-                                                            else stm_else)
 

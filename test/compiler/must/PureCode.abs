@@ -23,8 +23,8 @@ def List<Pair<Int, Bool>> changeToFalse_(Int j, Int n, Int last, Int offset, Lis
   assert(y==11);
 
   Either<Int,Bool> e1 = Left(3);
-  assert(getLeft(e));
+  assert(getLeft(e1) == 3);
 
-  Either<Bool,Bool> e2 = Right(False);
-  assert(either(e));
+  Either<Bool,Bool> e2 = Right(True);
+  assert(either(e2));
 }

@@ -61,3 +61,13 @@ while env predAction loopAction = predAction env >>= \ res -> if res
 get :: (Object__ o) => Fut f -> ABS o f
 get a = (\ (FutureRef mvar _ _) -> lift $ lift $ readMVar mvar) a
 
+
+-- for using inside ABS monad
+ifthenM :: Monad m => m Bool -> m () -> m ()
+ifthenM texp stm_then = texp >>= (\ e -> when e stm_then)
+
+-- for using inside ABS monad
+ifthenelseM :: Monad m => m Bool -> m b -> m b -> m b
+ifthenelseM texp stm_then stm_else = texp >>= (\ e -> if e 
+                                                     then stm_then
+                                                     else stm_else)

@@ -1,0 +1,24 @@
+module AwaitOnThis2;
+
+interface Interf1 {
+  Unit check();
+  Unit change_x();
+}
+
+class C1 implements Interf1 {
+  Bool x = False;
+  Unit check() {
+     await this.x;
+  }
+  Unit change_x() {
+     this.x = not(this.x); 
+  }
+}
+
+{
+  Interf1 o1 = new C1();
+  Fut<Unit> f1 = o1 ! check();
+  o1 ! change_x();
+  f1.get;
+  assert(True);
+}

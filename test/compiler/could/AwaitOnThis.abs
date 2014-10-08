@@ -1,4 +1,4 @@
-module AwaitOnFields;
+module AwaitOnThis;
 
 interface Interf1 {
   Bool m1();
@@ -9,7 +9,7 @@ class Cls1 implements Interf1 {
   Int x = 3;
   
   Bool m1() {
-  	 await (x==5);
+  	 await (x==5); // abs supports implicit this.field, so it binds to this.x
   	 return True;
  }
   Unit inc() {

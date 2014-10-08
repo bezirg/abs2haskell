@@ -1,4 +1,4 @@
-module MultipleTasksPerObject;
+module AsyncToSameCOG;
 
 interface Interf1 {
   Bool m1();
@@ -8,6 +8,7 @@ interface Interf1 {
 class Cls1 implements Interf1 {
   Int x = 10;
   
+  // delegate code to another process of *the same COG*
   Bool m1() {
   	 Fut<Bool> f= this ! m2();
   	 await f?;
