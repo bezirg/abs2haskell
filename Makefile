@@ -22,12 +22,24 @@ test:
 	cabal test
 
 grammar: dist/build/testGrammar/testGrammar
-dist/build/testGrammar/testGrammar: src/ABS.cf # run when grammar changes
-	cd src; bnfc -haskell ABS.cf # generates haskell-source parser, lexer, and helper code
-	cd src; mv DocABS.txt ../doc # move the generated grammar documentation
-	cd src; happy -gca ParABS.y; alex -g LexABS.x # generates Haskell parse-example to parse ABS code
+dist/build/testGrammar/testGrammar: abs-new-frontend/src/ABS.cf 
+# run when grammar changes
+	@mkdir -p dist/build/buildGrammar/
+	cp abs-new-frontend/src/ABS.cf dist/build/buildGrammar/
+# generate haskell-source parser, lexer, and helper code
+	cd dist/build/buildGrammar; bnfc -haskell -p "Lang.ABS.Compiler.BNFC" ABS.cf 
+# move the generated grammar documentation
+	mv dist/build/buildGrammar/Lang/ABS/Compiler/BNFC/DocABS.txt doc 
+# generate haskell parser
+	cd dist/build/buildGrammar; happy -gca Lang/ABS/Compiler/BNFC/ParABS.y; 
+# generate haskell lexer
+	cd dist/build/buildGrammar; alex -g Lang/ABS/Compiler/BNFC/LexABS.x 
 	@mkdir -p dist/build/testGrammar/
-	cd src; ghc --make TestABS.hs -o ../dist/build/testGrammar/testGrammar; rm -rf *.o *.hi TestABS.hs # compiles the Haskell parse-ABS-example
+# compiles the Haskell parse-ABS-example
+	cd dist/build/buildGrammar;ghc --make Lang/ABS/Compiler/BNFC/TestABS.hs -o ../testGrammar/testGrammar; 
+	cd dist/build/buildGrammar/Lang/ABS/Compiler/BNFC/; rm -rf *.o *.hi *.x *.y *.bak TestABS.hs  # cleanup
+# move the generated haskell files to this src/
+	cp -r dist/build/buildGrammar/Lang/ABS/Compiler/BNFC src/Lang/ABS/Compiler 
 
 clean:
 	-cabal sandbox delete

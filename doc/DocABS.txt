@@ -35,7 +35,6 @@ TypeIdent literals are recognized by the regular expression
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in ABS are the following:
-  | ``Fut`` | ``Int`` | ``Rat`` | ``Unit``
   | ``assert`` | ``await`` | ``builtin`` | ``case``
   | ``class`` | ``data`` | ``def`` | ``else``
   | ``export`` | ``extends`` | ``fimport`` | ``from``
@@ -46,14 +45,14 @@ The reserved words used in ABS are the following:
   | ``this`` | ``thisDC`` | ``type`` | ``while``
 
 The symbols used in ABS are the following:
-  | < | > | _ | ,
-  | . | ; | * | =
+  | , | ; | * | .
+  | _ | < | > | =
   | ( | ) | | | {
-  | } | => | ? | &
-  | || | && | == | !=
-  | <= | >= | + | -
-  | / | % | ~ | [
-  | ] | ! |  | 
+  | } | ? | & | ||
+  | && | == | != | <=
+  | >= | + | - | /
+  | % | ~ | [ | ]
+  | => | ! |  | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -64,56 +63,51 @@ The symbols -> (production),  **|**  (union)
 and **eps** (empty rule) belong to the BNF notation. 
 All other symbols are terminals.
 
-  | //Type// | -> | ``Unit`` 
-  |  |  **|**  | ``Int`` 
-  |  |  **|**  | ``Rat`` 
-  |  |  **|**  | ``Fut`` ``<`` //Type// ``>`` 
-  |  |  **|**  | ``_`` 
-  |  |  **|**  | //QualType// 
-  |  |  **|**  | //QualType// ``<`` //[AnnType]// ``>`` 
-  | //[AnnType]// | -> | **eps**
-  |  |  **|**  | //AnnType// 
-  |  |  **|**  | //AnnType// ``,`` //[AnnType]// 
-  | //AnnType// | -> | //[Ann]// //Type// 
-  | //QualType// | -> | //[QualTypeIdent]// 
-  | //[QualType]// | -> | **eps**
-  |  |  **|**  | //QualType// 
-  |  |  **|**  | //QualType// ``,`` //[QualType]// 
-  | //QualTypeIdent// | -> | //TypeIdent// 
-  | //[QualTypeIdent]// | -> | **eps**
-  |  |  **|**  | //QualTypeIdent// 
-  |  |  **|**  | //QualTypeIdent// ``.`` //[QualTypeIdent]// 
-  | //Program// | -> | //ModuleDecl// 
-  | //ModuleDecl// | -> | ``module`` //QualType// ``;`` //[Export]// //[Import]// //[AnnDecl]// //MaybeBlock// 
+  | //AnyIdent// | -> | //Ident// 
+  |  |  **|**  | //TypeIdent// 
+  | //[AnyIdent]// | -> | //AnyIdent// 
+  |  |  **|**  | //AnyIdent// ``,`` //[AnyIdent]// 
+  | //Program// | -> | //[Module]// 
+  | //[Module]// | -> | **eps**
+  |  |  **|**  | //Module// //[Module]// 
+  | //Module// | -> | ``module`` //QualType// ``;`` //[Export]// //[Import]// //[Decl]// //MaybeBlock// 
   | //Export// | -> | ``export`` //[AnyIdent]// 
   |  |  **|**  | ``export`` //[AnyIdent]// ``from`` //QualType// 
   |  |  **|**  | ``export`` ``*`` 
   |  |  **|**  | ``export`` ``*`` ``from`` //QualType// 
   | //[Export]// | -> | **eps**
   |  |  **|**  | //Export// ``;`` //[Export]// 
-  | //ImportType// | -> | ``fimport`` 
-  |  |  **|**  | ``import`` 
-  | //Import// | -> | //ImportType// //[AnyIdent]// ``from`` //QualType// 
+  | //Import// | -> | //ImportType// //QualType// ``.`` //AnyIdent// 
+  |  |  **|**  | //ImportType// //[AnyIdent]// ``from`` //QualType// 
   |  |  **|**  | //ImportType// ``*`` ``from`` //QualType// 
   | //[Import]// | -> | **eps**
   |  |  **|**  | //Import// ``;`` //[Import]// 
-  | //AnyIdent// | -> | //Ident// 
-  |  |  **|**  | //TypeIdent// 
-  | //[AnyIdent]// | -> | **eps**
-  |  |  **|**  | //AnyIdent// 
-  |  |  **|**  | //AnyIdent// ``,`` //[AnyIdent]// 
-  | //AnnDecl// | -> | //[Ann]// //Decl// 
+  | //ImportType// | -> | ``fimport`` 
+  |  |  **|**  | ``import`` 
+  | //Type// | -> | ``_`` 
+  |  |  **|**  | //QualType// 
+  |  |  **|**  | //QualType// ``<`` //[Type]// ``>`` 
+  | //[Type]// | -> | //Type// 
+  |  |  **|**  | //Type// ``,`` //[Type]// 
+  | //[QualType]// | -> | //QualType// 
+  |  |  **|**  | //QualType// ``,`` //[QualType]// 
+  | //QualType// | -> | //[QualTypeSegment]// 
+  | //QualTypeSegment// | -> | //TypeIdent// 
+  | //[QualTypeSegment]// | -> | //QualTypeSegment// 
+  |  |  **|**  | //QualTypeSegment// ``.`` //[QualTypeSegment]// 
+  | //[Decl]// | -> | **eps**
+  |  |  **|**  | //Decl// //[Decl]// 
   | //Decl// | -> | ``type`` //TypeIdent// ``=`` //Type// ``;`` 
   |  |  **|**  | ``data`` //TypeIdent// ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``data`` //TypeIdent// ``<`` //[TypeIdent]// ``>`` ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``def`` //Type// //Ident// ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
   |  |  **|**  | ``def`` //Type// //Ident// ``<`` //[TypeIdent]// ``>`` ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
-  |  |  **|**  | ``interface`` //TypeIdent// ``{`` //[MethSig]// ``}`` 
-  |  |  **|**  | ``interface`` //TypeIdent// ``extends`` //[QualType]// ``{`` //[MethSig]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``{`` //[BodyDecl]// //MaybeBlock// //[BodyDecl]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``{`` //[BodyDecl]// //MaybeBlock// //[BodyDecl]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``implements`` //[QualType]// ``{`` //[BodyDecl]// //MaybeBlock// //[BodyDecl]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``implements`` //[QualType]// ``{`` //[BodyDecl]// //MaybeBlock// //[BodyDecl]// ``}`` 
+  |  |  **|**  | ``interface`` //TypeIdent// ``{`` //[MethSignat]// ``}`` 
+  |  |  **|**  | ``interface`` //TypeIdent// ``extends`` //[QualType]// ``{`` //[MethSignat]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``implements`` //[QualType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``implements`` //[QualType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
   | //ConstrIdent// | -> | //TypeIdent// 
   |  |  **|**  | //TypeIdent// ``(`` //[ConstrType]// ``)`` 
   | //ConstrType// | -> | //Type// 
@@ -121,49 +115,30 @@ All other symbols are terminals.
   | //[ConstrType]// | -> | **eps**
   |  |  **|**  | //ConstrType// 
   |  |  **|**  | //ConstrType// ``,`` //[ConstrType]// 
-  | //[TypeIdent]// | -> | **eps**
-  |  |  **|**  | //TypeIdent// 
+  | //[TypeIdent]// | -> | //TypeIdent// 
   |  |  **|**  | //TypeIdent// ``,`` //[TypeIdent]// 
-  | //[ConstrIdent]// | -> | **eps**
-  |  |  **|**  | //ConstrIdent// 
+  | //[ConstrIdent]// | -> | //ConstrIdent// 
   |  |  **|**  | //ConstrIdent// ``|`` //[ConstrIdent]// 
-  | //MethSig// | -> | //Type// //Ident// ``(`` //[Param]// ``)`` 
-  | //[MethSig]// | -> | **eps**
-  |  |  **|**  | //MethSig// ``;`` //[MethSig]// 
-  | //BodyDecl// | -> | //Type// //Ident// ``;`` 
+  | //FunBody// | -> | ``builtin`` 
+  |  |  **|**  | //PureExp// 
+  | //MethSignat// | -> | //Type// //Ident// ``(`` //[Param]// ``)`` 
+  | //[MethSignat]// | -> | **eps**
+  |  |  **|**  | //MethSignat// ``;`` //[MethSignat]// 
+  | //ClassBody// | -> | //Type// //Ident// ``;`` 
   |  |  **|**  | //Type// //Ident// ``=`` //PureExp// ``;`` 
   |  |  **|**  | //Type// //Ident// ``(`` //[Param]// ``)`` //Block// 
-  | //[BodyDecl]// | -> | **eps**
-  |  |  **|**  | //BodyDecl// //[BodyDecl]// 
+  | //[ClassBody]// | -> | **eps**
+  |  |  **|**  | //ClassBody// //[ClassBody]// 
   | //Block// | -> | ``{`` //[Stm]// ``}`` 
   | //MaybeBlock// | -> | //Block// 
   |  |  **|**  | **eps**
-  | //FunBody// | -> | ``builtin`` 
-  |  |  **|**  | //PureExp// 
-  | //[AnnDecl]// | -> | **eps**
-  |  |  **|**  | //AnnDecl// //[AnnDecl]// 
-  | //[Stm]// | -> | **eps**
-  |  |  **|**  | //Stm// //[Stm]// 
-  | //Param// | -> | //AnnType// //Ident// 
   | //[Param]// | -> | **eps**
   |  |  **|**  | //Param// 
   |  |  **|**  | //Param// ``,`` //[Param]// 
-  | //PureExp// | -> | ``let`` ``(`` //Param// ``)`` ``=`` //PureExp// ``in`` //PureExp// 
-  |  |  **|**  | ``if`` //PureExp// ``then`` //PureExp// ``else`` //PureExp// 
-  |  |  **|**  | ``case`` //PureExp// ``{`` //[CaseBranch]// ``}`` 
-  |  |  **|**  | //PureExp1// 
-  | //CaseBranch// | -> | //Pattern// ``=>`` //PureExp// 
-  | //[CaseBranch]// | -> | **eps**
-  |  |  **|**  | //CaseBranch// ``;`` //[CaseBranch]// 
-  | //Pattern// | -> | //Ident// 
-  |  |  **|**  | //Literal// 
-  |  |  **|**  | //TypeIdent// 
-  |  |  **|**  | //TypeIdent// ``(`` //[Pattern]// ``)`` 
-  |  |  **|**  | ``_`` 
-  | //[Pattern]// | -> | **eps**
-  |  |  **|**  | //Pattern// 
-  |  |  **|**  | //Pattern// ``,`` //[Pattern]// 
-  | //Stm// | -> | //EffExp// ``;`` 
+  | //Param// | -> | //Type// //Ident// 
+  | //[Stm]// | -> | **eps**
+  |  |  **|**  | //Stm// //[Stm]// 
+  | //Stm// | -> | //Exp// ``;`` 
   |  |  **|**  | ``{`` //[Stm]// ``}`` 
   |  |  **|**  | ``while`` ``(`` //PureExp// ``)`` //Stm// 
   |  |  **|**  | ``return`` //Exp// ``;`` 
@@ -173,51 +148,71 @@ All other symbols are terminals.
   |  |  **|**  | //Type// //Ident// ``=`` //Exp// ``;`` 
   |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //Stm// 
   |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //Stm// ``else`` //Stm// 
-  |  |  **|**  | ``await`` //Guard// ``;`` 
   |  |  **|**  | ``suspend`` ``;`` 
   |  |  **|**  | ``skip`` ``;`` 
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
+  |  |  **|**  | ``await`` //Guard// ``;`` 
   | //Guard// | -> | //Ident// ``?`` 
   |  |  **|**  | ``this`` ``.`` //Ident// ``?`` 
   |  |  **|**  | //PureExp// 
   |  |  **|**  | //Guard// ``&`` //Guard// 
-  | //PureExp1// | -> | //PureExp1// ``||`` //PureExp2// 
+  | //Exp// | -> | //PureExp// 
+  |  |  **|**  | //EffExp// 
+  | //[PureExp]// | -> | **eps**
+  |  |  **|**  | //PureExp// 
+  |  |  **|**  | //PureExp// ``,`` //[PureExp]// 
+  | //PureExp// | -> | //PureExp// ``||`` //PureExp1// 
+  |  |  **|**  | //PureExp1// 
+  |  |  **|**  | ``let`` ``(`` //Param// ``)`` ``=`` //PureExp// ``in`` //PureExp// 
+  |  |  **|**  | ``if`` //PureExp// ``then`` //PureExp// ``else`` //PureExp// 
+  |  |  **|**  | ``case`` //PureExp// ``{`` //[CaseBranch]// ``}`` 
+  | //PureExp1// | -> | //PureExp1// ``&&`` //PureExp2// 
   |  |  **|**  | //PureExp2// 
-  | //PureExp2// | -> | //PureExp2// ``&&`` //PureExp3// 
+  | //PureExp2// | -> | //PureExp2// ``==`` //PureExp3// 
+  |  |  **|**  | //PureExp2// ``!=`` //PureExp3// 
   |  |  **|**  | //PureExp3// 
-  | //PureExp3// | -> | //PureExp3// ``==`` //PureExp4// 
-  |  |  **|**  | //PureExp3// ``!=`` //PureExp4// 
+  | //PureExp3// | -> | //PureExp3// ``<`` //PureExp4// 
+  |  |  **|**  | //PureExp3// ``<=`` //PureExp4// 
+  |  |  **|**  | //PureExp3// ``>`` //PureExp4// 
+  |  |  **|**  | //PureExp3// ``>=`` //PureExp4// 
   |  |  **|**  | //PureExp4// 
-  | //PureExp4// | -> | //PureExp4// ``<`` //PureExp5// 
-  |  |  **|**  | //PureExp4// ``<=`` //PureExp5// 
-  |  |  **|**  | //PureExp4// ``>`` //PureExp5// 
-  |  |  **|**  | //PureExp4// ``>=`` //PureExp5// 
+  | //PureExp4// | -> | //PureExp4// ``+`` //PureExp5// 
+  |  |  **|**  | //PureExp4// ``-`` //PureExp5// 
   |  |  **|**  | //PureExp5// 
-  | //PureExp5// | -> | //PureExp5// ``+`` //PureExp6// 
-  |  |  **|**  | //PureExp5// ``-`` //PureExp6// 
+  | //PureExp5// | -> | //PureExp5// ``*`` //PureExp6// 
+  |  |  **|**  | //PureExp5// ``/`` //PureExp6// 
+  |  |  **|**  | //PureExp5// ``%`` //PureExp6// 
   |  |  **|**  | //PureExp6// 
-  | //PureExp6// | -> | //PureExp6// ``*`` //PureExp7// 
-  |  |  **|**  | //PureExp6// ``/`` //PureExp7// 
-  |  |  **|**  | //PureExp6// ``%`` //PureExp7// 
-  |  |  **|**  | //PureExp7// 
-  | //PureExp7// | -> | ``~`` //PureExp6// 
+  | //PureExp6// | -> | ``~`` //PureExp6// 
   |  |  **|**  | ``-`` //PureExp6// 
-  |  |  **|**  | //PureExp8// 
-  | //PureExp8// | -> | //Ident// ``(`` //[PureExp]// ``)`` 
+  |  |  **|**  | //PureExp7// 
+  | //PureExp7// | -> | //Ident// ``(`` //[PureExp]// ``)`` 
+  |  |  **|**  | //QualType// ``.`` //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //Ident// ``[`` //[PureExp]// ``]`` 
-  |  |  **|**  | //Literal// 
+  |  |  **|**  | //QualType// ``.`` //Ident// ``[`` //[PureExp]// ``]`` 
   |  |  **|**  | //Ident// 
   |  |  **|**  | ``this`` ``.`` //Ident// 
+  |  |  **|**  | //QualType// ``.`` //Ident// 
   |  |  **|**  | //QualType// 
   |  |  **|**  | //QualType// ``(`` //[PureExp]// ``)`` 
-  |  |  **|**  | //PureExp9// 
+  |  |  **|**  | //Literal// 
+  |  |  **|**  | ``(`` //PureExp// ``)`` 
+  | //CaseBranch// | -> | //Pattern// ``=>`` //PureExp// 
+  | //[CaseBranch]// | -> | //CaseBranch// ``;`` 
+  |  |  **|**  | //CaseBranch// ``;`` //[CaseBranch]// 
+  | //[Pattern]// | -> | **eps**
+  |  |  **|**  | //Pattern// 
+  |  |  **|**  | //Pattern// ``,`` //[Pattern]// 
+  | //Pattern// | -> | //Ident// 
+  |  |  **|**  | //Literal// 
+  |  |  **|**  | //TypeIdent// 
+  |  |  **|**  | //TypeIdent// ``(`` //[Pattern]// ``)`` 
+  |  |  **|**  | ``_`` 
   | //Literal// | -> | ``null`` 
   |  |  **|**  | ``this`` 
   |  |  **|**  | ``thisDC`` 
   |  |  **|**  | //String// 
   |  |  **|**  | //Integer// 
-  | //PureExp9// | -> | ``(`` //PureExp// ``)`` 
-  |  |  **|**  | ``(`` //PureExp// ``)`` 
   | //EffExp// | -> | ``new`` //Type// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | ``new`` ``local`` //Type// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` //Ident// ``(`` //[PureExp]// ``)`` 
@@ -226,13 +221,5 @@ All other symbols are terminals.
   |  |  **|**  | ``this`` ``!`` //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` ``get`` 
   |  |  **|**  | //PureExp// ``spawns`` //Type// ``(`` //[PureExp]// ``)`` 
-  | //[PureExp]// | -> | **eps**
-  |  |  **|**  | //PureExp// 
-  |  |  **|**  | //PureExp// ``,`` //[PureExp]// 
-  | //Exp// | -> | //PureExp// 
-  |  |  **|**  | //EffExp// 
-  | //Ann// | -> | ``[`` //PureExp// ``]`` 
-  | //[Ann]// | -> | **eps**
-  |  |  **|**  | //Ann// //[Ann]// 
 
 

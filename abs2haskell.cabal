@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.0.2
+version:               0.0.3
 synopsis:              abs2haskell, a transcompiler from the ABS language to Haskell
 description:           (longer) abs2haskell, a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -37,7 +37,10 @@ library
                      -- imitating the abslang.abs
                      Lang.ABS.StdLib,
                      -- the ABS-Haskell runtime system
-                     Lang.ABS.Runtime
+                     Lang.ABS.Runtime,
+                     -- compiler generates Haskell-code that depends on this wrapper module of helper functions 
+                     -- to make generated code short and readable
+                     Lang.ABS.Compiler.Include
   other-modules:
                      -- the underlying modules of the ABS stdlib
                      Lang.ABS.StdLib.Prelude,                    

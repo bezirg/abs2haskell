@@ -18,16 +18,16 @@ dist/
 *.ps
 
 # generated files by BNFC
-src/ParABS.y
-src/LexABS.x
-src/ParABS.y.bak
-src/LexABS.x.bak
-/src/TestABS.hs.bak
-/src/ErrM.hs.bak
-/src/AbsABS.hs.bak
-/src/PrintABS.hs.bak
-/src/SkelABS.hs.bak
-src/TestABS.hs
+ParABS.y
+LexABS.x
+ParABS.y.bak
+LexABS.x.bak
+TestABS.hs.bak
+ErrM.hs.bak
+AbsABS.hs.bak
+PrintABS.hs.bak
+SkelABS.hs.bak
+TestABS.hs
 
 # output of abs2haskell on ABS tests
 test/compiler/*/*.hs

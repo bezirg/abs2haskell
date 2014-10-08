@@ -3,11 +3,10 @@
 module Main where
 
 import Lang.ABS.Compiler.Conf
-import Lang.ABS.Compiler.Utils (parseABSFiles)
-import qualified AbsABS as ABS
+import Lang.ABS.Compiler.Utils (parseABSFiles, ppTranslatedHaskell)
+import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import Language.Haskell.Exts.SrcLoc (noLoc)
-import Language.Haskell.Exts.Pretty (prettyPrint)
 import Control.Monad (liftM)
 import Data.List (intersperse, nub, findIndices, (\\))
 import Data.Char (toLower)
@@ -17,12 +16,14 @@ import System.FilePath (replaceExtension)
 
 import qualified Data.Map as M
 
+-- Represents the SymbolTable, which is a list of all the modules info
 data ModuleST = ModuleST {
       filePath :: FilePath,
       moduleName :: ABS.QualType,
       hierarchy :: M.Map ABS.TypeIdent [ABS.QualType], -- Interface -> Extends
       methods :: M.Map ABS.TypeIdent [ABS.Ident]       -- Interface -> Methods
     } deriving (Show)
+
 
 main :: IO ()
 main = do
@@ -33,33 +34,29 @@ main = do
     symbolTable = map collectInterfs asts
 
     collectInterfs :: (FilePath, ABS.Program) -> ModuleST
-    collectInterfs (fp , (ABS.Prog (ABS.ModuleDecl mName _ _ decls _))) = ModuleST {
+    collectInterfs (fp , (ABS.Prog [ABS.Modul mName _ _ decls _])) = ModuleST {
                                                                         filePath = fp,
                                                                         moduleName = mName,
                                                                         hierarchy = foldl insertInterfs M.empty decls,
                                                                         methods = foldl insertMethods M.empty decls
                                                                       }
                 where 
-                  insertInterfs :: M.Map ABS.TypeIdent [ABS.QualType] -> ABS.AnnDecl -> M.Map ABS.TypeIdent [ABS.QualType]
-                  insertInterfs acc (ABS.AnnDecl _ (ABS.InterfDecl tident _msigs)) = M.insertWith (const $ const $ error "duplicate interface declaration") tident [] acc
-                  insertInterfs acc (ABS.AnnDecl _ (ABS.ExtendsDecl tident extends _msigs)) = M.insertWith (const $ const $ error "duplicate interface declaration") tident extends acc
+                  insertInterfs :: M.Map ABS.TypeIdent [ABS.QualType] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.QualType]
+                  insertInterfs acc (ABS.InterfDecl tident _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident [] acc
+                  insertInterfs acc (ABS.ExtendsDecl tident extends _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident extends acc
                   insertInterfs acc _ = acc
 
-                  insertMethods :: M.Map ABS.TypeIdent [ABS.Ident] -> ABS.AnnDecl -> M.Map ABS.TypeIdent [ABS.Ident]
-                  insertMethods acc (ABS.AnnDecl a (ABS.InterfDecl tident msigs)) = insertMethods acc (ABS.AnnDecl a (ABS.ExtendsDecl tident [] msigs))  -- normalization
-                  insertMethods acc (ABS.AnnDecl _ (ABS.ExtendsDecl tident extends msigs)) = 
+                  insertMethods :: M.Map ABS.TypeIdent [ABS.Ident] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.Ident]
+                  insertMethods acc (ABS.InterfDecl tident msigs) = insertMethods acc (ABS.ExtendsDecl tident [] msigs)  -- normalization
+                  insertMethods acc (ABS.ExtendsDecl tident extends msigs) = 
                       {- TODO it could generate a compilation error because of duplicate method declaration -}
                       M.insertWith (const $ const $ error "duplicate interface declaration") tident (collectMethods msigs) acc
                   insertMethods acc _ = acc
-                  collectMethods :: [ABS.MethSig] -> [ABS.Ident]
+                  collectMethods :: [ABS.MethSignat] -> [ABS.Ident]
                   collectMethods = map (\ (ABS.MethSig _ ident _) -> ident)
 
-    prettyProgram (absFilePath, translation) = do
-         let haskellFilePath = replaceExtension absFilePath ".hs"
-         writeFile haskellFilePath (prettyPrint translation)
-
     tProgram :: (FilePath, ABS.Program) -> (FilePath, HS.Module)
-    tProgram (absFilePath, (ABS.Prog (ABS.ModuleDecl moduleName exports imports decls maybeMain))) = (absFilePath,
+    tProgram (absFilePath, (ABS.Prog [ABS.Modul moduleName exports imports decls maybeMain])) = (absFilePath,
                HS.Module noLoc (if (absFilePath == main_is conf)
                                 then HS.ModuleName "Main"
                                 else tModuleName moduleName) 
@@ -76,10 +73,19 @@ main = do
                      ] 
                      Nothing 
                      Nothing 
+                     -- IMPORT HEADER for the generated haskell module
                      [
                       HS.ImportDecl {HS.importLoc = noLoc, HS.importModule = HS.ModuleName "Control.Monad.Trans.RWS", HS.importQualified = True, HS.importSrc = False, HS.importPkg = Nothing, HS.importAs = Just (HS.ModuleName "RWS"), HS.importSpecs = Nothing},
                       HS.ImportDecl {HS.importLoc = noLoc, 
                                      HS.importModule = HS.ModuleName "Lang.ABS.Runtime", 
+                                     HS.importSrc = False, 
+                                     HS.importQualified = False,
+                                     HS.importPkg = Nothing,
+                                     HS.importAs = Nothing,
+                                     HS.importSpecs = Nothing
+                                    },
+                      HS.ImportDecl {HS.importLoc = noLoc, 
+                                     HS.importModule = HS.ModuleName "Lang.ABS.Compiler.Include", 
                                      HS.importSrc = False, 
                                      HS.importQualified = False,
                                      HS.importPkg = Nothing,
@@ -96,8 +102,8 @@ main = do
                                     }] 
                      (tDecls decls ++ (tMain maybeMain))
                                                                                                      )
-    tDecls :: [ABS.AnnDecl] -> [HS.Decl]
-    tDecls = concatMap (\ (ABS.AnnDecl _ decl) -> tDecl decl)
+    tDecls :: [ABS.Decl] -> [HS.Decl]
+    tDecls = concatMap tDecl
 
     -- can return more than 1 decl, because of creating accessors for records
     -- or putting type signatures
@@ -106,21 +112,21 @@ main = do
     -- TODO pass the type variables env , change tType to tTypeOrTyVar
     tDecl (ABS.TypeDecl (ABS.TypeIdent tid) typ) = [HS.TypeDecl noLoc (HS.Ident tid) [{- TODO: type variables lhs -}] (tType typ)]
 
-    tDecl (ABS.DataDecl tid constrs) =  tDecl (ABS.ParDataDecl tid [] constrs) -- just parametric datatype with empty list of type variables
+    tDecl (ABS.DataDecl tid constrs) =  tDecl (ABS.DataParDecl tid [] constrs) -- just parametric datatype with empty list of type variables
 
-    tDecl (ABS.ParDataDecl (ABS.TypeIdent tid) tyvars constrs) =
+    tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) =
         -- create the data declaration
         HS.DataDecl noLoc HS.DataType [] (HS.Ident tid) (map (\ (ABS.TypeIdent varid) -> HS.UnkindedVar $ HS.Ident $ headToLower $  varid) tyvars)
            (map (\case
-                 ABS.UnaryConstr (ABS.TypeIdent cid) -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
-                 ABS.MultConstr (ABS.TypeIdent cid) args -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
+                 ABS.SinglConstrIdent (ABS.TypeIdent cid) -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
+                 ABS.ParamConstrIdent (ABS.TypeIdent cid) args -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
            [(HS.UnQual $ HS.Ident $ "Eq", [])]
            :
         -- create record accessors
         map (\ (ABS.Ident fname, consname, idx, len) ->  HS.FunBind [HS.Match noLoc (HS.Ident fname) ([HS.PApp (HS.UnQual (HS.Ident consname)) (replicate idx HS.PWildCard ++ [HS.PVar (HS.Ident "a")] ++ replicate (len - idx - 1) HS.PWildCard)]) Nothing (HS.UnGuardedRhs (HS.Var (HS.UnQual (HS.Ident "a")))) (HS.BDecls [])]) (
              concatMap (\case
-               ABS.UnaryConstr _ -> []
-               ABS.MultConstr (ABS.TypeIdent cid) args -> -- taking the indices of fields
+               ABS.SinglConstrIdent _ -> []
+               ABS.ParamConstrIdent (ABS.TypeIdent cid) args -> -- taking the indices of fields
                                          let len = length args
                                          in
                                             foldl (\ acc (field, idx) ->  case field of
@@ -130,11 +136,11 @@ main = do
                                                                                                                                                                                                                                                                                                                                   )
 
     -- empty interface extends automatically from Object
-    tDecl (ABS.InterfDecl tid ms) = tDecl (ABS.ExtendsDecl tid [ABS.QualType $ [ABS.QualTypeIdent $ ABS.TypeIdent "Object_"]]  ms) 
+    tDecl (ABS.InterfDecl tid ms) = tDecl (ABS.ExtendsDecl tid [ABS.QType $ [ABS.QTypeSegment $ ABS.TypeIdent "Object_"]]  ms) 
 
     tDecl (ABS.ExtendsDecl (ABS.TypeIdent tname) extends ms) = HS.ClassDecl 
                                                               noLoc 
-                                                              (map (\ (ABS.QualType e) -> HS.ClassA (HS.UnQual $ HS.Ident $ joinQualTypeIds e ++ "_") [HS.TyVar (HS.Ident "a")]) extends)
+                                                              (map (\ (ABS.QType e) -> HS.ClassA (HS.UnQual $ HS.Ident $ joinQualTypeIds e ++ "_") [HS.TyVar (HS.Ident "a")]) extends)
                                                               (HS.Ident $ tname ++ "_") 
                                                               [HS.UnkindedVar (HS.Ident "a")]
                                                               [] -- no fundeps
@@ -149,7 +155,7 @@ main = do
        : generateSubSelf tname
        -- for lifting null to I, essentially null is a subtype of I
        : generateSubNull tname
-       : generateSub tname (ABS.QualType [ABS.QualTypeIdent $ ABS.TypeIdent "AnyObject"]) -- root class
+       : generateSub tname (ABS.QType [ABS.QTypeSegment $ ABS.TypeIdent "AnyObject"]) -- root class
        -- null class is an instance of any interface
        : HS.InstDecl noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ HS.UnQual $ HS.Ident "Null"] 
              (map (\ (ABS.MethSig _ (ABS.Ident mid) _) -> HS.InsDecl $ HS.FunBind [HS.Match noLoc (HS.Ident mid) [] Nothing 
@@ -178,7 +184,7 @@ main = do
          [HS.InsDecl $ HS.FunBind [HS.Match noLoc (HS.Symbol "==") [] Nothing (HS.UnGuardedRhs $ HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ tname) (HS.BDecls [])]]
        
 
-       : generateSubs tname (filter (\ (ABS.QualType qids) -> qids /= [ABS.QualTypeIdent $ ABS.TypeIdent "Object_"])  extends) 
+       : generateSubs tname (filter (\ (ABS.QType qids) -> qids /= [ABS.QTypeSegment $ ABS.TypeIdent "Object_"])  extends) 
 
 
 
@@ -200,17 +206,17 @@ main = do
 
 
     -- normalize
-    tDecl (ABS.Fun fReturnTyp fid params body) = tDecl (ABS.ParFun fReturnTyp fid [] params body) -- no type variables
+    tDecl (ABS.FunDecl fReturnTyp fid params body) = tDecl (ABS.FunParDecl fReturnTyp fid [] params body) -- no type variables
 
-    tDecl (ABS.ParFun fReturnTyp (ABS.Ident fid) tyvars params body) = 
+    tDecl (ABS.FunParDecl fReturnTyp (ABS.Ident fid) tyvars params body) = 
        [
-        HS.FunBind [HS.Match noLoc (HS.Ident fid) (map (\ (ABS.Par (ABS.AnnType _ ptyp) (ABS.Ident pid)) -> 
-                                                            (\ pat -> if ptyp == ABS.TyUnderscore
+        HS.FunBind [HS.Match noLoc (HS.Ident fid) (map (\ (ABS.Par ptyp (ABS.Ident pid)) -> 
+                                                            (\ pat -> if ptyp == ABS.TUnderscore
                                                                      then pat -- infer the parameter type
                                                                      else HS.PatTypeSig noLoc pat (tTypeOrTyVar tyvars ptyp) -- wrap with an explicit type annotation
                                                             ) (HS.PVar (HS.Ident pid))) params)
                           Nothing (HS.UnGuardedRhs $  -- we don't support guards in ABS language
-                                         (\ exp -> if fReturnTyp == ABS.TyUnderscore 
+                                         (\ exp -> if fReturnTyp == ABS.TUnderscore 
                                                   then exp -- infer the return type
                                                   else HS.ExpTypeSig noLoc exp (tTypeOrTyVar tyvars fReturnTyp)) -- wrap the return exp with an explicit type annotation
                                          (tBody body tyvars params)
@@ -263,11 +269,11 @@ main = do
                                         [HS.LetStmt $ HS.BDecls [HS.PatBind noLoc (HS.PVar $ HS.Ident "__c") Nothing 
                                                                    (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
                                                                       (foldr (\  fdecl acc -> (case fdecl of
-                                                                                              ABS.FieldDeclAss _t (ABS.Ident fid) _pexp -> 
+                                                                                              ABS.FieldAssignClassBody _t (ABS.Ident fid) _pexp -> 
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
-                                                                                              ABS.FieldDecl _t (ABS.Ident fid) ->  
+                                                                                              ABS.FieldClassBody _t (ABS.Ident fid) ->  
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
-                                                                                              ABS.MethDecl _ _ _ _ ->  (case maybeBlock of
+                                                                                              ABS.MethClassBody _ _ _ _ ->  (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
                                                                                                                          ABS.JustBlock _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                                                              )) 
@@ -315,12 +321,12 @@ main = do
                                          HS.LetStmt $ HS.BDecls [HS.PatBind noLoc (HS.PVar $ HS.Ident "__c") Nothing 
                                                                    (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
                                                                       (foldr (\ fdecl acc -> (case fdecl of
-                                                                                              ABS.FieldDeclAss _t (ABS.Ident fid) _pexp -> 
+                                                                                              ABS.FieldAssignClassBody _t (ABS.Ident fid) _pexp -> 
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
-                                                                                              ABS.FieldDecl _t (ABS.Ident fid) ->  
+                                                                                              ABS.FieldClassBody _t (ABS.Ident fid) ->  
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
 
-                                                                                              ABS.MethDecl _ _ _ _ -> (case maybeBlock of
+                                                                                              ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
                                                                                                                          ABS.JustBlock _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                                                              )) 
@@ -367,7 +373,7 @@ main = do
                -- the init method (optional)
                -- normalize to a method decl with name __init
                (case maybeBlock of
-                  ABS.JustBlock b -> [tMethDecl "AnyObject" $ ABS.MethDecl (error "compiler implementation") (ABS.Ident "__init") [] b]
+                  ABS.JustBlock b -> [tMethDecl "AnyObject" $ ABS.MethClassBody (error "compiler implementation") (ABS.Ident "__init") [] b]
                   ABS.NoBlock -> []
                ) 
                -- the run method does not need a special case, since it is generated as a normal method
@@ -424,16 +430,16 @@ main = do
                     ABS.JustBlock _ -> rdecls
 
          nonMethods = (filter (\case
-                               ABS.MethDecl _ _ _ _ -> True
+                               ABS.MethClassBody _ _ _ _ -> True
                                _ -> False) mdecls) \\ concat (M.elems scanInterfs)
 
          -- treat it as a simple method
-         tNonMethDecl interfName (ABS.MethDecl _ (ABS.Ident mident) mparams (ABS.Block block)) = 
+         tNonMethDecl interfName (ABS.MethClassBody _ (ABS.Ident mident) mparams (ABS.Bloc block)) = 
              -- the underline non-method implementation
              HS.FunBind [HS.Match noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams) -- does not take this as param
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
-                                             [foldl (\ acc (ABS.Par (ABS.AnnType _ ptyp) pident) -> 
+                                             [foldl (\ acc (ABS.Par ptyp pident) -> 
                                                        M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams] interfName)  (HS.BDecls [])]
              -- the sync wrapper
            : HS.FunBind [HS.Match noLoc (HS.Ident $ mident ++ "_sync") (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams 
@@ -449,37 +455,37 @@ main = do
 
 
          allFields :: Scope -- order matters, because the fields are indexed
-         allFields = M.fromList $ map (\ (ABS.Par (ABS.AnnType _ t) i) -> (i,t)) params ++ mapMaybe (\case
-                                                                       ABS.FieldDecl t i -> Just (i,t)
-                                                                       ABS.FieldDeclAss t i _ -> Just (i,t)
-                                                                       ABS.MethDecl _ _ _ _ -> Nothing
+         allFields = M.fromList $ map (\ (ABS.Par t i) -> (i,t)) params ++ mapMaybe (\case
+                                                                       ABS.FieldClassBody t i -> Just (i,t)
+                                                                       ABS.FieldAssignClassBody t i _ -> Just (i,t)
+                                                                       ABS.MethClassBody _ _ _ _ -> Nothing
                                                                       ) ldecls
          fieldInits = foldr (\ fdecl acc -> (case fdecl of
-                                                ABS.FieldDeclAss _t (ABS.Ident fid) pexp -> 
+                                                ABS.FieldAssignClassBody _t (ABS.Ident fid) pexp -> 
                                                     (HS.LetStmt $ HS.BDecls [HS.PatBind noLoc (HS.PVar $ HS.Ident $ "__" ++ fid) Nothing 
                                                                                    (HS.UnGuardedRhs $ tPureExp pexp [] allFields M.empty "AnyObject") (HS.BDecls [])]) : acc
-                                                ABS.FieldDecl t (ABS.Ident fid) -> (if isInterface t symbolTable
+                                                ABS.FieldClassBody t (ABS.Ident fid) -> (if isInterface t symbolTable
                                                                                   then  (HS.LetStmt $ HS.BDecls [HS.PatBind noLoc (HS.PVar $ HS.Ident $ "__" ++ fid) Nothing
                                                                                                                        (HS.UnGuardedRhs $ tPureExp (ABS.ELit ABS.LNull) [] allFields M.empty "AnyObject") (HS.BDecls [])])
                                                                                   else error "A field must be initialised if it is not of a reference type"
                                                                                   )
                                                                                       : acc
-                                                ABS.MethDecl _ _ _ _ -> (case maybeBlock of
+                                                ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                           ABS.NoBlock -> acc
                                                                           ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                )) [] ldecls
 
-         tMethDecl interfName (ABS.MethDecl _ (ABS.Ident mident) mparams (ABS.Block block)) = HS.InsDecl $ 
+         tMethDecl interfName (ABS.MethClassBody _ (ABS.Ident mident) mparams (ABS.Bloc block)) = HS.InsDecl $ 
                       HS.FunBind [HS.Match noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"])
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
-                                             [foldl (\ acc (ABS.Par (ABS.AnnType _ ptyp) pident) -> 
+                                             [foldl (\ acc (ABS.Par ptyp pident) -> 
                                                        M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams] interfName)  (HS.BDecls (concatMap (tNonMethDecl interfName) nonMethods))]
          tMethDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
          -- TODO, can be optimized
-         scanInterfs :: M.Map ABS.TypeIdent [ABS.BodyDecl] -- assoc list of interfaces to methods
+         scanInterfs :: M.Map ABS.TypeIdent [ABS.ClassBody] -- assoc list of interfaces to methods
          scanInterfs = M.map (\ mnames -> filter (\case
-                                                 ABS.MethDecl _ mname _ _ -> mname `elem` mnames
+                                                 ABS.MethClassBody _ mname _ _ -> mname `elem` mnames
                                                  _ -> False
                                                 ) mdecls)
                               $ M.filterWithKey (\ interfName _ -> interfName `elem` scanInterfs') (M.unions $ map methods symbolTable) -- filtered methods symboltable
@@ -487,7 +493,7 @@ main = do
                scanInterfs' = scan imps
                unionedST = (M.unions $ map hierarchy symbolTable)
                scan :: [ABS.QualType] -> [ABS.TypeIdent] -- gathers all interfaces that must be implemented
-               scan imps = M.foldlWithKey (\ acc k extends ->  if ABS.QualType [ABS.QualTypeIdent k] `elem` imps
+               scan imps = M.foldlWithKey (\ acc k extends ->  if ABS.QType [ABS.QTypeSegment k] `elem` imps
                                                               then if null extends
                                                                    then k:acc
                                                                    else k:(scan extends ++ acc)
@@ -521,8 +527,8 @@ main = do
     generateSubs iname extends = map (generateSub iname) (nub $ collectSubs extends)
         where
           collectSubs :: [ABS.QualType] -> [ABS.QualType]
-          collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QualType eqids) -> liftM collectSubs (M.lookup (case last eqids of
-                                                                                                              ABS.QualTypeIdent eid ->  eid
+          collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QType eqids) -> liftM collectSubs (M.lookup (case last eqids of
+                                                                                                              ABS.QTypeSegment eid ->  eid
                                                                                                              )
                                                                                                   interfMap
                                                                                                   )) extends)
@@ -530,7 +536,7 @@ main = do
 
           interfMap = M.unions (map hierarchy symbolTable)
 
-    generateSub iname (ABS.QualType sup) =  HS.InstDecl noLoc [] 
+    generateSub iname (ABS.QType sup) =  HS.InstDecl noLoc [] 
                               (HS.UnQual $ HS.Ident "Sub")
                               [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup Interf1 Interf1
                               [   -- the upcasting method
@@ -544,18 +550,18 @@ main = do
 
 
     tBody :: ABS.FunBody -> [ABS.TypeIdent] -> [ABS.Param] -> HS.Exp
-    tBody ABS.Builtin _tyvars _params = HS.Var $ HS.UnQual $ HS.Ident "undefined" -- builtin turned to undefined
-    tBody (ABS.PureBody exp) tyvars params = tPureExp exp tyvars M.empty (M.fromList $ map (\ (ABS.Par (ABS.AnnType _ t) i) -> (i,t)) params) (error "no class context") -- no class scope and no global scope
+    tBody ABS.BuiltinFunBody _tyvars _params = HS.Var $ HS.UnQual $ HS.Ident "undefined" -- builtin turned to undefined
+    tBody (ABS.NormalFunBody exp) tyvars params = tPureExp exp tyvars M.empty (M.fromList $ map (\ (ABS.Par t i) -> (i,t)) params) (error "no class context") -- no class scope and no global scope
 
     -- tPureExp :: ABS.PureExp -> TypeVarsInScope -> CurrentClassScope -> CurrentNormalScope -> InterfaceName -> HS.Exp
     tPureExp :: ABS.PureExp -> [ABS.TypeIdent] -> Scope -> Scope -> String -> HS.Exp
     tPureExp (ABS.If predE thenE elseE) tyvars clsScope fscope interf = HS.If (tPureExp predE tyvars clsScope fscope interf) (tPureExp thenE tyvars clsScope fscope interf) (tPureExp elseE tyvars clsScope fscope interf)
 
     -- translate it into a lambda exp
-    tPureExp (ABS.Let (ABS.Par (ABS.AnnType _ ptyp) pid@(ABS.Ident var)) eqE inE) tyvars clsScope fscope interf = 
+    tPureExp (ABS.Let (ABS.Par ptyp pid@(ABS.Ident var)) eqE inE) tyvars clsScope fscope interf = 
                                               (HS.App -- apply the created lamdba to the equality expr
                                                   (HS.Lambda noLoc
-                                                   [if ptyp == ABS.TyUnderscore
+                                                   [if ptyp == ABS.TUnderscore
                                                     then pat -- infer the parameter type
                                                     else HS.PatTypeSig noLoc pat (tTypeOrTyVar tyvars ptyp)] -- wrap with an explicit type annotation -- bound variable
                                                    (tPureExp inE tyvars clsScope (M.insert pid ptyp fscope) interf))
@@ -565,15 +571,15 @@ main = do
           pat = HS.PVar $ HS.Ident var
 
     tPureExp (ABS.Case matchE branches) tyvars clsScope fscope interf = HS.Case (tPureExp matchE tyvars clsScope fscope interf) (map 
-                                                                 (\ (ABS.CBranch pat exp) -> HS.Alt noLoc (tFunPat pat) (HS.UnGuardedAlt (tPureExp exp tyvars clsScope fscope interf )) (HS.BDecls []))
+                                                                 (\ (ABS.CaseBranc pat exp) -> HS.Alt noLoc (tFunPat pat) (HS.UnGuardedAlt (tPureExp exp tyvars clsScope fscope interf )) (HS.BDecls []))
                                                                  branches)
 
-    tPureExp (ABS.ECall (ABS.Ident cid) args) tyvars clsScope fscope interf = foldl 
+    tPureExp (ABS.EFunCall (ABS.Ident cid) args) tyvars clsScope fscope interf = foldl 
                                             (\ acc nextArg -> HS.App acc (tPureExp nextArg tyvars clsScope fscope interf))
                                             (HS.Var $ HS.UnQual $ HS.Ident cid)
                                             args
 
-    tPureExp (ABS.ENaryCall (ABS.Ident cid) args) tyvars clsScope fscope interf = HS.App 
+    tPureExp (ABS.ENaryFunCall (ABS.Ident cid) args) tyvars clsScope fscope interf = HS.App 
                                                 (HS.Var $ HS.UnQual $ HS.Ident cid)
                                                 (HS.List (map (\ arg -> tPureExp arg tyvars clsScope fscope interf) args))
 
@@ -597,14 +603,14 @@ main = do
                                                                     (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "null"))
 
                   -- it is a non-this object
-                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.Qual _m (HS.Ident v))) -> let vtyp@(ABS.TypeVar (ABS.QualType qtids)) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.Qual _m (HS.Ident v))) -> let vtyp@(ABS.TSimple (ABS.QType qtids)) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                                                             in if isInterface vtyp symbolTable
                                                                then (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) 
                                                                               hvar)
                                                                     (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "null"))
                                                                else (error "incomparable types")
                   -- same as above
-                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.UnQual (HS.Ident v))) -> let vtyp@(ABS.TypeVar (ABS.QualType qtids)) = maybe (error "incomparable types") id $ M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.UnQual (HS.Ident v))) -> let vtyp@(ABS.TSimple (ABS.QType qtids)) = maybe (error "incomparable types") id $ M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                                                             in if isInterface vtyp symbolTable
                                                                then (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) 
                                                                               hvar)
@@ -627,17 +633,17 @@ main = do
                 check exp = case exp of
                   HS.Paren exp' -> check exp'
                   -- it is a non-this object
-                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.Qual _m (HS.Ident v))) -> let vtyp@(ABS.TypeVar qtyp) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.Qual _m (HS.Ident v))) -> let vtyp@(ABS.TSimple qtyp) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                                                             in if isInterface vtyp symbolTable
-                                                               then case joinSub qtyp (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent interf)]) symbolTable of
-                                                                      Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) hvar) (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "this"))
+                                                               then case joinSub qtyp (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent interf)]) symbolTable of
+                                                                      Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) hvar) (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "this"))
                                                                       Nothing -> (error "incomparable types")
                                                                else (error "incomparable types")
                   -- same as above
-                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.UnQual (HS.Ident v))) -> let vtyp@(ABS.TypeVar qtyp) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                  HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) hvar@(HS.Var (HS.UnQual (HS.Ident v))) -> let vtyp@(ABS.TSimple qtyp) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident v) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                                                             in if isInterface vtyp symbolTable
-                                                               then case joinSub qtyp (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent interf)]) symbolTable of
-                                                                      Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) hvar) (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "this"))
+                                                               then case joinSub qtyp (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent interf)]) symbolTable of
+                                                                      Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) hvar) (HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") $ HS.Var $ HS.UnQual $ HS.Ident "this"))
                                                                       Nothing -> (error "incomparable types")
                                                                else (error "incomparable types")
                   HS.App _ _ -> error "equality coupled with function calls not implemented yet" -- TODO
@@ -655,31 +661,31 @@ main = do
            check leftapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.Qual _m (HS.Ident leftVarName)))) rexp = 
                case rexp of 
                  rightapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.Qual _m (HS.Ident rightVarName)))) -> 
-                     let (ABS.TypeVar qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
-                         (ABS.TypeVar qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                     let (ABS.TSimple qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                         (ABS.TSimple qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                      in case joinSub qtypLeft qtypRight symbolTable of
-                          Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
+                          Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
                           Nothing -> error "incomparable types"
                  rightapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.UnQual (HS.Ident rightVarName)))) -> 
-                     let (ABS.TypeVar qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
-                         (ABS.TypeVar qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                     let (ABS.TSimple qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                         (ABS.TSimple qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                      in case joinSub qtypLeft qtypRight symbolTable of
-                          Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
+                          Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
                           Nothing -> error "incomparable types"
                  HS.App _ _ -> error "equality coupled with function calls not implemented yet" -- TODO
            check leftapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.UnQual (HS.Ident leftVarName)))) rexp = 
                case rexp of 
                  rightapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.Qual _m (HS.Ident rightVarName)))) -> 
-                     let (ABS.TypeVar qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
-                         (ABS.TypeVar qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                     let (ABS.TSimple qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                         (ABS.TSimple qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                      in case joinSub qtypLeft qtypRight symbolTable of
-                          Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
+                          Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
                           Nothing -> error "incomparable types"
                  rightapp@(HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) (HS.Var (HS.UnQual (HS.Ident rightVarName)))) -> 
-                     let (ABS.TypeVar qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
-                         (ABS.TypeVar qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                     let (ABS.TSimple qtypLeft) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident leftVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
+                         (ABS.TSimple qtypRight) = maybe (error "incomparable types") id $  M.lookup (ABS.Ident rightVarName) (M.union fscope (M.mapKeys (\ (ABS.Ident field) -> ABS.Ident $ "__" ++ field) clsScope))
                      in case joinSub qtypLeft qtypRight symbolTable of
-                          Just (ABS.QualType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
+                          Just (ABS.QType qtids) -> (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ joinQualTypeIds qtids) leftapp) rightapp)
                           Nothing -> error "incomparable types"
                  HS.App _ _ -> error "equality coupled with function calls not implemented yet" -- TODO
            check (HS.App _ _) (HS.App (HS.Var (HS.UnQual (HS.Ident "up"))) _)   = error "equality coupled with function calls not implemented yet" -- TODO
@@ -712,32 +718,32 @@ main = do
 
     tPureExp (ABS.EIntNeg e) tyvars clsScope fscope interf = HS.Paren $ HS.NegApp (tPureExp e tyvars clsScope fscope interf)
 
-    tPureExp (ABS.EUnaryConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "Nil")])) _ _ _ _ = HS.Con $ HS.Special HS.ListCon -- for the translation to []
+    tPureExp (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Nil")])) _ _ _ _ = HS.Con $ HS.Special HS.ListCon -- for the translation to []
 
-    tPureExp (ABS.EUnaryConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "EmptyMap")])) _ _ _ _ = HS.Var $ HS.UnQual $ HS.Ident "empty" -- for the translation to Data.Map
+    tPureExp (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "EmptyMap")])) _ _ _ _ = HS.Var $ HS.UnQual $ HS.Ident "empty" -- for the translation to Data.Map
 
-    tPureExp (ABS.EUnaryConstr (ABS.QualType qids)) _ _ _ _ = let mids = init qids
+    tPureExp (ABS.ESinglConstr (ABS.QType qids)) _ _ _ _ = let mids = init qids
                                                   in HS.Con $ (if null mids 
                                                                then HS.UnQual 
                                                                else HS.Qual (HS.ModuleName $ joinQualTypeIds mids)
-                                                              ) $ HS.Ident $ (\ (ABS.QualTypeIdent (ABS.TypeIdent cid)) -> cid) (last qids)
+                                                              ) $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent cid)) -> cid) (last qids)
 
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "Triple")]) pexps) tyvars clsScope fscope interf | length pexps == 3 = HS.Tuple HS.Boxed (map (\ pexp -> tPureExp pexp tyvars clsScope fscope interf) pexps) -- for the translation to tuples
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Triple")]) pexps) tyvars clsScope fscope interf | length pexps == 3 = HS.Tuple HS.Boxed (map (\ pexp -> tPureExp pexp tyvars clsScope fscope interf) pexps) -- for the translation to tuples
                                                                                                                                | otherwise = error "wrong number of arguments to Triple"
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "Pair")]) pexps) tyvars clsScope fscope interf | length pexps == 2  = HS.Tuple HS.Boxed (map (\ pexp -> tPureExp pexp tyvars clsScope fscope interf) pexps) -- for the translation to tuples
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Pair")]) pexps) tyvars clsScope fscope interf | length pexps == 2  = HS.Tuple HS.Boxed (map (\ pexp -> tPureExp pexp tyvars clsScope fscope interf) pexps) -- for the translation to tuples
                                                                                                                              | otherwise = error "wrong number of arguments to Pair"
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "Cons")]) [pexp1, pexp2]) tyvars clsScope fscope interf =  -- for the translation to pexp1:pexp2
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]) [pexp1, pexp2]) tyvars clsScope fscope interf =  -- for the translation to pexp1:pexp2
                                                                                                            HS.Paren (HS.InfixApp 
                                                                                                                          (tPureExp pexp1 tyvars clsScope fscope interf)
                                                                                                                          (HS.QConOp $ HS.Special $ HS.Cons)
                                                                                                                          (tPureExp pexp2 tyvars clsScope fscope interf))
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "Cons")]) _) _ _ _ _ = error "wrong number of arguments to Cons"
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "InsertAssoc")]) [pexp1, pexp2]) tyvars clsScope fscope interf = HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "insertAssoc") (tPureExp pexp1 tyvars clsScope fscope interf)) (tPureExp pexp2 tyvars clsScope fscope interf)
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]) _) _ _ _ _ = error "wrong number of arguments to Cons"
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "InsertAssoc")]) [pexp1, pexp2]) tyvars clsScope fscope interf = HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "insertAssoc") (tPureExp pexp1 tyvars clsScope fscope interf)) (tPureExp pexp2 tyvars clsScope fscope interf)
 
-    tPureExp (ABS.EMultConstr (ABS.QualType [ABS.QualTypeIdent (ABS.TypeIdent "InsertAssoc")]) _) _ _ _ _ = error "wrong number of arguments to InsertAssoc"
-    tPureExp (ABS.EMultConstr qids args) tyvars clsScope fscope interf = foldl
+    tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "InsertAssoc")]) _) _ _ _ _ = error "wrong number of arguments to InsertAssoc"
+    tPureExp (ABS.EParamConstr qids args) tyvars clsScope fscope interf = foldl
                                        (\ acc nextArg -> HS.App acc (tPureExp nextArg tyvars clsScope fscope interf))
-                                       (tPureExp (ABS.EUnaryConstr qids) tyvars clsScope fscope interf)
+                                       (tPureExp (ABS.ESinglConstr qids) tyvars clsScope fscope interf)
                                        args
 
 
@@ -745,7 +751,7 @@ main = do
                                                        Nothing -> case M.lookup var clsScope of
                                                                    -- lookup in the clsScope
                                                                    -- if it of an int type, upcast it
-                                                                   Just ABS.TyInt ->HS.App (HS.Var $ HS.UnQual $ HS.Ident "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
+                                                                   Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) ->HS.App (HS.Var $ HS.UnQual $ HS.Ident "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
                                                                    Just t -> HS.Paren ((if isInterface t symbolTable
                                                                                          -- upcasting if it is of a class type
                                                                                          then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up")
@@ -755,7 +761,7 @@ main = do
                                                                    --  pure expressions don't have a scope, because they rely in haskell for scoping
                                                                    Nothing -> HS.Var $ HS.UnQual $ HS.Ident pid 
                                                        -- if it of an int type, upcast it
-                                                       Just ABS.TyInt -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident pid)
+                                                       Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident pid)
                                                        Just t -> HS.Paren $ ((if isInterface t symbolTable
                                                                             then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
                                                                             else id)
@@ -772,31 +778,31 @@ main = do
     tPureExp (ABS.EThis (ABS.Ident ident)) _ _ _ _ = HS.Var $ HS.UnQual $ HS.Ident ("__" ++ ident)
 
     isInterface :: ABS.Type -> [ModuleST] -> Bool 
-    isInterface (ABS.TypeVar (ABS.QualType [ABS.QualTypeIdent iid])) sts = iid `M.member` (M.unions (map methods sts))
+    isInterface (ABS.TSimple (ABS.QType [ABS.QTypeSegment iid])) sts = iid `M.member` (M.unions (map methods sts))
     isInterface _ _ = False
 
     tFunPat :: ABS.Pattern -> HS.Pat
     tFunPat (ABS.PIdent (ABS.Ident pid)) = HS.PVar $ HS.Ident $ pid
-    tFunPat (ABS.PUnaryConstr (ABS.TypeIdent "Nil")) = HS.PList []
-    tFunPat (ABS.PUnaryConstr (ABS.TypeIdent tid)) = HS.PApp (HS.UnQual $ HS.Ident tid) []
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent "Triple") subpats) | length subpats == 3 = HS.PTuple HS.Boxed (map tFunPat subpats)
+    tFunPat (ABS.PSinglConstr (ABS.TypeIdent "Nil")) = HS.PList []
+    tFunPat (ABS.PSinglConstr (ABS.TypeIdent tid)) = HS.PApp (HS.UnQual $ HS.Ident tid) []
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent "Triple") subpats) | length subpats == 3 = HS.PTuple HS.Boxed (map tFunPat subpats)
                                                                | otherwise = error "wrong number of arguments to Triple"
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent "Pair") subpats) | length subpats == 2 = HS.PTuple HS.Boxed (map tFunPat subpats)
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent "Pair") subpats) | length subpats == 2 = HS.PTuple HS.Boxed (map tFunPat subpats)
                                                              | otherwise = error "wrong number of arguments to Pair"
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent "Cons") [subpat1, subpat2]) = HS.PParen (HS.PInfixApp 
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent "Cons") [subpat1, subpat2]) = HS.PParen (HS.PInfixApp 
                                                                           (tFunPat subpat1)
                                                                           (HS.Special $ HS.Cons)
                                                                           (tFunPat subpat2))
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent "Cons") _) = error "wrong number of arguments to Cons"
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent "InsertAssoc") _) = error "InsertAssoc is unsafe, you should avoid it."
-    tFunPat (ABS.PMultConstr (ABS.TypeIdent tid) subpats) = HS.PApp (HS.UnQual $ HS.Ident tid) (map tFunPat subpats)
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent "Cons") _) = error "wrong number of arguments to Cons"
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent "InsertAssoc") _) = error "InsertAssoc is unsafe, you should avoid it."
+    tFunPat (ABS.PParamConstr (ABS.TypeIdent tid) subpats) = HS.PApp (HS.UnQual $ HS.Ident tid) (map tFunPat subpats)
     tFunPat ABS.PUnderscore = HS.PWildCard
     tFunPat (ABS.PLit lit) = HS.PLit $ case lit of
                                          (ABS.LStr str) ->  HS.String str
                                          (ABS.LInt i) ->  HS.Int i
                                          _ -> error "this or null are not allowed in pattern syntax"
 
-    tMethodSig :: String -> ABS.MethSig -> HS.ClassDecl
+    tMethodSig :: String -> ABS.MethSignat -> HS.ClassDecl
     tMethodSig ityp (ABS.MethSig tReturn (ABS.Ident mname) pars)  = HS.ClsDecl $
        HS.TypeSig noLoc [HS.Ident mname] (foldr  -- function application is right-associative
                                      (\ tpar acc -> HS.TyFun (tType tpar) acc)
@@ -806,7 +812,7 @@ main = do
                                                               (HS.TyVar $ HS.Ident "a")) )
                                                 (tType tReturn))
                                      )
-                                     (map (\ (ABS.Par (ABS.AnnType _ typ) _) -> typ) pars))
+                                     (map (\ (ABS.Par typ _) -> typ) pars))
 
 
     -- tThisExp is a pure expression in the statement world
@@ -832,24 +838,20 @@ main = do
     tType t = tTypeOrTyVar [] t     -- no type variables in scope
 
     tTypeOrTyVar :: [ABS.TypeIdent] -> ABS.Type -> HS.Type
-    tTypeOrTyVar _ ABS.TyUnit  = HS.TyCon $ HS.Special $ HS.UnitCon
-    tTypeOrTyVar _ ABS.TyInt  = HS.TyCon $ HS.UnQual $ HS.Ident "Int"
-    tTypeOrTyVar _ ABS.TyRat  = HS.TyCon $ HS.UnQual $ HS.Ident "Rational"
-    tTypeOrTyVar _ (ABS.TyFut par) = HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "Fut") (tType par)
-    tTypeOrTyVar tyvars (ABS.TypeVar (ABS.QualType qtids))  = let joinedTid = joinQualTypeIds qtids    
+    tTypeOrTyVar tyvars (ABS.TSimple (ABS.QType qtids))  = let joinedTid = joinQualTypeIds qtids    
                                                           in if (ABS.TypeIdent joinedTid) `elem` tyvars -- type variable
                                                              then HS.TyVar $ HS.Ident $ headToLower joinedTid
                                                              else HS.TyCon $ if length qtids == 1 
                                                                              then HS.UnQual $ HS.Ident joinedTid -- unqual
                                                                              else HS.Qual (HS.ModuleName (joinQualTypeIds (init qtids))) -- qual
-                                                                                   (HS.Ident $ (\ (ABS.QualTypeIdent (ABS.TypeIdent tid)) -> tid) (last qtids))
+                                                                                   (HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent tid)) -> tid) (last qtids))
 
-    tTypeOrTyVar tyvars (ABS.ArgType qtyp tyargs) = foldl (\ tyacc (ABS.AnnType _ tynext) -> HS.TyApp tyacc (tTypeOrTyVar tyvars tynext)) (tType (ABS.TypeVar qtyp)) tyargs
+    tTypeOrTyVar tyvars (ABS.TGen qtyp tyargs) = foldl (\ tyacc tynext -> HS.TyApp tyacc (tTypeOrTyVar tyvars tynext)) (tType (ABS.TSimple qtyp)) tyargs
 
 
     tMain :: ABS.MaybeBlock -> [HS.Decl]
     tMain ABS.NoBlock = []
-    tMain (ABS.JustBlock (ABS.Block block)) = 
+    tMain (ABS.JustBlock (ABS.Bloc block)) = 
        -- main can only return with: return Unit;
        HS.PatBind noLoc (HS.PVar (HS.Ident "mainABS")) Nothing (HS.UnGuardedRhs $ tBlockWithReturn block
                                                                       ("Top")
@@ -888,7 +890,9 @@ main = do
     tStmts :: [ABS.Stm] -> Bool -> String -> Scope -> [Scope] -> String -> [HS.Stmt]
     tStmts [] _canReturn _ _ _ _ = []
     tStmts (stmt:rest) canReturn cls clsScope scopes interf = case stmt of
-                       ABS.SExp eexp -> HS.Qualifier (tRhs eexp cls clsScope scopes interf) -- then it's a single RHS, TODO: have to force to WHNF
+                       ABS.SExp e -> (case e of
+                                      ABS.ExpE eexp -> HS.Qualifier (tRhs eexp cls clsScope scopes interf) -- then it's a single RHS, TODO: have to force to WHNF
+                                      ABS.ExpP texp -> HS.Qualifier (tThisExp texp cls clsScope scopes interf))
                                                            : tStmts rest canReturn cls clsScope scopes interf
                        ABS.SSuspend -> HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend") : tStmts rest canReturn cls clsScope scopes interf
                        ABS.SBlock stmts -> HS.Qualifier (tBlock stmts False cls clsScope scopes interf) : tStmts rest canReturn cls clsScope scopes interf
@@ -941,7 +945,7 @@ main = do
                                                                            Just t -> (HS.Generator noLoc 
                                                                                      -- lhs
                                                                                      (case t of
-                                                                                        ABS.TyUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                                                                        ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
                                                                                         ptyp -> HS.PatTypeSig noLoc (HS.PVar $ HS.Ident var)  (tType ptyp))
                                                                                      -- rhs
                                                                                      (tThisExp texp cls clsScope scopes interf)) : tStmts rest canReturn cls clsScope scopes interf
@@ -956,7 +960,7 @@ main = do
                              Just t -> (HS.Generator noLoc
                                        -- lhs
                                        (case t of
-                                          ABS.TyUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                          ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
                                           ptyp -> HS.PatTypeSig noLoc (HS.PVar $ HS.Ident var)  (tType ptyp))
                                        -- rhs
                                        ((case eexp of
@@ -990,8 +994,8 @@ main = do
 
     liftInterf ident@(ABS.Ident var) clsScope scopes = case M.lookup ident (M.union (M.unions scopes) clsScope) of
                                 Nothing -> error $ "Identifier " ++ var ++ " cannot be resolved from scope"
-                                Just (ABS.TyUnderscore) -> error $ "Cannot interface type for variable" ++ var
-                                Just (ABS.TypeVar (ABS.QualType qids)) -> HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "liftM") (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QualTypeIdent (ABS.TypeIdent iid)) -> iid) (last qids)))
+                                Just (ABS.TUnderscore) -> error $ "Cannot interface type for variable" ++ var
+                                Just (ABS.TSimple (ABS.QType qids)) -> HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "liftM") (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent iid)) -> iid) (last qids)))
                                 Just _ -> error $ var ++ " not of interface type"
 
     -- tRhs is a wrapper arround tEffExp that adds a single read to the object pointer to collect the necessary fields
@@ -1000,10 +1004,10 @@ main = do
                                                    ABS.Get pexp -> [pexp]
                                                    ABS.New _ pexps  -> pexps
                                                    ABS.NewLocal _ pexps -> pexps
-                                                   ABS.SyncCall pexp1 _ pexps2 -> pexp1:pexps2
-                                                   ABS.ThisSyncCall _ pexps -> pexps
-                                                   ABS.AsyncCall pexp1 _ pexps2 -> pexp1:pexps2
-                                                   ABS.ThisAsyncCall _ pexps -> pexps
+                                                   ABS.SyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
+                                                   ABS.ThisSyncMethCall _ pexps -> pexps
+                                                   ABS.AsyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
+                                                   ABS.ThisAsyncMethCall _ pexps -> pexps
                                                 thisTerms = concatMap ((flip collect) currentClassScope) argsExps
                                      in
                                  (if null thisTerms
@@ -1044,7 +1048,7 @@ main = do
 
 
     tEffExp :: ABS.EffExp -> String -> Scope -> [Scope] -> String -> HS.Exp
-    tEffExp (ABS.New (ABS.TypeVar (ABS.QualType qtids)) pexps) _cls clsScope scopes interf = (HS.App
+    tEffExp (ABS.New (ABS.TSimple (ABS.QType qtids)) pexps) _cls clsScope scopes interf = (HS.App
                                                                        (HS.Var $ HS.UnQual $ HS.Ident "new")
                                                                        (foldl
                                                                         (\ acc pexp -> HS.App acc (tPureExp pexp [] clsScope fscope interf))
@@ -1054,12 +1058,12 @@ main = do
                                                                                   if null mids
                                                                                   then HS.UnQual
                                                                                   else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
-                                                                               (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QualTypeIdent (ABS.TypeIdent cid)) -> cid) (last qtids)))))
+                                                                               (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegment (ABS.TypeIdent cid)) -> cid) (last qtids)))))
                                                                         pexps))
         where fscope = (M.unions scopes)
     tEffExp (ABS.New _ _) _ _ _ _ = error "Not valid class name"
 
-    tEffExp (ABS.NewLocal (ABS.TypeVar (ABS.QualType qtids)) pexps) _cls clsScope scopes interf = (HS.App
+    tEffExp (ABS.NewLocal (ABS.TSimple (ABS.QType qtids)) pexps) _cls clsScope scopes interf = (HS.App
                                                                        (HS.Var $ HS.UnQual $ HS.Ident "new_local")
                                                                        (foldl
                                                                         (\ acc pexp -> HS.App acc (tPureExp pexp [] clsScope fscope interf))
@@ -1069,14 +1073,14 @@ main = do
                                                                                   if null mids
                                                                                   then HS.UnQual
                                                                                   else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
-                                                                               (HS.Ident $ "__" ++ headToLower ((\ (ABS.QualTypeIdent (ABS.TypeIdent cid)) -> cid) (last qtids)))))
+                                                                               (HS.Ident $ "__" ++ headToLower ((\ (ABS.QTypeSegment (ABS.TypeIdent cid)) -> cid) (last qtids)))))
                                                                         pexps))
         where fscope = (M.unions scopes)
 
     tEffExp (ABS.NewLocal _ _) _ _ _ _ = error "Not valid class name"
 
 
-    tEffExp (ABS.SyncCall texp (ABS.Ident method) args) _cls clsScope scopes interf = HS.Paren $ HS.App 
+    tEffExp (ABS.SyncMethCall texp (ABS.Ident method) args) _cls clsScope scopes interf = HS.Paren $ HS.App 
                                                                (foldl
                                                                 (\ acc arg -> HS.App acc (tPureExp arg [] clsScope fscope interf))
                                                                 (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_sync")
@@ -1084,9 +1088,9 @@ main = do
        (tPureExp texp [] clsScope fscope interf)
         where fscope = (M.unions scopes)
     -- normalize
-    tEffExp (ABS.ThisSyncCall method args) cls clsScope scopes interf = tEffExp (ABS.SyncCall (ABS.ELit $ ABS.LThis) method args) cls clsScope scopes interf
+    tEffExp (ABS.ThisSyncMethCall method args) cls clsScope scopes interf = tEffExp (ABS.SyncMethCall (ABS.ELit $ ABS.LThis) method args) cls clsScope scopes interf
 
-    tEffExp (ABS.AsyncCall texp (ABS.Ident method) args) _cls clsScope scopes interf = HS.Paren $ HS.App 
+    tEffExp (ABS.AsyncMethCall texp (ABS.Ident method) args) _cls clsScope scopes interf = HS.Paren $ HS.App 
                                                                (foldl
                                                                 (\ acc arg -> HS.App acc (tPureExp arg [] clsScope fscope interf))
                                                                 (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_async")
@@ -1094,25 +1098,25 @@ main = do
        (tPureExp texp [] clsScope fscope interf)
         where fscope = M.unions scopes
     -- normalize
-    tEffExp (ABS.ThisAsyncCall method args) cls clsScope scopes interf = tEffExp (ABS.AsyncCall (ABS.ELit $ ABS.LThis) method args) cls clsScope scopes interf
+    tEffExp (ABS.ThisAsyncMethCall method args) cls clsScope scopes interf = tEffExp (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args) cls clsScope scopes interf
 
     tEffExp (ABS.Get texp) _cls clsScope scopes interf = HS.App (HS.Var $ HS.UnQual $ HS.Ident "get") (tPureExp texp [] clsScope fscope interf)
         where fscope = (M.unions scopes)
 
     tModuleName :: ABS.QualType -> HS.ModuleName
-    tModuleName (ABS.QualType qtis) = HS.ModuleName $ joinQualTypeIds qtis
+    tModuleName (ABS.QType qtis) = HS.ModuleName $ joinQualTypeIds qtis
 
     eReturnUnit :: HS.Exp
     eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
                          (HS.Con $ HS.Special $ HS.UnitCon)) -- return ()
 
-    in mapM_ (prettyProgram . tProgram) asts
+    in mapM_ (ppTranslatedHaskell . tProgram) asts
 
 
 -- Utils
 
-joinQualTypeIds :: [ABS.QualTypeIdent] -> String
-joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QualTypeIdent (ABS.TypeIdent str)) -> str) qtids
+joinQualTypeIds :: [ABS.QualTypeSegment] -> String
+joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegment (ABS.TypeIdent str)) -> str) qtids
 
 typOfConstrType :: ABS.ConstrType -> ABS.Type
 typOfConstrType (ABS.EmptyConstrType typ) = typ
@@ -1125,7 +1129,7 @@ headToLower (x:xs) = toLower x : xs
 collect                              :: ABS.PureExp -> Scope -> [String]
 collect (ABS.Let _ pexp1 pexp2) ccs      = collect pexp1 ccs ++ collect pexp2 ccs
 collect (ABS.If pexp1 pexp2 pexp3) ccs   = collect pexp1 ccs ++ collect pexp2 ccs ++ collect pexp3 ccs
-collect (ABS.Case pexp cbranches) ccs    = collect pexp ccs ++ concatMap (\ (ABS.CBranch _ pexp') -> collect pexp' ccs) cbranches
+collect (ABS.Case pexp cbranches) ccs    = collect pexp ccs ++ concatMap (\ (ABS.CaseBranc _ pexp') -> collect pexp' ccs) cbranches
 collect (ABS.EOr pexp1 pexp2) ccs        = collect pexp1 ccs ++ collect pexp2 ccs
 collect (ABS.EAnd pexp1 pexp2) ccs       = collect pexp1 ccs ++ collect pexp2 ccs
 collect (ABS.EEq pexp1 pexp2) ccs        = collect pexp1 ccs ++ collect pexp2 ccs
@@ -1141,9 +1145,9 @@ collect (ABS.EDiv pexp1 pexp2) ccs       = collect pexp1 ccs ++ collect pexp2 cc
 collect (ABS.EMod pexp1 pexp2) ccs       = collect pexp1 ccs ++ collect pexp2 ccs
 collect (ABS.ELogNeg pexp) ccs           = collect pexp ccs
 collect (ABS.EIntNeg pexp) ccs           = collect pexp ccs
-collect (ABS.ECall _ pexps) ccs          = concatMap ((flip collect) ccs) pexps
-collect (ABS.ENaryCall _ pexps) ccs      = concatMap ((flip collect) ccs) pexps
-collect (ABS.EMultConstr _ pexps) ccs    = concatMap ((flip collect) ccs) pexps
+collect (ABS.EFunCall _ pexps) ccs          = concatMap ((flip collect) ccs) pexps
+collect (ABS.ENaryFunCall _ pexps) ccs      = concatMap ((flip collect) ccs) pexps
+collect (ABS.EParamConstr _ pexps) ccs    = concatMap ((flip collect) ccs) pexps
 collect (ABS.EThis (ABS.Ident attr)) _ccs = [attr] -- qualify it
 collect (ABS.EVar ident@(ABS.Ident var)) ccs = if ident `M.member` ccs -- currentClassScope
                                                then [var]
@@ -1173,7 +1177,7 @@ joinSub interf1 interf2 _ | interf1 == interf2 = Just interf1 -- same interface 
 joinSub interf1 interf2 symbolTable | otherwise = let 
     unionedST = (M.unions $ map hierarchy symbolTable) :: M.Map ABS.TypeIdent [ABS.QualType]
     canReach :: ABS.QualType -> ABS.QualType -> Bool
-    canReach (ABS.QualType qids) principal = let ABS.QualTypeIdent sub = last qids in
+    canReach (ABS.QType qids) principal = let ABS.QTypeSegment sub = last qids in
                                              case M.lookup sub unionedST of
                                                Just sups -> if principal `elem` sups
                                                            then True

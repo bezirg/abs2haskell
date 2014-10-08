@@ -4,10 +4,15 @@
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
+
+-- This file is created by the stub file DC.abs and filled in
+-- to connect to OpenNebula
+
 module Lang.ABS.StdLib.DC where
 
 import qualified Control.Monad.Trans.RWS as RWS
 import Lang.ABS.Runtime
+import Lang.ABS.Compiler.Include
 import Lang.ABS.StdLib.Prelude
 
 -- added
@@ -31,7 +36,7 @@ slaveTemplateWithContext myPid new_cpu new_memory = showPlain (toPlain (fromJust
 
 class (Object__ a) => IDC_ a where
         shutdown :: IDC -> ABS a ()
-        getLoad :: IDC -> ABS a (Rational, Rational, Rational)
+        getLoad :: IDC -> ABS a (Rat, Rat, Rat)
  
 data IDC = forall a . (IDC_ a) => IDC (ObjectRef a)
  

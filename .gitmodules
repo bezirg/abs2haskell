@@ -4,3 +4,6 @@
 [submodule "haxr-browser"]
 	path = haxr-browser
 	url = https://github.com/bezirg/haxr
+[submodule "abs-new-frontend"]
+	path = abs-new-frontend
+	url = https://github.com/CrispOSS/abs-new-frontend.git

@@ -1,22 +1,23 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, NoImplicitPrelude #-}
 
 module Lang.ABS.StdLib.Prelude 
-    (Prelude.return, Exception.evaluate, Prelude.error,
-     lift, liftM,
-     newIORef, modifyIORef', readIORef, when, mapMonad,
-     newChan, writeChan, writeList2Chan, newEmptyMVar,
-     M.updateLookupWithKey,
-     ifthenM, ifthenelseM, 
-     assert, 
+    (
+     -- Number operations
+     (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%),
+     -- Bool operations
+     (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not,
+     -- ABS builtin types
+     Int, Rat, Prelude.Bool (..) , Prelude.Eq, Unit, List, Prelude.String,
+     -- tuples datatypes and functions
      Pair, Prelude.fst, Prelude.snd, Triple, fstT, sndT, trd,
-     null, Prelude.undefined,
-     (Prelude.=<<), (Prelude.>>=), Prelude.Maybe (..), Prelude.Either (..), left, right, Prelude.maybe, fromJust, Prelude.fromIntegral,
-     Prelude.Int, Prelude.Rational, Prelude.Bool (..) , Prelude.Eq, List, Prelude.String,
-     (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not, (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%),
+     -- Maybe, Either datatypes and functions
+     Prelude.Maybe (..), Prelude.Either (..), left, right, Prelude.maybe, fromJust,
+     -- List and array functions
+     list, length, listArray, replace, elemAt, Prelude.repeat, Array,
+     -- ABS Map datatypes and functions
      M.Map, M.empty, put, insertAssoc, lookupUnsafe, removeKey,
-     length,
-     listArray, replace, elemAt, Prelude.repeat, Array,
-     list
+     -- other
+     assert, null
     )
         where
 
@@ -38,25 +39,21 @@ import Data.List (length)
 class IntOrRational a where
     (/) :: a -> a -> a
 
-instance IntOrRational (Prelude.Int) where
+instance IntOrRational Int where
     (/) = Prelude.div
 
-instance IntOrRational (Prelude.Rational) where
+instance IntOrRational Rat where
     (/) = (Prelude./)
 
 x % y = Prelude.fromIntegral (x `Prelude.mod` y)
 
--- data List a = Nil | Cons a (List a)  -- not this, we want to map to actual Haskell lists
+type Unit = ()
 
-type List a = [a]
+type Int = Prelude.Int
 
-ifthenM :: (Object__ o) => ABS o (Prelude.Bool) -> ABS o () -> ABS o ()
-ifthenM texp stm_then = texp Prelude.>>= (\ e -> when e stm_then)
+type Rat = Prelude.Rational
 
-ifthenelseM :: (Object__ o) => ABS o (Prelude.Bool) -> ABS o a -> ABS o a -> ABS o a
-ifthenelseM texp stm_then stm_else = texp Prelude.>>= (\ e -> if e 
-                                                            then stm_then
-                                                            else stm_else)
+type List = [] -- data List a = Nil|Cons a (List a)  -- not this, we want to map to actual Haskell lists
 
 assert :: (Object__ o) => ABS o Prelude.Bool -> ABS o ()
 assert act = act Prelude.>>= \ pred -> when (Prelude.not pred) (Prelude.error "Assertion failed")
@@ -99,3 +96,6 @@ null = NullRef
 -- Dummy for list n-ary constructors
 list :: [a] -> [a]
 list = Prelude.id
+
+
+
