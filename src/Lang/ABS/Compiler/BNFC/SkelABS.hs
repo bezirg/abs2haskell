@@ -76,6 +76,7 @@ transQualTypeSegment x = case x of
 transDecl :: Decl -> Result
 transDecl x = case x of
   TypeDecl typeident type'  -> failure x
+  ExceptionDecl constrident  -> failure x
   DataDecl typeident constridents  -> failure x
   DataParDecl typeident typeidents constridents  -> failure x
   FunDecl type' id params funbody  -> failure x
@@ -150,6 +151,19 @@ transStm x = case x of
   SSkip  -> failure x
   SAssert pureexp  -> failure x
   SAwait guard  -> failure x
+  SThrow pureexp  -> failure x
+  STryCatchFinally stm catchbranchs maybefinally  -> failure x
+
+
+transCatchBranch :: CatchBranch -> Result
+transCatchBranch x = case x of
+  CatchBranc pattern stm  -> failure x
+
+
+transMaybeFinally :: MaybeFinally -> Result
+transMaybeFinally x = case x of
+  JustFinally stm  -> failure x
+  NoFinally  -> failure x
 
 
 transGuard :: Guard -> Result

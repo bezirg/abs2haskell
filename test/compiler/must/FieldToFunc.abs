@@ -1,0 +1,16 @@
+module FieldToFunc;
+
+def Int inc(Int a) = a+1;
+
+class C {
+  Int x = 0;
+  {
+  	Int y = inc(this.x);
+  	assert (y==1);
+  }
+}
+
+{
+ new C();
+
+}

@@ -5,9 +5,9 @@ module Lang.ABS.StdLib.Prelude
      -- Number operations
      (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%),
      -- Bool operations
-     (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not,
+     (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not, Prelude.return,
      -- ABS builtin types
-     Int, Rat, Prelude.Bool (..) , Prelude.Eq, Unit, List, Prelude.String,
+     Int, Rat, Prelude.Bool (..) , Unit, List, Prelude.String,
      -- tuples datatypes and functions
      Pair, Prelude.fst, Prelude.snd, Triple, fstT, sndT, trd,
      -- Maybe, Either datatypes and functions
@@ -24,14 +24,9 @@ module Lang.ABS.StdLib.Prelude
 import qualified Prelude as Prelude
 import Lang.ABS.Runtime.Base
 
-import Control.Monad.Trans.Class (lift)
-import Control.Monad (when, liftM)
-import qualified Control.Exception.Base as Exception (evaluate)
-import Data.IORef (newIORef, modifyIORef', readIORef)
-import Control.Concurrent (newChan, writeChan, writeList2Chan, newEmptyMVar)
+import Control.Monad (when)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
-import Control.Monad.Coroutine (mapMonad)
 import qualified Data.Array.Unboxed as UArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
@@ -96,6 +91,4 @@ null = NullRef
 -- Dummy for list n-ary constructors
 list :: [a] -> [a]
 list = Prelude.id
-
-
 

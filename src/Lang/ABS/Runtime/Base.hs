@@ -61,7 +61,7 @@ instance Object__ Null where
 
 -- ABS pure-code operates in the haskell pure-world
 -- whereas ABS effectful-code operates inside this ABS monad-stack
-type ABS o r = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState IO) r
+type ABS o = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState IO)
 
 -- every ABS monad (computation) holds a reader AConf and a state AState
 data AConf o = AConf {

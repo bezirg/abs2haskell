@@ -1,13 +1,21 @@
-module Lang.ABS.Runtime.Prim where
+module Lang.ABS.Runtime.Prim
+    (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
+     throw, catches, finally
+    )
+ where
 
 import Lang.ABS.Runtime.Base
 
 import Control.Monad (liftM, when)
 import Data.IORef (readIORef)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.RWS as RWS (ask)
 import Control.Concurrent.MVar (isEmptyMVar, readMVar)
+import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
+import qualified  Control.Monad.Catch
+--import qualified Control.Exception (Exception, throwIO, catches, Handler)
 
 thisCOG :: (Object__ o) => ABS o COG
 thisCOG = do
@@ -17,7 +25,7 @@ thisCOG = do
 readThis :: (Object__ o) => ABS o o
 readThis = do
   ObjectRef ioref _ _ <- liftM aThis $ lift RWS.ask
-  lift $ lift $ readIORef ioref
+  liftIO $ readIORef ioref
 
 skip :: (Object__ o) => ABS o ()
 skip = return (())
@@ -27,7 +35,7 @@ suspend = yield S
 
 await ::  (Object__ o) => AwaitGuard o -> ABS o () 
 await (FutureGuard f@(FutureRef mvar _ _ ))  = do
-  empty <- lift $ lift $ isEmptyMVar mvar
+  empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
     yield (F f)
 
@@ -59,7 +67,7 @@ while env predAction loopAction = predAction env >>= \ res -> if res
                                                              else return env
 
 get :: (Object__ o) => Fut f -> ABS o f
-get a = (\ (FutureRef mvar _ _) -> lift $ lift $ readMVar mvar) a
+get a = (\ (FutureRef mvar _ _) -> liftIO $ readMVar mvar) a
 
 
 -- for using inside ABS monad
@@ -71,3 +79,29 @@ ifthenelseM :: Monad m => m Bool -> m b -> m b -> m b
 ifthenelseM texp stm_then stm_else = texp >>= (\ e -> if e 
                                                      then stm_then
                                                      else stm_else)
+
+
+-- instances to throwIO/try-catch-finally inside an ABS monad
+instance (Functor s, Control.Monad.Catch.MonadThrow m) => Control.Monad.Catch.MonadThrow (Coroutine s m) where
+  throwM e = lift $ Control.Monad.Catch.throwM e
+
+instance (Functor s, Control.Monad.Catch.MonadCatch m) => Control.Monad.Catch.MonadCatch (Coroutine s m) where
+  catch (Coroutine m) f = Coroutine $  m `Control.Monad.Catch.catch` \ e -> resume (f e)
+
+instance (Functor s, Control.Monad.Catch.MonadMask m) => Control.Monad.Catch.MonadMask (Coroutine s m) where
+  mask a = Coroutine $ Control.Monad.Catch.mask $ \u -> resume (a $ q u)
+    where q u b = Coroutine $ u (resume b)
+  uninterruptibleMask a =
+    Coroutine $ Control.Monad.Catch.uninterruptibleMask $ \u -> resume (a $ q u)
+      where q u b = Coroutine $ u (resume b)
+
+-- aliases for easier exporting
+throw :: (Object__ o, Control.Monad.Catch.Exception e) => ABS o e -> ABS o a
+throw e = e >>= Control.Monad.Catch.throwM
+
+catches :: (Object__ o) => ABS o a -> [Control.Monad.Catch.Handler (ABS o) a] -> ABS o a
+catches = Control.Monad.Catch.catches
+
+finally :: (Object__ o) => ABS o a -> ABS o b -> ABS o a
+finally = Control.Monad.Catch.finally
+

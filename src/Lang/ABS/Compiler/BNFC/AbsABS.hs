@@ -56,6 +56,7 @@ data QualTypeSegment =
 
 data Decl =
    TypeDecl TypeIdent Type
+ | ExceptionDecl ConstrIdent
  | DataDecl TypeIdent [ConstrIdent]
  | DataParDecl TypeIdent [TypeIdent] [ConstrIdent]
  | FunDecl Type Ident [Param] FunBody
@@ -121,6 +122,17 @@ data Stm =
  | SSkip
  | SAssert PureExp
  | SAwait Guard
+ | SThrow PureExp
+ | STryCatchFinally Stm [CatchBranch] MaybeFinally
+  deriving (Eq,Ord,Show,Read)
+
+data CatchBranch =
+   CatchBranc Pattern Stm
+  deriving (Eq,Ord,Show,Read)
+
+data MaybeFinally =
+   JustFinally Stm
+ | NoFinally
   deriving (Eq,Ord,Show,Read)
 
 data Guard =

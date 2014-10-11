@@ -1,0 +1,39 @@
+module ExceptionPos;
+
+exception Exception1;
+
+exception Exception2(Int, List<Bool>);
+
+{
+  Exception1 e1 = Exception1;
+  Exception2 e2 = Exception2(3,list[True,False]);
+
+  // Bool catched1 = False;
+  // Bool catched2 = False;
+
+  try {
+      throw Exception1;
+      throw e1;
+      throw e2;
+  }
+  catch {
+      Exception1 => assert True; // catched1 = True;
+      Exception2(x,y) => skip;
+      _ => skip;
+  }
+  // assert (catched1 == True);
+  try {
+      throw e2;
+      throw e1;
+  }
+  catch {
+      Exception1 => skip;
+      Exception2(x,z) => assert True; // catched2 = True;
+      _ => skip;
+  }
+  finally {
+      assert True;
+  }
+
+  Int x = 0;
+}

@@ -20,6 +20,8 @@ library
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
                       monad-coroutine>=0.8,
+                      -- for lifting exceptions to ABS monad
+                      exceptions==0.6.1,
                       -- for contacting OpenNebula through XML-RPC
                       opennebula, 
                       base64-string, 

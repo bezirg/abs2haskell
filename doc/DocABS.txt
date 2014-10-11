@@ -36,23 +36,25 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 
 The reserved words used in ABS are the following:
   | ``assert`` | ``await`` | ``builtin`` | ``case``
-  | ``class`` | ``data`` | ``def`` | ``else``
-  | ``export`` | ``extends`` | ``fimport`` | ``from``
-  | ``get`` | ``if`` | ``implements`` | ``import``
-  | ``in`` | ``interface`` | ``let`` | ``local``
-  | ``module`` | ``new`` | ``null`` | ``return``
-  | ``skip`` | ``spawns`` | ``suspend`` | ``then``
-  | ``this`` | ``thisDC`` | ``type`` | ``while``
+  | ``catch`` | ``class`` | ``data`` | ``def``
+  | ``else`` | ``exception`` | ``export`` | ``extends``
+  | ``fimport`` | ``finally`` | ``from`` | ``get``
+  | ``if`` | ``implements`` | ``import`` | ``in``
+  | ``interface`` | ``let`` | ``local`` | ``module``
+  | ``new`` | ``null`` | ``return`` | ``skip``
+  | ``spawns`` | ``suspend`` | ``then`` | ``this``
+  | ``thisDC`` | ``throw`` | ``try`` | ``type``
+  | ``while`` |  |  | 
 
 The symbols used in ABS are the following:
   | , | ; | * | .
   | _ | < | > | =
   | ( | ) | | | {
-  | } | ? | & | ||
-  | && | == | != | <=
-  | >= | + | - | /
-  | % | ~ | [ | ]
-  | => | ! |  | 
+  | } | => | ? | &
+  | || | && | == | !=
+  | <= | >= | + | -
+  | / | % | ~ | [
+  | ] | ! |  | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -98,6 +100,7 @@ All other symbols are terminals.
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
   | //Decl// | -> | ``type`` //TypeIdent// ``=`` //Type// ``;`` 
+  |  |  **|**  | ``exception`` //ConstrIdent// ``;`` 
   |  |  **|**  | ``data`` //TypeIdent// ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``data`` //TypeIdent// ``<`` //[TypeIdent]// ``>`` ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``def`` //Type// //Ident// ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
@@ -152,6 +155,13 @@ All other symbols are terminals.
   |  |  **|**  | ``skip`` ``;`` 
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
   |  |  **|**  | ``await`` //Guard// ``;`` 
+  |  |  **|**  | ``throw`` //PureExp// ``;`` 
+  |  |  **|**  | ``try`` //Stm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
+  | //CatchBranch// | -> | //Pattern// ``=>`` //Stm// 
+  | //[CatchBranch]// | -> | **eps**
+  |  |  **|**  | //CatchBranch// //[CatchBranch]// 
+  | //MaybeFinally// | -> | ``finally`` //Stm// 
+  |  |  **|**  | **eps**
   | //Guard// | -> | //Ident// ``?`` 
   |  |  **|**  | ``this`` ``.`` //Ident// ``?`` 
   |  |  **|**  | //PureExp// 

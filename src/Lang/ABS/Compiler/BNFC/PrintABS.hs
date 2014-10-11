@@ -168,6 +168,7 @@ instance Print QualTypeSegment where
 instance Print Decl where
   prt i e = case e of
    TypeDecl typeident type' -> prPrec i 0 (concatD [doc (showString "type") , prt 0 typeident , doc (showString "=") , prt 0 type' , doc (showString ";")])
+   ExceptionDecl constrident -> prPrec i 0 (concatD [doc (showString "exception") , prt 0 constrident , doc (showString ";")])
    DataDecl typeident constridents -> prPrec i 0 (concatD [doc (showString "data") , prt 0 typeident , doc (showString "=") , prt 0 constridents , doc (showString ";")])
    DataParDecl typeident typeidents constridents -> prPrec i 0 (concatD [doc (showString "data") , prt 0 typeident , doc (showString "<") , prt 0 typeidents , doc (showString ">") , doc (showString "=") , prt 0 constridents , doc (showString ";")])
    FunDecl type' id params funbody -> prPrec i 0 (concatD [doc (showString "def") , prt 0 type' , prt 0 id , doc (showString "(") , prt 0 params , doc (showString ")") , doc (showString "=") , prt 0 funbody , doc (showString ";")])
@@ -262,10 +263,26 @@ instance Print Stm where
    SSkip  -> prPrec i 0 (concatD [doc (showString "skip") , doc (showString ";")])
    SAssert pureexp -> prPrec i 0 (concatD [doc (showString "assert") , prt 0 pureexp , doc (showString ";")])
    SAwait guard -> prPrec i 0 (concatD [doc (showString "await") , prt 0 guard , doc (showString ";")])
+   SThrow pureexp -> prPrec i 0 (concatD [doc (showString "throw") , prt 0 pureexp , doc (showString ";")])
+   STryCatchFinally stm catchbranchs maybefinally -> prPrec i 0 (concatD [doc (showString "try") , prt 0 stm , doc (showString "catch") , doc (showString "{") , prt 0 catchbranchs , doc (showString "}") , prt 0 maybefinally])
 
   prtList es = case es of
    [] -> (concatD [])
    x:xs -> (concatD [prt 0 x , prt 0 xs])
+
+instance Print CatchBranch where
+  prt i e = case e of
+   CatchBranc pattern stm -> prPrec i 0 (concatD [prt 0 pattern , doc (showString "=>") , prt 0 stm])
+
+  prtList es = case es of
+   [] -> (concatD [])
+   x:xs -> (concatD [prt 0 x , prt 0 xs])
+
+instance Print MaybeFinally where
+  prt i e = case e of
+   JustFinally stm -> prPrec i 0 (concatD [doc (showString "finally") , prt 0 stm])
+   NoFinally  -> prPrec i 0 (concatD [])
+
 
 instance Print Guard where
   prt i e = case e of
