@@ -207,11 +207,11 @@ main = do
                      in
                                                                  [
                 -- the sync call for each method: method1_sync
-                HS.FunBind [HS.Match noLoc (HS.Ident $ mid ++ "_sync" ) (parspvars ++ [HS.PParen (HS.PAsPat (HS.Ident "__wrapped") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident "ObjectRef")) [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (HS.UnQual (HS.Ident "thisCOG"))),HS.Generator noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "readIORef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))))))),HS.Generator noLoc (HS.PVar (HS.Ident "otherCOG")) (HS.App (HS.Var (HS.UnQual (HS.Ident "__cog"))) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "when") (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "not") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__hereCOG"))) (HS.QVarOp (HS.UnQual (HS.Symbol "=="))) (HS.Var (HS.UnQual (HS.Ident "otherCOG"))))))) (HS.Paren (HS.App (HS.Var $ identI "error") (HS.Lit (HS.String "Sync Call on a different COG detected"))))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var (identI "withReaderT")) (HS.Paren (HS.Lambda noLoc [HS.PVar (HS.Ident "aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "aconf"))) [HS.FieldUpdate (HS.UnQual (HS.Ident "aThis")) (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (HS.App (foldl HS.App (HS.Var (HS.UnQual (HS.Ident mid))) parsvars) (HS.Var (HS.UnQual (HS.Ident "__wrapped"))))))])) (HS.BDecls [])
+                HS.FunBind [HS.Match noLoc (HS.Ident $ mid ++ "_sync" ) (parspvars ++ [HS.PParen (HS.PAsPat (HS.Ident "__wrapped") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident "ObjectRef")) [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (HS.UnQual (HS.Ident "thisCOG"))),HS.Generator noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "readIORef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))))))),HS.Generator noLoc (HS.PVar (HS.Ident "otherCOG")) (HS.App (HS.Var (HS.UnQual (HS.Ident "__cog"))) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "when") (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "not") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__hereCOG"))) (HS.QVarOp (HS.UnQual (HS.Symbol "=="))) (HS.Var (HS.UnQual (HS.Ident "otherCOG"))))))) (HS.Paren (HS.App (HS.Var $ identI "error") (HS.Lit (HS.String "Sync Call on a different COG detected"))))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var (identI "withReaderT")) (HS.Paren (HS.Lambda noLoc [HS.PVar (HS.Ident "aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "aconf"))) [HS.FieldUpdate (HS.UnQual (HS.Ident "aThis")) (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (HS.App (foldl HS.App (HS.Var (HS.UnQual (HS.Ident mid))) parsvars) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))])) (HS.BDecls [])
                            , HS.Match noLoc (HS.Ident $ mid ++ "_sync") (replicate (length pars) HS.PWildCard ++ [HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (HS.UnQual (HS.Ident "NullRef")) []])]) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "sync call to null"))) (HS.BDecls [])
                            ]
                 -- the async call for each method: method1_async
-              , HS.FunBind [HS.Match noLoc (HS.Ident $ headToLower mid ++ "_async") (parspvars ++ [HS.PParen (HS.PAsPat (HS.Ident "__wrapped") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident "ObjectRef")) [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "readIORef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))))))),HS.Generator noLoc (HS.PTuple HS.Boxed [(HS.PVar (HS.Ident "__chan")), HS.PWildCard]) (HS.App (HS.Var (HS.UnQual (HS.Ident "__cog"))) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Generator noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Var (identI "newEmptyMVar"))))),HS.Generator noLoc (HS.PRec (HS.UnQual (HS.Ident "AConf")) [HS.PFieldPat (HS.UnQual (HS.Ident "aCOG")) (HS.PVar (HS.Ident "__cog"))]) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask"))),HS.Generator noLoc (HS.PAsPat (HS.Ident "astate") (HS.PParen (HS.PRec (HS.UnQual (HS.Ident "AState")) [HS.PFieldPat (HS.UnQual (HS.Ident "aCounter")) (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "astate"))) [HS.FieldUpdate (HS.UnQual (HS.Ident "aCounter")) (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (HS.UnQual (HS.Ident "FutureRef"))) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__cog")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (HS.UnQual (HS.Ident "RunJob"))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (foldl HS.App (HS.Var (HS.UnQual (HS.Ident mid))) parsvars) (HS.Var (HS.UnQual (HS.Ident "__wrapped")))))))))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])
+              , HS.FunBind [HS.Match noLoc (HS.Ident $ headToLower mid ++ "_async") (parspvars ++ [HS.PParen (HS.PAsPat (HS.Ident "__wrapped") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident "ObjectRef")) [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "readIORef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))))))),HS.Generator noLoc (HS.PTuple HS.Boxed [(HS.PVar (HS.Ident "__chan")), HS.PWildCard]) (HS.App (HS.Var (HS.UnQual (HS.Ident "__cog"))) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Generator noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Var (identI "newEmptyMVar"))))),HS.Generator noLoc (HS.PRec (HS.UnQual (HS.Ident "AConf")) [HS.PFieldPat (HS.UnQual (HS.Ident "aCOG")) (HS.PVar (HS.Ident "__cog"))]) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask"))),HS.Generator noLoc (HS.PAsPat (HS.Ident "astate") (HS.PParen (HS.PRec (HS.UnQual (HS.Ident "AState")) [HS.PFieldPat (HS.UnQual (HS.Ident "aCounter")) (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "astate"))) [HS.FieldUpdate (HS.UnQual (HS.Ident "aCounter")) (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (HS.UnQual (HS.Ident "FutureRef"))) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__cog")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (HS.UnQual (HS.Ident "RunJob"))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (foldl HS.App (HS.Var (HS.UnQual (HS.Ident mid))) parsvars) (HS.Var (HS.UnQual (HS.Ident "__obj")))))))))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])
                            , HS.Match noLoc (HS.Ident $ mid ++ "_async") (replicate (length pars) HS.PWildCard ++ [HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (HS.UnQual (HS.Ident "NullRef")) []])]) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "async call to null"))) (HS.BDecls [])
                            ]
                       ]
@@ -428,6 +428,10 @@ main = do
 
        ++
 
+       generateClsSub clsName (ABS.QType [ABS.QTypeSegment $ ABS.TypeIdent "AnyObject"]) -- root class
+       : generateClsSubs clsName imps
+
+       ++
        -- create the typeclass-instances
        map (\ (ABS.TypeIdent interf, imdecls) -> 
                 HS.InstDecl noLoc [{- empty context for now, may need to fix later -}] 
@@ -538,16 +542,6 @@ main = do
 
     generateSubs :: String -> [ABS.QualType] -> [HS.Decl]
     generateSubs iname extends = map (generateSub iname) (nub $ collectSubs extends)
-        where
-          collectSubs :: [ABS.QualType] -> [ABS.QualType]
-          collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QType eqids) -> liftM collectSubs (M.lookup (case last eqids of
-                                                                                                              ABS.QTypeSegment eid ->  eid
-                                                                                                             )
-                                                                                                  interfMap
-                                                                                                  )) extends)
-
-
-          interfMap = M.unions (map hierarchy symbolTable)
 
     generateSub iname (ABS.QType sup) =  HS.InstDecl noLoc [] 
                               (HS.UnQual $ HS.Ident "Sub")
@@ -560,6 +554,29 @@ main = do
                                         ]
 
 
+    generateClsSubs :: String -> [ABS.QualType] -> [HS.Decl]
+    generateClsSubs clsName impls = map (generateClsSub clsName) (nub $ collectSubs impls)
+
+    generateClsSub clsName (ABS.QType sup) =  HS.InstDecl noLoc [] 
+                              (HS.UnQual $ HS.Ident "Sub")
+                              [HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "ObjectRef") (HS.TyCon $ HS.UnQual $ HS.Ident clsName), 
+                                 HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup (ObjectRef Cls) Interf1
+                              [   -- the upcasting method
+                                  -- is id in this case
+                                  HS.InsDecl $ HS.FunBind $ [HS.Match noLoc (HS.Ident "up") [] Nothing 
+                                                                             (HS.UnGuardedRhs $ (HS.Con $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup)
+                                                                                    ) (HS.BDecls [])]]
+
+
+
+    collectSubs :: [ABS.QualType] -> [ABS.QualType]
+    collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QType eqids) -> liftM collectSubs (M.lookup (case last eqids of
+                                                                                                            ABS.QTypeSegment eid ->  eid
+                                                                                                         )
+                                                                                                interfMap
+                                                                                               )) extends)
+        where
+          interfMap = M.unions (map hierarchy symbolTable)
 
 
     tBody :: ABS.FunBody -> [ABS.TypeIdent] -> [ABS.Param] -> HS.Exp
@@ -788,6 +805,7 @@ main = do
 
 
     -- this is a trick for sync_call and async_call TODO: error "Cannot compile object accesses in mathematically pure expressions"
+    -- translate this.field
     tPureExp (ABS.EThis (ABS.Ident ident)) _ _ _ _ = HS.Var $ HS.UnQual $ HS.Ident ("__" ++ ident)
 
     isInterface :: ABS.Type -> [ModuleST] -> Bool 
@@ -819,8 +837,9 @@ main = do
     tMethodSig ityp (ABS.MethSig tReturn (ABS.Ident mname) pars)  = HS.ClsDecl $
        HS.TypeSig noLoc [HS.Ident mname] (foldr  -- function application is right-associative
                                      (\ tpar acc -> HS.TyFun (tType tpar) acc)
+                                     -- the this objectref passed as input to the method
                                      (HS.TyFun 
-                                      (HS.TyCon $ HS.UnQual $ HS.Ident ityp)
+                                      (HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "ObjectRef") (HS.TyVar $ HS.Ident "a"))
                                       (HS.TyApp ((HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "ABS") 
                                                               (HS.TyVar $ HS.Ident "a")) )
                                                 (tType tReturn))
