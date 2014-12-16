@@ -5,8 +5,9 @@ exception Exception1;
 exception Exception2(Int, List<Bool>);
 
 {
-  Exception1 e1 = Exception1;
-  Exception2 e2 = Exception2(3,list[True,False]);
+  Exception e1 = Exception1;
+  Exception e2 = Exception2(3,list[True,False]);
+  Exception e3 = e1;
 
   // Bool catched1 = False;
   // Bool catched2 = False;

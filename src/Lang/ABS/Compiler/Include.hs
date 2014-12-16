@@ -15,7 +15,7 @@ module Lang.ABS.Compiler.Include
      Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.writeList2Chan, Control.Concurrent.newEmptyMVar,
      Data.Map.Strict.updateLookupWithKey,
      Prelude.undefined,
-     (Prelude.=<<), (Prelude.>>=), Prelude.fromIntegral, Prelude.Show, Prelude.Eq,
+     (Prelude.=<<), (Prelude.>>=), Prelude.fromIntegral, Prelude.Show, Prelude.Eq, (Prelude.$),
      RWS.ask, RWS.get, RWS.put,
      Control.Monad.Catch.Handler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..),
      withReaderT
@@ -38,5 +38,6 @@ import qualified Control.Monad.Catch
 -- util function, used in code generation
 withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
 withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
+
 
 

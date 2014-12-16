@@ -18,7 +18,8 @@ data ModuleST = ModuleST {
       filePath :: FilePath,
       moduleName :: ABS.QualType,
       hierarchy :: M.Map ABS.TypeIdent [ABS.QualType], -- Interface -> Extends
-      methods :: M.Map ABS.TypeIdent [ABS.Ident]       -- Interface -> Methods
+      methods :: M.Map ABS.TypeIdent [ABS.Ident],      -- Interface -> Methods
+      exceptions :: [ABS.TypeIdent]                    -- names of exceptions, needed for code generating smart-exception-constructors
     } deriving (Show)
 
 
@@ -35,8 +36,14 @@ main = do
                                                                         filePath = fp,
                                                                         moduleName = mName,
                                                                         hierarchy = foldl insertInterfs M.empty decls,
-                                                                        methods = foldl insertMethods M.empty decls
-                                                                      }
+                                                                        methods = foldl insertMethods M.empty decls,
+                                                                        exceptions = foldl (\ acc decl -> 
+                                                                                             case decl of
+                                                                                               ABS.ExceptionDecl cident -> (case cident of
+                                                                                                                            ABS.SinglConstrIdent tid -> tid
+                                                                                                                            ABS.ParamConstrIdent tid _ -> tid) : acc
+                                                                                               _ -> acc) [] decls
+                                                                     }
                 where 
                   insertInterfs :: M.Map ABS.TypeIdent [ABS.QualType] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.QualType]
                   insertInterfs acc (ABS.InterfDecl tident _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident [] acc
@@ -119,8 +126,16 @@ main = do
                                                (map (\ der -> (identI der, [])) ["Eq","Show","Typeable"])
                                          -- 2) a instance Exception MyException
                                          ,HS.InstDecl noLoc [] (identI "Exception") [HS.TyCon $ HS.UnQual $ HS.Ident cid] []
+                                         -- 3) a __myException smartconstructor
+                                         ,HS.FunBind [HS.Match noLoc (HS.Ident $ "__" ++ headToLower cid)
+                                                            (map (\ i -> HS.PVar $ HS.Ident $ "__" ++ show i )  [1..length cargs])
+                                                            Nothing
+                                                            (HS.UnGuardedRhs $ (HS.App (HS.Var $ identI "SomeException") 
+                                                                                (HS.Paren
+                                                                                 (foldl (\ acc i -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ show i))
+                                                                                            (HS.Con $ HS.UnQual $ HS.Ident cid) [1..length cargs]))))
+                                                            (HS.BDecls [])]
                                          ]
-
                                                     
     -- TODO pass the type variables env , change tType to tTypeOrTyVar
     tDecl (ABS.TypeDecl (ABS.TypeIdent tid) typ) = [HS.TypeDecl noLoc (HS.Ident tid) [{- TODO: type variables lhs -}] (tType typ)]
@@ -753,10 +768,15 @@ main = do
     tPureExp (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "EmptyMap")])) _ _ _ _ = HS.Var $ HS.UnQual $ HS.Ident "empty" -- for the translation to Data.Map
 
     tPureExp (ABS.ESinglConstr (ABS.QType qids)) _ _ _ _ = let mids = init qids
-                                                  in HS.Con $ (if null mids 
-                                                               then HS.UnQual 
-                                                               else HS.Qual (HS.ModuleName $ joinQualTypeIds mids)
-                                                              ) $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent cid)) -> cid) (last qids)
+                                                               tid@(ABS.TypeIdent sid) = (\ (ABS.QTypeSegment cid) -> cid) (last qids)
+                                                           in if tid `elem` concatMap exceptions symbolTable
+                                                              -- if is an exception constructor, replace it with its smart constructor
+                                                              then HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ headToLower sid  
+                                                              else
+                                                                  HS.Con $ (if null mids 
+                                                                            then HS.UnQual 
+                                                                            else HS.Qual (HS.ModuleName $ joinQualTypeIds mids)
+                                                                           ) $ HS.Ident sid
 
     tPureExp (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Triple")]) pexps) tyvars clsScope fscope interf | length pexps == 3 = HS.Tuple HS.Boxed (map (\ pexp -> tPureExp pexp tyvars clsScope fscope interf) pexps) -- for the translation to tuples
                                                                                                                                | otherwise = error "wrong number of arguments to Triple"
@@ -1256,6 +1276,8 @@ joinSub interf1 interf2 symbolTable | otherwise = let
 
 type Scope = M.Map ABS.Ident (ABS.Type)
 
+-- this scope is the oo-scope: it does not allow re-declaration
+-- pure-scope is done with lambdas, so it allows re-declaration
 addToScope :: [Scope] -> ABS.Ident -> ABS.Type -> [Scope]
 addToScope (topscope:restscopes) var@(ABS.Ident pid) typ = 
     if (any (\ scope -> var `M.member` scope) restscopes)

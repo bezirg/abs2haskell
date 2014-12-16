@@ -22,10 +22,10 @@ test:
 	cabal test
 
 grammar: dist/build/testGrammar/testGrammar
-dist/build/testGrammar/testGrammar: abs-new-frontend/src/ABS.cf 
+dist/build/testGrammar/testGrammar: abs-frontend/src/ABS.cf 
 # run when grammar changes
 	@mkdir -p dist/build/buildGrammar/
-	cp abs-new-frontend/src/ABS.cf dist/build/buildGrammar/
+	cp abs-frontend/src/ABS.cf dist/build/buildGrammar/
 # generate haskell-source parser, lexer, and helper code
 	cd dist/build/buildGrammar; bnfc -haskell -p "Lang.ABS.Compiler.BNFC" ABS.cf 
 # move the generated grammar documentation

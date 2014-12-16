@@ -1,6 +1,6 @@
 module Lang.ABS.Runtime.Prim
     (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
-     throw, catches, finally
+     throw, catches, finally, Exception
     )
  where
 
@@ -105,3 +105,4 @@ catches = Control.Monad.Catch.catches
 finally :: (Object__ o) => ABS o a -> ABS o b -> ABS o a
 finally = Control.Monad.Catch.finally
 
+type Exception = Control.Monad.Catch.SomeException
