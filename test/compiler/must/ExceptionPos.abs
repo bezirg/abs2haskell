@@ -13,12 +13,13 @@ exception Exception2(Int, List<Bool>);
   // Bool catched2 = False;
 
   try {
+      throw e2;
       throw Exception1;
       throw e1;
-      throw e2;
   }
   catch {
-      Exception1 => assert True; // catched1 = True;
+      Exception1 => assert False; // catched1 = True;
+      Exception2(4,z) => assert False;
       Exception2(x,y) => skip;
       _ => skip;
   }

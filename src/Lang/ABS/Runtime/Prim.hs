@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Lang.ABS.Runtime.Prim
     (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
      throw, catches, finally, Exception
@@ -14,8 +15,8 @@ import qualified Control.Monad.Trans.RWS as RWS (ask)
 import Control.Concurrent.MVar (isEmptyMVar, readMVar)
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
-import qualified  Control.Monad.Catch
---import qualified Control.Exception (Exception, throwIO, catches, Handler)
+import qualified Control.Monad.Catch
+import qualified Control.Exception
 
 thisCOG :: (Object__ o) => ABS o COG
 thisCOG = do
@@ -99,10 +100,20 @@ instance (Functor s, Control.Monad.Catch.MonadMask m) => Control.Monad.Catch.Mon
 throw :: (Object__ o, Control.Monad.Catch.Exception e) => ABS o e -> ABS o a
 throw e = e >>= Control.Monad.Catch.throwM
 
-catches :: (Object__ o) => ABS o a -> [Control.Monad.Catch.Handler (ABS o) a] -> ABS o a
-catches = Control.Monad.Catch.catches
+-- | Catches different sorts of exceptions. See "Control.Exception"'s 'ControlException.catches'
+catches :: (Object__ o)  => ABS o a -> [Control.Monad.Catch.Handler (ABS o) (Maybe a)] -> ABS o a
+catches a hs = a `Control.Monad.Catch.catch` handler
+  where
+    handler e = foldr probe (Control.Monad.Catch.throwM e) hs
+      where
+        probe (Control.Monad.Catch.Handler h) xs = maybe xs (\ e -> h e >>= (\case
+                                                                              Nothing -> xs
+                                                                              Just res -> return res))
+                                                                              (Control.Exception.fromException e)
+
 
 finally :: (Object__ o) => ABS o a -> ABS o b -> ABS o a
 finally = Control.Monad.Catch.finally
 
 type Exception = Control.Monad.Catch.SomeException
+

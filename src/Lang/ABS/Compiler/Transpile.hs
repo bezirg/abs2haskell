@@ -615,7 +615,40 @@ main = do
         where
           pat = HS.PVar $ HS.Ident var
 
-    tPureExp (ABS.Case matchE branches) tyvars clsScope fscope interf = HS.Case (tPureExp matchE tyvars clsScope fscope interf) (map 
+    tPureExp (ABS.Case matchE branches) tyvars clsScope fscope interf = 
+      let scope = M.union fscope clsScope
+          tCaseException matchE brs = (HS.App (HS.App (HS.Var (identI "caseEx")) (tPureExp matchE tyvars clsScope fscope interf))
+                                    (HS.List (map 
+                                              (\ (ABS.CaseBranc pat pexp) -> HS.App
+                                                                             (HS.Con (identI "PHandler"))
+                                                                             -- TODO: if hse support lambdacase, it will lead to cleaner code
+                                                                             (HS.Lambda  noLoc (case pat of
+                                                                                                 -- a catch-all is a wrapped someexception
+                                                                                                 ABS.PUnderscore -> [HS.PApp 
+                                                                                                                          (identI "SomeException")
+                                                                                                                          [HS.PWildCard]]
+                                                                                                 -- otherwise generate a pattern-match catch_all
+                                                                                                 _ -> [HS.PVar $ HS.Ident "__0"]
+                                                                                               )
+                                                                              (case pat of
+                                                                                 -- wrap the normal returned expression in a just
+                                                                                 ABS.PUnderscore -> (HS.App (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.Paren $ tPureExp pexp tyvars clsScope fscope interf))
+                                                                                 _ -> HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0")
+                                                                                     [HS.Alt noLoc (tFunPat pat)
+                                                                                      -- wrap the normal returned expression in a just
+                                                                                      (HS.UnGuardedAlt (HS.App (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.Paren $ tPureExp pexp tyvars clsScope fscope interf))) (HS.BDecls []),
+                                                                                      -- pattern match fail, return nothing
+                                                                                      HS.Alt noLoc HS.PWildCard (HS.UnGuardedAlt $ HS.Con $ HS.UnQual $ HS.Ident "Nothing") (HS.BDecls [])]
+
+                                                                             )))
+                                              
+                                                                           brs)))
+      in
+        case matchE of
+          ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) -> tCaseException matchE branches
+          ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment tid]) | tid `elem` concatMap exceptions symbolTable -> tCaseException matchE branches
+          ABS.EParamConstr (ABS.QType [ABS.QTypeSegment tid]) _ | tid `elem` concatMap exceptions symbolTable -> tCaseException matchE branches
+          _ -> HS.Case (tPureExp matchE tyvars clsScope fscope interf) (map 
                                                                  (\ (ABS.CaseBranc pat exp) -> HS.Alt noLoc (tFunPat pat) (HS.UnGuardedAlt (tPureExp exp tyvars clsScope fscope interf )) (HS.BDecls []))
                                                                  branches)
 
@@ -1063,13 +1096,24 @@ main = do
                                     (HS.List (map 
                                               (\ (ABS.CatchBranc pat cstm) -> HS.App
                                                                              (HS.Con (identI "Handler"))
-                                                                             (HS.Lambda noLoc [case pat of
+                                                                             -- TODO: if hse support lambdacase, it will lead to cleaner code
+                                                                             (HS.Lambda  noLoc (case pat of
                                                                                                  -- a catch-all is a wrapped someexception
-                                                                                                 ABS.PUnderscore -> HS.PApp 
-                                                                                                                   (identI "SomeException")
-                                                                                                                   [HS.PWildCard]
-                                                                                                 _ -> tFunPat pat]
-                                                                              (tBlock [cstm] False cls clsScope scopes interf)))
+                                                                                                 ABS.PUnderscore -> [HS.PApp 
+                                                                                                                          (identI "SomeException")
+                                                                                                                          [HS.PWildCard]]
+                                                                                                 -- otherwise generate a pattern-match catch_all
+                                                                                                 _ -> [HS.PVar $ HS.Ident "__0"]
+                                                                                               )
+                                                                              (case pat of
+                                                                                 -- wrap the normal returned expression in a just
+                                                                                 ABS.PUnderscore -> (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ (tBlock [cstm] False cls clsScope scopes interf)))
+                                                                                 _ -> HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0")
+                                                                                     [HS.Alt noLoc (tFunPat pat)
+                                                                                      -- wrap the normal returned expression in a just
+                                                                                      (HS.UnGuardedAlt (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ (tBlock [cstm] False cls clsScope scopes interf)))) (HS.BDecls []),
+                                                                                      -- pattern match fail, return nothing
+                                                                                      HS.Alt noLoc HS.PWildCard (HS.UnGuardedAlt $ (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Con $ HS.UnQual $ HS.Ident "Nothing"))) (HS.BDecls [])])))
                                                                            cbranches))))
                                                                          : tStmts rest canReturn cls clsScope scopes interf
 
