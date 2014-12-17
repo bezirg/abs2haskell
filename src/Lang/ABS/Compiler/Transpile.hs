@@ -8,7 +8,7 @@ import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import Language.Haskell.Exts.SrcLoc (noLoc)
 import Control.Monad (liftM)
-import Data.List (intersperse, nub, findIndices, (\\))
+import Data.List (intersperse, nub, findIndices, (\\), elemIndices, mapAccumL)
 import Data.Char (toLower)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as M
@@ -142,14 +142,72 @@ main = do
 
     tDecl (ABS.DataDecl tid constrs) =  tDecl (ABS.DataParDecl tid [] constrs) -- just parametric datatype with empty list of type variables
 
-    tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) =
+    tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) = let
+           -- check if there is an exception carried inside the constructors
+           hasEx = or $ map (\case
+                             ABS.SinglConstrIdent (ABS.TypeIdent _) -> False
+                             ABS.ParamConstrIdent (ABS.TypeIdent _) args -> 
+                                 "Exception" `elem` (map
+                                                     (\case
+                                                      ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent x)])) -> x
+                                                      ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent x)])) _ -> x
+                                                      _ -> "") args)) constrs
+           pConstr constr = HS.UnQual $ HS.Ident $ case constr of
+                                                     ABS.SinglConstrIdent (ABS.TypeIdent tid) -> tid
+                                                     ABS.ParamConstrIdent (ABS.TypeIdent tid) _ -> tid
+
+           pConstrArgs :: ABS.ConstrIdent -> String -> [HS.Pat]
+           pConstrArgs constr prefix = case constr of
+                                  ABS.SinglConstrIdent (ABS.TypeIdent tid) -> []
+                                  ABS.ParamConstrIdent (ABS.TypeIdent tid) args -> 
+                                      snd (mapAccumL (\ acc arg -> (acc+1,
+                                                     case arg of
+                                                       ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")]))  -> 
+                                                           HS.PApp (identI "SomeException") [HS.PVar $ HS.Ident $ prefix ++ show acc]
+                                                       ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) _ -> 
+                                                           HS.PApp (identI "SomeException") [HS.PVar $ HS.Ident $ prefix ++ show acc]
+                                                       _ -> HS.PVar $ HS.Ident $ prefix ++ show acc
+                                                             )) 1 args)
+      in
         -- create the data declaration
         HS.DataDecl noLoc HS.DataType [] (HS.Ident tid) (map (\ (ABS.TypeIdent varid) -> HS.UnkindedVar $ HS.Ident $ headToLower $  varid) tyvars)
            (map (\case
                  ABS.SinglConstrIdent (ABS.TypeIdent cid) -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
                  ABS.ParamConstrIdent (ABS.TypeIdent cid) args -> HS.QualConDecl noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
-           [(identI "Eq", [])]
-           :
+           (if hasEx then [] else [(identI "Eq", [])])
+        : 
+        if hasEx                
+        -- then manual Eq instance
+        -- TODO: Eq of Exceptions through the show instance, i.e. show ex1 == show ex2  (it is error-prone), change to MySomeException and renew Cloud.Exception API
+        then [HS.InstDecl noLoc (map (\ (ABS.TypeIdent a) -> HS.ClassA (identI "Eq") [HS.TyVar $ HS.Ident $ headToLower a]) tyvars) (identI "Eq") 
+                    [foldl (\ acc (ABS.TypeIdent a) -> HS.TyApp acc $ HS.TyVar $ HS.Ident $ headToLower a) (HS.TyCon $ HS.UnQual $ HS.Ident tid) tyvars] [HS.InsDecl $ HS.FunBind
+                ((map (\ constr ->  HS.Match noLoc (HS.Symbol "==") [HS.PApp (pConstr constr) (pConstrArgs constr "__x"), 
+                                                                          HS.PApp (pConstr constr) (pConstrArgs constr "__y")]
+                      Nothing (HS.UnGuardedRhs $ case constr of
+                                                   ABS.SinglConstrIdent (ABS.TypeIdent _) -> HS.Con $ HS.UnQual $ HS.Ident "True" -- no constr arguments then, True
+                                                   ABS.ParamConstrIdent (ABS.TypeIdent _) args ->
+                                                       snd (foldl (\ (c,exp) arg -> (c+1,
+                                                                                          HS.InfixApp exp (HS.QVarOp $ HS.UnQual $ HS.Symbol "&&") (
+                                                         case arg of
+                                                           ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")]))  -> 
+                                                               HS.InfixApp (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__x" ++ show c))
+                                                                  (HS.QVarOp $ HS.UnQual $ HS.Symbol "==")
+                                                                  (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__y" ++ show c))
+                                                           ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) _ -> 
+                                                               HS.InfixApp (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__x" ++ show c ))
+                                                                     (HS.QVarOp $ HS.UnQual $ HS.Symbol "==")
+                                                                     (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__y" ++ show c))
+                                                           _ -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ "__x" ++ show c)
+                                                               (HS.QVarOp $ HS.UnQual $ HS.Symbol "==")
+                                                               (HS.Var $ HS.UnQual $ HS.Ident $ "__y" ++ show c)
+                                                             ))) (1, HS.Con $ HS.UnQual $ HS.Ident "True")  args))
+                                                        
+                      (HS.BDecls [])) constrs)
+                -- -- a catch-all case, for comparing different constructors
+                ++ [HS.Match noLoc (HS.Symbol "==") [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "False") (HS.BDecls [])]
+             )]]
+        else []                 -- derived
+        ++
         -- create record accessors
         map (\ (ABS.Ident fname, consname, idx, len) ->  HS.FunBind [HS.Match noLoc (HS.Ident fname) ([HS.PApp (HS.UnQual (HS.Ident consname)) (replicate idx HS.PWildCard ++ [HS.PVar (HS.Ident "a")] ++ replicate (len - idx - 1) HS.PWildCard)]) Nothing (HS.UnGuardedRhs (HS.Var (HS.UnQual (HS.Ident "a")))) (HS.BDecls [])]) (
              concatMap (\case
