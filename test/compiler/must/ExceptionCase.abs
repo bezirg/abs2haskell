@@ -1,0 +1,33 @@
+module ExceptionCase;
+
+exception Exception1(Int);
+exception Exception2(Bool, Int);
+
+data Mplo<A,B> = Mplo(Int, Exception)
+               | Mpli(A);
+
+def Bool f(Exception e) = case e {
+    Exception1(1) => True;
+    Exception2(False, 2) => False;
+    _ => True;
+    };
+
+def Bool g() = case Exception1(2) {
+    Exception1(3) => False;
+    Exception2(_, _) => False;
+    Exception1(_) => True;
+    _ => False;
+   };
+
+def Mplo<Int,Bool> h(Int i) = Mplo(i, Exception1(i+1));
+
+{
+ Bool b1 = f(Exception1(1));
+ Bool b2 = f(Exception2(False, 2));
+ assert (b1 == True);
+ assert (b2 == False);
+ Bool b3 = g();
+ assert (b3 == True);
+ Mplo<Int,Bool> j  = h(4);
+ assert (j == Mplo(4, Exception1(5)));
+}

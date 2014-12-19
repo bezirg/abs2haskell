@@ -46,8 +46,6 @@ withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx
 data PHandler a = forall e . Control.Monad.Catch.Exception e => PHandler (e -> Maybe a)
 
-data InternalPatternMatchException = InternalPatternMatchException
-
 -- | taken and modified from Control/Exception.hsa
 caseEx :: Control.Monad.Catch.SomeException -> [PHandler a] -> a
 caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exception.Base.PatternMatchFail "exception") handlers

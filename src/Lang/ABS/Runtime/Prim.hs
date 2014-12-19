@@ -107,7 +107,7 @@ catches a hs = a `Control.Monad.Catch.catch` handler
     handler e = foldr probe (Control.Monad.Catch.throwM e) hs
       where
         probe (Control.Monad.Catch.Handler h) xs = maybe xs (\ e -> h e >>= (\case
-                                                                              Nothing -> xs
+                                                                              Nothing -> xs -- trick to allow actual term pattern-matching
                                                                               Just res -> return res))
                                                                               (Control.Exception.fromException e)
 
