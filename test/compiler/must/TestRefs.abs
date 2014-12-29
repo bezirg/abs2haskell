@@ -1,0 +1,22 @@
+module TestRefs;
+
+interface I {
+  Unit m();
+}
+
+class C implements I {
+  Int x = 3;
+  Unit m() {
+   x = 3 + 1;
+   x = x + 1;
+  }
+}
+
+{
+ I c;
+ c = new C();
+ Int i = 0;
+ i = 3;
+ i = 4;
+ i = i + 1;
+}
