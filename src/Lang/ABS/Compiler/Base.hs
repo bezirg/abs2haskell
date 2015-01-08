@@ -23,12 +23,18 @@ type ModuleTable = [ModuleInfo]
 type ScopeTable = M.Map ABS.Ident (ABS.Type)
 
 type ExprM = Reader (ScopeTable -- current function scope
-                    ,ScopeTable -- current class scope -- fscope `union` cscope == scope
                     ,String -- interface name
                     )
 
-type StmtM = ReaderT (ScopeTable, -- class scope
-                     String,      -- interface name
-                     String)      -- class name
+type ExprLiftedM = Reader (ScopeTable -- current function scope
+                    ,ScopeTable -- current class scope -- fscope `union` cscope == scope
+                    ,ScopeTable -- current method-params
+                    ,String -- interface name
+                    )
+
+type StmtM = ReaderT (ScopeTable, -- current class scope
+                      ScopeTable, -- current method-params
+                      String,      -- interface name
+                      String)      -- class name
     (State [ScopeTable])  -- all function block scopes
     

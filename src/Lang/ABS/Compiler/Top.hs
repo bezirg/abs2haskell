@@ -7,6 +7,7 @@ import Lang.ABS.Compiler.Conf
 import Lang.ABS.Compiler.Utils
 import Lang.ABS.Compiler.Stmt (tBlockWithReturn)
 import Lang.ABS.Compiler.Expr (tPureExp,tBody, tType, tTypeOrTyVar)
+import Lang.ABS.Compiler.ExprLifted (tPureExp')
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
@@ -73,6 +74,7 @@ tMain (ABS.JustBlock (ABS.Bloc block)) =
        HS.PatBind HS.noLoc (HS.PVar (HS.Ident "mainABS")) Nothing (HS.UnGuardedRhs $ tBlockWithReturn block
                                                                       ("Top") -- class-name
                                                                       M.empty -- class-scope -- (error "No context for this")
+                                                                      M.empty -- empty method params
                                                                       [] -- [scopetable]
                                                                       (error "no class context") -- interface-name
                                                                ) (HS.BDecls [])
@@ -345,9 +347,9 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                    (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
                                                                       (foldr (\  fdecl acc -> (case fdecl of
                                                                                               ABS.FieldAssignClassBody _t (ABS.Ident fid) _pexp -> 
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
+                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
                                                                                               ABS.FieldClassBody _t (ABS.Ident fid) ->  
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
+                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
                                                                                               ABS.MethClassBody _ _ _ _ ->  (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
                                                                                                                          ABS.JustBlock _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
@@ -397,9 +399,9 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                    (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
                                                                       (foldr (\ fdecl acc -> (case fdecl of
                                                                                               ABS.FieldAssignClassBody _t (ABS.Ident fid) _pexp -> 
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
+                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
                                                                                               ABS.FieldClassBody _t (ABS.Ident fid) ->  
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ fid) : acc
+                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
 
                                                                                               ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
@@ -518,8 +520,8 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
              HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams) -- does not take this as param
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
-                                             [foldl (\ acc (ABS.Par ptyp pident) -> 
-                                                       M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams] interfName)  (HS.BDecls [])]
+                                             (foldl (\ acc (ABS.Par ptyp pident) -> 
+                                                       M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName)  (HS.BDecls [])]
              -- the sync wrapper
            : HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mident ++ "_sync") (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams 
                                                                                 ++ [HS.PatTypeSig HS.noLoc HS.PWildCard $ HS.TyCon $ HS.UnQual $ HS.Ident "AnyObject"])
@@ -539,27 +541,28 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                        ABS.FieldAssignClassBody t i _ -> Just (i,t)
                                                                        ABS.MethClassBody _ _ _ _ -> Nothing
                                                                       ) ldecls
+         fieldInits :: [HS.Stmt]
          fieldInits = foldr (\ fdecl acc -> (case fdecl of
                                                 ABS.FieldAssignClassBody _t (ABS.Ident fid) pexp -> 
-                                                    (HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident $ "__" ++ fid) Nothing 
-                                                                                   (HS.UnGuardedRhs $ runReader (tPureExp pexp []) (M.empty, allFields,"AnyObject")) (HS.BDecls [])]) : acc
-                                                ABS.FieldClassBody t (ABS.Ident fid) -> (if isInterface t
-                                                                                  then  (HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident $ "__" ++ fid) Nothing
-                                                                                                                       (HS.UnGuardedRhs $ runReader (tPureExp (ABS.ELit ABS.LNull) []) (M.empty,allFields,"AnyObject")) (HS.BDecls [])])
-                                                                                  else error "A field must be initialised if it is not of a reference type"
-                                                                                  )
-                                                                                      : acc
+                                                    HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing 
+                                                                                   (HS.UnGuardedRhs $ runReader (tPureExp pexp []) (allFields,"AnyObject")) (HS.BDecls [])])
+                                                    : acc
+                                                ABS.FieldClassBody t (ABS.Ident fid) ->  
+                                                    if isInterface t
+                                                    then HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing
+                                                                                 (HS.UnGuardedRhs $ runReader (tPureExp (ABS.ELit ABS.LNull) []) (allFields,"AnyObject")) (HS.BDecls [])]) : acc
+                                                    else error "A field must be initialised if it is not of a reference type"
                                                 ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
-                                                                          ABS.NoBlock -> acc
-                                                                          ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
+                                                                               ABS.NoBlock -> acc
+                                                                               ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                )) [] ldecls
 
          tMethDecl interfName (ABS.MethClassBody _ (ABS.Ident mident) mparams (ABS.Bloc block)) = HS.InsDecl $ 
                       HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"])
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
-                                             [foldl (\ acc (ABS.Par ptyp pident) -> 
-                                                       M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams] interfName)  (HS.BDecls (concatMap (tNonMethDecl interfName) nonMethods))]
+                                             (foldl (\ acc (ABS.Par ptyp pident) -> 
+                                                       M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName)  (HS.BDecls (concatMap (tNonMethDecl interfName) nonMethods))]
          tMethDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
          -- TODO, can be optimized
          scanInterfs :: M.Map ABS.TypeIdent [ABS.ClassBody] -- assoc list of interfaces to methods

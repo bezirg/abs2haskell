@@ -1,0 +1,23 @@
+module ExceptionMod;
+
+exception MyException(Int, Bool);
+
+{
+Int x=0;
+
+try {
+    x = x + 1;
+    throw MyException(x, True);
+    x = x + 10;
+   }
+catch {
+   MyException(0,False) => assert False;
+   MyException(1,False) => assert False;
+   MyException(1,True) => {x=x+1; x = x+2;}
+}
+finally {
+   x=x+1;
+   assert (x==5);
+}
+
+}

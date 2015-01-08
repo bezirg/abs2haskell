@@ -15,11 +15,12 @@ module Lang.ABS.Compiler.Include
      Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.writeList2Chan, Control.Concurrent.newEmptyMVar,
      Data.Map.Strict.updateLookupWithKey,
      Prelude.undefined,
-     (Prelude.=<<), (Prelude.>>=), Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
+     Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
      RWS.ask, RWS.get, RWS.put,
      Control.Monad.Catch.Handler (..), PHandler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..), caseEx,
      Control.Monad.Catch.fromException,
-     withReaderT
+     withReaderT,
+     newRef,writeRef,readRef, IORef -- export also the type for type-checking
     )
  where
 
@@ -27,6 +28,7 @@ module Lang.ABS.Compiler.Include
 import Prelude
 import Control.Monad.Trans.Class
 import qualified Control.Exception
+import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad
 import Data.IORef
 import Control.Monad.Coroutine
@@ -55,3 +57,17 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
                             Nothing -> res -- internal pattern match failed
                             Just x -> x    -- pattern-match succeeded
                 Nothing -> res
+
+
+newRef :: MonadIO m => m a -> m (IORef a)
+newRef v = do
+  res <- v
+  liftIO $ newIORef res
+
+writeRef :: MonadIO m => IORef a -> m a -> m ()
+writeRef r v = do
+  res <- v
+  liftIO $ writeIORef r res
+
+readRef :: MonadIO m => IORef a -> m a
+readRef r = liftIO $ readIORef r

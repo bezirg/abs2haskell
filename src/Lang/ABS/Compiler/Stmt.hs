@@ -12,26 +12,29 @@ import Control.Monad.Trans.Reader (runReader, runReaderT, mapReaderT, ask)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (ap)
 
-import Lang.ABS.Compiler.Expr
+import Lang.ABS.Compiler.ExprLifted
+import Lang.ABS.Compiler.Expr (tPattern)
 
 import qualified Data.Map as M
 import Data.List (nub)
 
 -- | method block or main block
--- can return and also pushes a new scope
-tBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
-tBlockWithReturn stmts cls clsScope scopes interfName = evalState (runReaderT 
+-- can return
+tBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
-                                                                    (clsScope, interfName, cls))
+                                                                    (clsScope, mthScope, interfName, cls))
                                                         scopes
+-- | block pushes a new scope
 tBlock :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> Bool -> StmtM HS.Exp
 tBlock [] _canReturn = return $ eReturnUnit
 tBlock stmts canReturn = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn
   return $ HS.Do $ ts  ++
-                         -- if the last stmt is an assignment, then add a return (R ())
+                         -- if the last stmt is a dec or assignment, then add a return (R ())
                          -- 
                        (case last stmts of
+                          ABS.SDec _ _ -> [HS.Qualifier eReturnUnit]
                           ABS.SAss _ _ -> [HS.Qualifier eReturnUnit]
                           ABS.SExp _ ->  [HS.Qualifier eReturnUnit] -- although an expression has a value, we throw it away, since it must explicitly be returned
                           ABS.SFieldAss _ _ -> [HS.Qualifier eReturnUnit]
@@ -59,9 +62,12 @@ tStmt (ABS.SExp pexp) = do
 tStmt ABS.SSuspend = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend")]
 
 tStmt (ABS.SAwait g) = do
-  (_,_,cls) <- ask
+  (_,_,_, cls) <- ask
   texp <- runExpr $ tAwaitGuard g cls
-  return $ [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "await") texp]
+  return $ [HS.Qualifier $ HS.InfixApp 
+                  (HS.Var $ HS.UnQual $ HS.Ident "await")
+                  (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
+                  texp]
 
 tStmt (ABS.SBlock stmts) = do
   tblock <- tBlock stmts False
@@ -99,95 +105,63 @@ tStmt (ABS.SAssert pexp) = do
                           texp)]
 
 tStmt (ABS.SWhile pexp stm) = do
-  fscope <- funScope
-  let vars = nub $ collectAssigns stm fscope
-  let patVars = map (\ v -> HS.PVar $ HS.Ident v) vars
-  let initVars = map (\ v -> if ABS.Ident v `M.member` fscope
-                            then HS.Var $ HS.UnQual $ HS.Ident v -- it's already in scope
-                            else (HS.Var $ identI "undefined") -- initialize to undefined
-                     ) vars
-  let expVars = map (\ v -> HS.Var $ HS.UnQual $ HS.Ident v) vars
   texp <- tPureExpWrap pexp
-  HS.Do ts <- tBlock (case stm of
+  tblock <- tBlock (case stm of
                      ABS.SBlock stmts ->  stmts 
                      stmt -> [stmt]) False
-  return [HS.Generator HS.noLoc (HS.PTuple HS.Boxed patVars) -- lhs
-          (HS.App (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while")
-                                 (HS.Tuple HS.Boxed initVars)) -- initial environment, captured by the current environment
-                   (HS.Lambda HS.noLoc [HS.PTuple HS.Boxed patVars] texp)) -- the predicate
-           (HS.Lambda HS.noLoc [HS.PTuple HS.Boxed patVars] -- the loop block
-                  (HS.Do $ ts ++ [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Tuple HS.Boxed expVars))])))]
-                       
-tStmt (ABS.SDec typ ident@(ABS.Ident var)) = 
+  return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while") texp) tblock]              
+
+tStmt (ABS.SDec typ ident@(ABS.Ident var)) = -- just rewrites it to Interface x=null, adds also to current scope
     if isInterface typ
-    then do -- just rewrites it to Interface x = null; 
-      
-      tStmt (ABS.SDecAss typ ident (ABS.ExpP $ ABS.ELit $ ABS.LNull)) -- adds also to current scope
+    then tStmt (ABS.SDecAss typ ident (ABS.ExpP $ ABS.ELit $ ABS.LNull)) 
     else error (var ++ "is ADT and has to be initialized")
     -- TODO: remove the ident from the class attributes to check
 
-tStmt (ABS.SDecAss typ ident texp) = do
-  addToScope ident typ          -- adds to scope
-  tass <-  tStmt (ABS.SAss ident texp)
-  return (tass)
+tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
+  addToScope ident typ -- add to scope
+  texp <- case exp of
+           ABS.ExpP pexp -> tPureExpWrap pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
+  return [HS.Generator HS.noLoc 
+                (case typ of
+                   ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                   ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp)))
+                (HS.App (HS.Var $ identI "newRef") texp)]
 
-tStmt (ABS.SAss ident@(ABS.Ident var) (ABS.ExpP pexp)) = do
+tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
   fscope <- funScope
-  (cscope,_,_) <- ask
+  (cscope,_,_,_) <- ask
   case M.lookup ident fscope of
       Just t -> do
-        texp <- tPureExpWrap pexp
-        return [HS.Generator HS.noLoc 
-                       -- lhs
-                       (case t of
-                          ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
-                          ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (tType ptyp))
-                       -- rhs
-                       texp]
+        texp <- case exp of
+           ABS.ExpP pexp -> tPureExpWrap pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
+        return [HS.Qualifier $ HS.App
+                -- lhs
+                (HS.App (HS.Var $ identI "writeRef") (HS.Var $ HS.UnQual $ HS.Ident var))
+                -- rhs
+                texp
+                -- disabled, no need to explicitly put type, because the type is already declared upon newIORef
+                -- (case t of -- maybe wrap rhs with its type
+                --     ABS.TUnderscore -> texp -- just infer the type
+                --     ptyp -> HS.ExpTypeSig HS.noLoc texp (tType ptyp))
+               ]
       Nothing -> 
         case M.lookup ident cscope of -- maybe it is in the class scope
-                                                -- normalize it to a field ass
-          Just _t -> tStmt (ABS.SFieldAss ident (ABS.ExpP pexp))
+          Just _t -> tStmt (ABS.SFieldAss ident exp) -- then normalize it to a field ass
           Nothing -> error (var ++ " not in scope")
                                                                              
 
-tStmt (ABS.SAss ident@(ABS.Ident var) (ABS.ExpE eexp)) = do
-  fscope <- funScope
-  (cscope,_,_) <- ask
-  case M.lookup ident fscope of
-    Just t -> do
-      texp <- liftInterf ident eexp `ap` tEffExpWrap eexp
-      return [HS.Generator HS.noLoc
-                               -- lhs
-                               (case t of
-                                  ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
-                                  ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (tType ptyp))
-                               -- rhs
-                               texp]
-    Nothing -> 
-          case M.lookup ident cscope of -- maybe it is in the class scope
-            -- normalize it to a field ass
-            Just _t -> tStmt (ABS.SFieldAss ident (ABS.ExpE eexp))
-            Nothing -> error (var ++ " not in scope")
+tStmt (ABS.SFieldAss ident@(ABS.Ident var) exp) = do
+  (_, _, _, cls) <- ask
+  texp <- case exp of
+           ABS.ExpP pexp -> tPureExpWrap pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
 
-                        
-
-tStmt (ABS.SFieldAss (ABS.Ident ident) (ABS.ExpP pexp)) = do
-  (_, _, cls) <- ask
-  texp <- tPureExpWrap pexp
   return [HS.Qualifier (HS.Paren $ HS.InfixApp 
-                          (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ ident)
-                          (HS.QVarOp $ symbolI "=<<")
+                          (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ var)
+                          (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
                           (HS.Paren texp))] -- paren are necessary here
-
-
-tStmt (ABS.SFieldAss ident@(ABS.Ident var) (ABS.ExpE eexp)) = do
-  (_,_,cls) <- ask
-  texp <- liftInterf ident eexp `ap` tEffExpWrap eexp
-  return [HS.Qualifier (HS.Paren $ HS.InfixApp 
-                                (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ var)
-                                (HS.QVarOp $ symbolI "=<<")
-                          texp)]
 
 
 tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
@@ -215,7 +189,7 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
                                   -- wrap the normal returned expression in a just
                                   ABS.PUnderscore -> (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ tcstm))
                                   _ -> HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0")
-                                      [HS.Alt HS.noLoc (tFunPat pat)
+                                      [HS.Alt HS.noLoc (tPattern pat)
                                        -- wrap the normal returned expression in a just
                                        (HS.UnGuardedAlt (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ tcstm))) (HS.BDecls []),
                                        -- pattern match fail, return nothing
@@ -232,16 +206,18 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
 
 
 
+liftInterf :: ABS.Ident -> ABS.EffExp -> StmtM (HS.Exp -> HS.Exp)
 liftInterf ident exp@(ABS.New _ _) = liftInterf' ident exp
 liftInterf ident exp@(ABS.NewLocal _ _) = liftInterf' ident exp
 liftInterf ident exp = return id
 liftInterf' ident@(ABS.Ident var) exp =  do
   fscope <- funScope
-  (cscope, _, _)<- ask
+  (cscope, _ , _, _)<- ask
   return $ case M.lookup ident (M.union fscope cscope) of
       Nothing -> error $ "Identifier " ++ var ++ " cannot be resolved from scope"
       Just (ABS.TUnderscore) -> error $ "Cannot infer interface type for variable" ++ var
-      Just (ABS.TSimple (ABS.QType qids)) -> HS.App (HS.App (HS.Var $ identI "liftM") (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent iid)) -> iid) (last qids)))
+      Just (ABS.TSimple (ABS.QType qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent iid)) -> iid) (last qids))
+                                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
       Just _ -> error $ var ++ " not of interface type"
 
 
@@ -255,71 +231,8 @@ addToScope var@(ABS.Ident pid) typ = do
     else lift $ put $ M.insertWith (const $ const $ error $ pid ++ " already defined in this scope") var typ topscope  : restscopes
 
 
-funScope :: StmtM ScopeTable
-funScope = do
-  scopes <- lift get
-  return $ M.unions scopes
-
 eReturnUnit :: HS.Exp
 eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
                      (HS.Con $ HS.Special $ HS.UnitCon)) -- return ()
 
 
-
--- tPureExpWrap is a pure expression in the statement world
--- it does 3 things:
--- 1) if a sub-expression is pure it wraps it in a return
--- 2) if a sub-expression reads local-variables it wraps them in readIORef
--- 3) if a sub-expression reads this fields it wraps them in readThis
-tPureExpWrap :: (?moduleTable::ModuleTable) => ABS.PureExp -> StmtM HS.Exp
-tPureExpWrap pexp = do
-  (_,_,cls) <- ask
-  runExpr $ do
-      vcscope <- visible_cscope
-      let thisFields = collectThisVars pexp vcscope
-      texp <- tPureExp pexp []
-      -- translate the pure expression with no typevars since stateful code cannot contain type variables (par polymorphism)
-      -- TODO: no type variables, has to be changed for polymorphic methods
-      return $ if null thisFields
-               then HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") texp   --  rhs  
-               else HS.Paren $ HS.InfixApp 
-                      (HS.Var $ HS.UnQual $ HS.Ident "readThis")
-                      (HS.QVarOp $ symbolI ">>=")
-                      (HS.Lambda HS.noLoc [(HS.PRec (HS.UnQual $ HS.Ident cls) $ -- introduce bindings
-                                            map (\ arg -> HS.PFieldPat (HS.UnQual $ HS.Ident (headToLower cls ++ '_' : arg)) 
-                                                         (HS.PVar $ HS.Ident $ "__" ++ arg) )  (nub thisFields))
-                                          ] (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") texp))
-
--- | tEffExpWrap is a wrapper arround tEffExp that adds a single read to the object pointer to collect the necessary fields
--- it is supposed to be an optimization compared to reading each time the field at the place it is accessed
-tEffExpWrap :: (?moduleTable::ModuleTable) => ABS.EffExp -> StmtM HS.Exp
-tEffExpWrap eexp = do
-  (_,_,cls) <- ask
-  runExpr $ do
-      vcscope <- visible_cscope
-      let argsExps = case eexp of
-                         ABS.Get pexp -> [pexp]
-                         ABS.New _ pexps  -> pexps
-                         ABS.NewLocal _ pexps -> pexps
-                         ABS.SyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
-                         ABS.ThisSyncMethCall _ pexps -> pexps
-                         ABS.AsyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
-                         ABS.ThisAsyncMethCall _ pexps -> pexps
-      let thisFields = concatMap ((flip collectThisVars) vcscope) argsExps
-      texp <- tEffExp eexp
-      return $ if null thisFields
-               then texp
-               else -- readObject this >>= \ Class1 { record bindings   } ->
-                   HS.Paren $ HS.InfixApp 
-                   (HS.Var $ HS.UnQual $ HS.Ident "readThis")
-                   (HS.QVarOp $ symbolI ">>=")
-                   (HS.Lambda HS.noLoc [(HS.PRec (HS.UnQual $ HS.Ident cls) $ -- introduce bindings
-                                         map (\ arg -> HS.PFieldPat (HS.UnQual $ HS.Ident (headToLower cls ++ '_' : arg)) 
-                                                      (HS.PVar $ HS.Ident $ "__" ++ arg) )  (nub thisFields))]
-                    texp)
-
-runExpr :: ExprM a -> StmtM a
-runExpr e = do
-  fscope <- funScope
-  (cscope,interf,_) <- ask
-  return $ runReader e (fscope,cscope,interf)

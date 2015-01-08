@@ -1,0 +1,17 @@
+module TestThis;
+
+interface I {
+    Unit m();
+}
+
+class C implements I  {
+    Unit m() {
+        I o1 = this;
+        I o2 = o1;
+    }
+}
+
+{
+
+
+}

@@ -5,23 +5,24 @@ module Lang.ABS.Compiler.Utils
     ,identI
     ,symbolI
     ,headToLower
-    ,collectThisVars
+    ,collectVars
     ,collectPatVars
     ,collectAssigns
     ,isInterface
-    ,visible_cscope
     ,typOfConstrType
+    ,funScope
     ) where
 
 import Lang.ABS.Compiler.Base
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 
-import Control.Monad (when, liftM)
-import Data.List (intersperse, nub, findIndices, (\\), elemIndices, mapAccumL)
+import Data.List (intersperse)
 import Data.Char (toLower)
-import qualified Data.Map as M (member, unions, insertWith, (\\))
-import Control.Monad.Trans.Reader (ask)
+import qualified Data.Map as M (member, unions, (\\))
+import Control.Monad.Trans.Reader (ask, runReader)
+import Control.Monad.Trans.State (get)
+import Control.Monad.Trans.Class (lift)
 
 -- generate haskell code - helper functions
 
@@ -48,35 +49,35 @@ headToLower (x:xs) = toLower x : xs
 -- | Querying an expression AST
 -- collects pure variables and class attributes
 -- TODO: use syb
-collectThisVars                              :: ABS.PureExp -- ^ the exp to scan
+collectVars                              :: ABS.PureExp -- ^ the exp to scan
                                      -> ScopeTable  -- the current class scope
                                      -> [String]    -- the names of the occuring vars
-collectThisVars (ABS.Let _ pexp1 pexp2) ccs      = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.If pexp1 pexp2 pexp3) ccs   = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs ++ collectThisVars pexp3 ccs
-collectThisVars (ABS.Case pexp cbranches) ccs    = collectThisVars pexp ccs ++ concatMap (\ (ABS.CaseBranc _ pexp') -> collectThisVars pexp' ccs) cbranches
-collectThisVars (ABS.EOr pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EAnd pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EEq pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.ENeq pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.ELt pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.ELe pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EGt pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EGe pexp1 pexp2) ccs        = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EAdd pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.ESub pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EMul pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EDiv pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.EMod pexp1 pexp2) ccs       = collectThisVars pexp1 ccs ++ collectThisVars pexp2 ccs
-collectThisVars (ABS.ELogNeg pexp) ccs           = collectThisVars pexp ccs
-collectThisVars (ABS.EIntNeg pexp) ccs           = collectThisVars pexp ccs
-collectThisVars (ABS.EFunCall _ pexps) ccs          = concatMap ((flip collectThisVars) ccs) pexps
-collectThisVars (ABS.ENaryFunCall _ pexps) ccs      = concatMap ((flip collectThisVars) ccs) pexps
-collectThisVars (ABS.EParamConstr _ pexps) ccs    = concatMap ((flip collectThisVars) ccs) pexps
-collectThisVars (ABS.EThis (ABS.Ident attr)) _ccs = [attr] -- qualify it
-collectThisVars (ABS.EVar ident@(ABS.Ident var)) ccs = if ident `M.member` ccs -- currentClassScope
+collectVars (ABS.Let _ pexp1 pexp2) ccs      = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.If pexp1 pexp2 pexp3) ccs   = collectVars pexp1 ccs ++ collectVars pexp2 ccs ++ collectVars pexp3 ccs
+collectVars (ABS.Case pexp cbranches) ccs    = collectVars pexp ccs ++ concatMap (\ (ABS.CaseBranc _ pexp') -> collectVars pexp' ccs) cbranches
+collectVars (ABS.EOr pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EAnd pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EEq pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.ENeq pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.ELt pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.ELe pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EGt pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EGe pexp1 pexp2) ccs        = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EAdd pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.ESub pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EMul pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EDiv pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.EMod pexp1 pexp2) ccs       = collectVars pexp1 ccs ++ collectVars pexp2 ccs
+collectVars (ABS.ELogNeg pexp) ccs           = collectVars pexp ccs
+collectVars (ABS.EIntNeg pexp) ccs           = collectVars pexp ccs
+collectVars (ABS.EFunCall _ pexps) ccs          = concatMap ((flip collectVars) ccs) pexps
+collectVars (ABS.ENaryFunCall _ pexps) ccs      = concatMap ((flip collectVars) ccs) pexps
+collectVars (ABS.EParamConstr _ pexps) ccs    = concatMap ((flip collectVars) ccs) pexps
+collectVars (ABS.EThis (ABS.Ident attr)) _ccs = [attr] -- qualify it
+collectVars (ABS.EVar ident@(ABS.Ident var)) ccs = if ident `M.member` ccs -- currentClassScope
                                                then [var]
                                                else []
-collectThisVars _ _ = []
+collectVars _ _ = []
 
 -- | collects all vars from a case pattern
 collectPatVars :: ABS.Pattern -> [ABS.Ident]
@@ -110,8 +111,8 @@ isInterface (ABS.TSimple (ABS.QType [ABS.QTypeSegment iid])) =  iid `M.member` (
 isInterface _ = False
 
 -- helpers
-visible_cscope :: ExprM ScopeTable
-visible_cscope = do
- (fscope, cscope, _) <- ask
- return $ cscope M.\\ fscope
 
+funScope :: StmtM ScopeTable
+funScope = do
+  scopes <- lift get
+  return $ M.unions scopes

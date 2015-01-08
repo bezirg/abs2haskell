@@ -1,0 +1,26 @@
+module HiddenMethod;
+
+interface I {
+  Unit inc();
+  Int get_x();
+}
+
+class C implements I{
+  Int x =0;
+  Unit inc() { this.inc_(); }
+    
+  Unit inc_() {                 //this is hidden, so locally generated in a *where clause*
+     this.x = this.x + 1;
+  }
+  Int get_x() { return this.x; }
+    
+}
+
+{
+  I i = new local C();
+  Int x = i.get_x();
+  assert(x == 0);
+  i.inc();
+  x = i.get_x();
+  assert(x == 1);
+}

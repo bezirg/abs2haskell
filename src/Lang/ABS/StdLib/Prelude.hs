@@ -3,7 +3,7 @@
 module Lang.ABS.StdLib.Prelude 
     (
      -- Number operations
-     (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%),
+     (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%), Prelude.negate,
      -- Bool operations
      (Prelude.||), (Prelude.&&), (Prelude.==), Prelude.not, Prelude.return,
      -- ABS builtin types
@@ -17,12 +17,16 @@ module Lang.ABS.StdLib.Prelude
      -- ABS Map datatypes and functions
      M.Map, M.empty, put, insertAssoc, lookupUnsafe, removeKey,
      -- other
-     assert, null
+     assert, null,
+     -- using a lot of applicative-style for lifted expressions to OO-ABS
+     pure, (<$>), (<*>), (Prelude.>>=), (Prelude.=<<)
     )
         where
 
 import qualified Prelude as Prelude
 import Lang.ABS.Runtime.Base
+
+import Control.Applicative
 
 import Control.Monad (when)
 import qualified Data.Map.Strict as M
