@@ -1,7 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 module Lang.ABS.Runtime.Prim
     (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
-     throw, catches, finally, Exception
+     throw, catches, finally, Exception,
+     run_sync, run_async        -- the run wrappers for any object
     )
  where
 
@@ -10,8 +11,10 @@ import Lang.ABS.Runtime.Base
 import Control.Monad (liftM, when)
 import Data.IORef (readIORef)
 import Control.Monad.IO.Class (liftIO)
+import Control.Concurrent.MVar (newEmptyMVar)
+import Control.Concurrent.Chan (writeChan)
 import Control.Monad.Trans.Class (lift)
-import qualified Control.Monad.Trans.RWS as RWS (ask)
+import qualified Control.Monad.Trans.RWS as RWS (ask, get, put, withRWST)
 import Control.Concurrent.MVar (isEmptyMVar, readMVar)
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
@@ -117,3 +120,24 @@ finally = Control.Monad.Catch.finally
 
 type Exception = Control.Monad.Catch.SomeException
 
+
+run_sync (AnyObject __obj@(ObjectRef __ioref _ _))
+  = do __hereCOG <- thisCOG
+       __obj1 <- liftIO (readIORef __ioref)
+       otherCOG <- __cog __obj1
+       when (not (__hereCOG == otherCOG))
+         (error "Sync Call on a different COG detected")
+       mapMonad (RWS.withRWST (\ r s -> ((\ aconf -> aconf{aThis = __obj}) r, s))) (__run __obj)
+run_sync (AnyObject NullRef) = error "sync call to null"
+
+run_async (AnyObject __obj@(ObjectRef __ioref _ _))
+  = do __obj1 <- liftIO (readIORef __ioref)
+       (__chan, _) <- __cog __obj1
+       __mvar <- liftIO newEmptyMVar
+       AConf{aCOG = __cog} <- lift RWS.ask
+       astate@(AState{aCounter = __counter}) <- lift RWS.get
+       lift (RWS.put (astate{aCounter = __counter + 1}))
+       let __f = FutureRef __mvar __cog __counter
+       liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
+       return __f
+run_async (AnyObject NullRef) = error "async call to null"

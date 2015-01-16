@@ -95,4 +95,3 @@ null = NullRef
 -- Dummy for list n-ary constructors
 list :: [a] -> [a]
 list = Prelude.id
-

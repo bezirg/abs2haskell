@@ -10,7 +10,7 @@
 module Lang.ABS.Compiler.Include 
     (
      Control.Exception.evaluate, Data.Typeable.Typeable,  Prelude.error,
-     Control.Monad.Trans.Class.lift, Control.Monad.liftM,
+     Control.Monad.Trans.Class.lift, Control.Monad.liftM, Control.Monad.IO.Class.liftIO,
      Data.IORef.newIORef, Data.IORef.modifyIORef', Data.IORef.readIORef, Control.Monad.when, Control.Monad.Coroutine.mapMonad,
      Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.writeList2Chan, Control.Concurrent.newEmptyMVar,
      Data.Map.Strict.updateLookupWithKey,
@@ -20,7 +20,7 @@ module Lang.ABS.Compiler.Include
      Control.Monad.Catch.Handler (..), PHandler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..), caseEx,
      Control.Monad.Catch.fromException,
      withReaderT,
-     newRef,writeRef,readRef, IORef -- export also the type for type-checking
+     newRef,writeRef,readRef, IORef, -- export also the type for type-checking
     )
  where
 
@@ -71,3 +71,4 @@ writeRef r v = do
 
 readRef :: MonadIO m => IORef a -> m a
 readRef r = liftIO $ readIORef r
+

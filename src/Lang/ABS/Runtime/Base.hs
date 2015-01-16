@@ -33,14 +33,17 @@ data Fut a = FutureRef (MVar a) COG Int
 class Sub sub sup where
     up :: sub -> sup
 
+instance Sub AnyObject AnyObject where
+    up x = x
+
 -- the root Object interface
 -- all user-written interfaces implicitly extend this Object__ interface
 class Object__ a where
     new :: (Object__ o) => a -> ABS o (ObjectRef a)
     new_local :: a -> (Object__ o) => ABS o (ObjectRef a)
-    __init :: AnyObject -> ABS a () 
+    __init :: ObjectRef a -> ABS a () 
     __init _ = return (())     -- default implementation of init
-    __run :: AnyObject -> ABS a () 
+    __run :: ObjectRef a -> ABS a () 
     __run _ = return (())        -- default implementation of run
     __cog :: (Object__ o) => a -> ABS o COG -- helper function for the generated code, to easily read from any object its COG location
 

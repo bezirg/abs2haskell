@@ -5,6 +5,14 @@ interface I {
 }
 
 class C implements I  {
+    {
+      I o1 = this;
+      I o2 = o1;
+    }
+    Unit run() {
+      I o1 = this;
+      I o2 = o1;
+    }
     Unit m() {
         I o1 = this;
         I o2 = o1;

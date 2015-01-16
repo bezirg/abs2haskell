@@ -130,7 +130,7 @@ instance Object__ DC where
                   let __f = FutureRef __mvar __cog __counter
                   lift
                     (lift
-                       (writeChan __chan (RunJob __obj __f (__init (AnyObject __obj)))))
+                       (writeChan __chan (RunJob __obj __f (__init ( __obj)))))
                do __mvar <- lift (lift newEmptyMVar)
                   AConf{aCOG = __cog} <- lift RWS.ask
                   astate@(AState{aCounter = __counter}) <- lift RWS.get
@@ -138,7 +138,7 @@ instance Object__ DC where
                   let __f = FutureRef __mvar __cog __counter
                   lift
                     (lift
-                       (writeChan __chan (RunJob __obj __f (__run (AnyObject __obj)))))
+                       (writeChan __chan (RunJob __obj __f (__run (__obj)))))
                return __obj
         new_local __cont
           = do let __load = 0
@@ -153,9 +153,9 @@ instance Object__ DC where
                lift (RWS.put (__astate{aCounter = __counter + 1}))
                let __obj = ObjectRef __ioref __counter __tid
                mapMonad (withReaderT (\ aconf -> aconf{aThis = __obj}))
-                 (__init (AnyObject __obj))
+                 (__init ( __obj))
                mapMonad (withReaderT (\ aconf -> aconf{aThis = __obj}))
-                 (__run (AnyObject __obj))
+                 (__run ( __obj))
                return __obj
         __cog = dC_loc
         __init this = do
