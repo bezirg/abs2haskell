@@ -1,0 +1,27 @@
+module InitVSRun;
+
+interface I {
+
+}
+
+class C implements I {
+   {
+     I o1 = this;
+     I o2 = o1;
+
+     this.run(); // compile time error, synchronous call not allowed
+
+     await True; // compile time error, await not allowed
+    
+     this ! run(); // allowed 
+
+   }
+    Unit run() {
+      await True;  // allowed
+   }
+}
+
+{
+  I o = new C();
+
+}

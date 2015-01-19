@@ -5,9 +5,8 @@ module Lang.ABS.Compiler.Top
 import Lang.ABS.Compiler.Base
 import Lang.ABS.Compiler.Conf
 import Lang.ABS.Compiler.Utils
-import Lang.ABS.Compiler.Stmt (tBlockWithReturn)
+import Lang.ABS.Compiler.Stmt (tBlockWithReturn, tInitBlockWithReturn)
 import Lang.ABS.Compiler.Expr (tPureExp,tBody, tType, tTypeOrTyVar)
-import Lang.ABS.Compiler.ExprLifted (tPureExp')
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
@@ -450,7 +449,7 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                -- the init method (optional)
                -- normalize to a method decl with name __init
                (case maybeBlock of
-                  ABS.JustBlock b -> [tMethDecl "AnyObject" $ ABS.MethClassBody (error "compiler implementation") (ABS.Ident "__init") [] b]
+                  ABS.JustBlock b -> [tInitDecl "AnyObject" $ ABS.MethClassBody (error "compiler implementation") (ABS.Ident "__init") [] b]
                   ABS.NoBlock -> []
                ) 
                ++
@@ -566,6 +565,17 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                                ABS.NoBlock -> acc
                                                                                ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                )) [] ldecls
+
+         -- treat it as a special instance method, since it disallows await and synchronous calls
+         tInitDecl interfName (ABS.MethClassBody _ (ABS.Ident mident) mparams (ABS.Bloc block)) = HS.InsDecl $ 
+                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"])
+                                    Nothing (HS.UnGuardedRhs $ tInitBlockWithReturn block clsName allFields 
+                                             -- method scoping of input arguments
+                                             (foldl (\ acc (ABS.Par ptyp pident) -> 
+                                                       M.insertWith (const $ const $ error $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName)  (HS.BDecls [] -- (concatMap (tNonMethDecl interfName) nonMethods) --turned off non-meth decls
+                                                                                                                                                                                                      )] -- 
+         tInitDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
+
 
          tMethDecl interfName (ABS.MethClassBody _ (ABS.Ident mident) mparams (ABS.Bloc block)) = HS.InsDecl $ 
                       HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.Ident pid)) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"])

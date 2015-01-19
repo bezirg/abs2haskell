@@ -19,7 +19,7 @@ import Control.Monad (liftM)
 -- 3) if a sub-expression reads this fields it wraps them in readThis
 tPureExpWrap :: (?moduleTable::ModuleTable) => ABS.PureExp -> StmtM HS.Exp
 tPureExpWrap pexp = do
-  (_,_,_,cls) <- ask
+  (_,_,_,cls, _) <- ask
   runExpr $ do
       vcscope <- visible_cscope
       let thisFields = collectVars pexp vcscope
@@ -40,7 +40,7 @@ tPureExpWrap pexp = do
 -- it is supposed to be an optimization compared to reading each time the field at the place it is accessed
 tEffExpWrap :: (?moduleTable::ModuleTable) => ABS.EffExp -> StmtM HS.Exp
 tEffExpWrap eexp = do
-  (_,_,_,cls) <- ask
+  (_,_,_,cls,_) <- ask
   runExpr $ do
       vcscope <- visible_cscope
       let argsExps = case eexp of
@@ -82,8 +82,8 @@ tPureExp' (ABS.If predE thenE elseE) tyvars = do
 
 -- | translate it into a lambda exp
 tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.Ident var)) eqE inE) tyvars = do
-  tin <- local (\ (fscope, cscope,mscope,interf) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
-                                            cscope,mscope,interf)) $ 
+  tin <- local (\ (fscope, cscope,mscope,interf,isInit) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
+                                            cscope,mscope,interf,isInit)) $ 
         tPureExp' inE tyvars
   teq <- tPureExp' eqE tyvars
   let pat = HS.PVar $ HS.Ident var
@@ -99,7 +99,7 @@ tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.Ident var)) eqE inE) tyvars = do
 -- NOTE: leave the case for now. It might work out of the box
 tPureExp' (ABS.Case matchE branches) tyvars = do
   tmatch <- tPureExp' matchE tyvars
-  (fscope,cscope,_,_) <- ask
+  (fscope,cscope,_,_,_) <- ask
   let scope = fscope `M.union` cscope
   case matchE of
     ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) -> tCaseException tmatch branches
@@ -108,8 +108,8 @@ tPureExp' (ABS.Case matchE branches) tyvars = do
     _ -> do
         talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
                         let new_vars = collectPatVars pat
-                        texp <- local (\ (fscope, cscope, mscope, interf) -> 
-                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, cscope, mscope, interf)) -- TODO: tunderscore acts as a placeholder since the types of the new vars in the matchE are not taken into account
+                        texp <- local (\ (fscope, cscope, mscope, interf,isInit) -> 
+                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, cscope, mscope, interf,isInit)) -- TODO: tunderscore acts as a placeholder since the types of the new vars in the matchE are not taken into account
                                                                               (tPureExp' pexp tyvars)
                         return $ HS.Alt HS.noLoc (tPattern pat) (HS.UnGuardedAlt texp) (HS.BDecls []))
                 branches
@@ -168,7 +168,7 @@ tPureExp' (ABS.EEq (ABS.ELit ABS.LNull) (ABS.ELit ABS.LThis)) _tyvars = return $
 tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.Ident str))) _tyvars = do
   tnull <- tPureExp' pnull _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _) <- ask
+  (fscope, _,_, _,_) <- ask
   case M.lookup ident fscope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
@@ -182,7 +182,7 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.Ident st
 tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.Ident str))) _tyvars = do
   tthis <- tPureExp' pthis _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _) <- ask
+  (fscope, _,_, _,_) <- ask
   case M.lookup ident fscope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
@@ -202,7 +202,7 @@ tPureExp' (ABS.EEq pexp pthis@(ABS.ELit (ABS.LThis))) _tyvars = tPureExp' (ABS.E
 tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.Ident str1)) pvar2@(ABS.EVar ident2@(ABS.Ident str2))) _tyvars = do
   tvar1 <- tPureExp' pvar1 _tyvars
   tvar2 <- tPureExp' pvar2 _tyvars
-  (fscope, _,_, _) <- ask
+  (fscope, _,_, _,_) <- ask
   case M.lookup ident1 fscope of -- check the type of the right var
     Just t1 -> case M.lookup ident2 fscope of
                 Just t2 -> if isInterface t1 && isInterface t2
@@ -443,7 +443,7 @@ tPureExp' (ABS.EParamConstr qids args) tyvars = do
               return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ) tcon args
 
 tPureExp' (ABS.EVar var@(ABS.Ident pid)) _tyvars = do
-    (fscope, cscope, mscope,_) <- ask
+    (fscope, cscope, mscope,_,_) <- ask
     return $ HS.Paren $ case M.lookup var fscope of
       Nothing -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ -- fields are read from the Wrap function, so they are pure
                 case M.lookup var mscope of
@@ -524,14 +524,18 @@ tNewOrNewLocal newOrNewLocal qtids args = do
 -- | shorthand generator, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable) => String -> ABS.PureExp -> String -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method args = do
-  texp <- tPureExp' pexp [] -- the callee object
-  targs <- foldlM                                -- the method's arguments
-         (\ acc arg -> do
-            targ <- tPureExp' arg []
-            return $ HS.Paren (HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") targ))
-         (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync)
-         args
-  return $ HS.Paren $ HS.InfixApp targs (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
+  (_,_,_,_, isInit) <- ask
+  if (isInit && syncOrAsync == "sync")
+    then error "Synchronous method calls are not allowed inside init block"
+    else do
+      texp <- tPureExp' pexp [] -- the callee object
+      targs <- foldlM                                -- the method's arguments
+             (\ acc arg -> do
+                targ <- tPureExp' arg []
+                return $ HS.Paren (HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") targ))
+             (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync)
+             args
+      return $ HS.Paren $ HS.InfixApp targs (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
 
 -- | translate an ABS Type or a TypeVar to HS type
@@ -567,7 +571,7 @@ tAwaitGuard (ABS.FieldGuard (ABS.Ident ident)) cls = error "Not implemented yet,
 -- if the expression contains no fields, then the guard can evaluate it only once and either block (show an error) or continue
 -- if it contains fields, collect them to try them out whenever the object is mutated
 tAwaitGuard (ABS.ExpGuard pexp) _cls = do
-  (_,cscope,_,_) <- ask
+  (_,cscope,_,_,_) <- ask
   vcscope <- visible_cscope
   let awaitFields = collectVars pexp vcscope
   texp <- tPureExp' pexp []
@@ -588,7 +592,7 @@ tAwaitGuard (ABS.AndGuard gl gr) cls = do
 
 interf :: ExprLiftedM String
 interf = do 
-  (_,_,_,i) <- ask
+  (_,_,_,i,_) <- ask
   return i
 
 
@@ -599,12 +603,12 @@ wrapTypeToABSMonad t = (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS"
 
 visible_cscope :: ExprLiftedM ScopeTable
 visible_cscope = do
- (fscope, cscope, _, _) <- ask
+ (fscope, cscope, _, _,_) <- ask
  return $ cscope M.\\ fscope
 
 
 runExpr :: ExprLiftedM a -> StmtM a
 runExpr e = do
   fscope <- funScope
-  (cscope,mscope,interf,_) <- ask
-  return $ runReader e (fscope,cscope,mscope,interf)
+  (cscope,mscope,interf,_,isInit) <- ask
+  return $ runReader e (fscope,cscope,mscope,interf,isInit)

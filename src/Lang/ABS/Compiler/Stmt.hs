@@ -1,5 +1,6 @@
 module Lang.ABS.Compiler.Stmt 
     (tBlockWithReturn
+    ,tInitBlockWithReturn
     ) where
 
 import Lang.ABS.Compiler.Base
@@ -16,15 +17,24 @@ import Lang.ABS.Compiler.ExprLifted
 import Lang.ABS.Compiler.Expr (tPattern)
 
 import qualified Data.Map as M
-import Data.List (nub)
 
 -- | method block or main block
 -- can return
 tBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
-                                                                    (clsScope, mthScope, interfName, cls))
+                                                                    (clsScope, mthScope, interfName, cls, False))
                                                         scopes
+
+-- init block
+-- can always return (with: return Unit)
+-- can not run await and/or sync calls
+tInitBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
+                                                                    (tBlock stmts True)
+                                                                    (clsScope, mthScope, interfName, cls, True))
+                                                        scopes
+
 -- | block pushes a new scope
 tBlock :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> Bool -> StmtM HS.Exp
 tBlock [] _canReturn = return $ eReturnUnit
@@ -62,9 +72,12 @@ tStmt (ABS.SExp pexp) = do
 tStmt ABS.SSuspend = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend")]
 
 tStmt (ABS.SAwait g) = do
-  (_,_,_, cls) <- ask
-  texp <- runExpr $ tAwaitGuard g cls
-  return $ [HS.Qualifier $ HS.InfixApp 
+  (_,_,_, cls,isInit) <- ask
+  if isInit 
+   then error "Await statements not allowed inside init block"
+   else do
+     texp <- runExpr $ tAwaitGuard g cls
+     return $ [HS.Qualifier $ HS.InfixApp 
                   (HS.Var $ HS.UnQual $ HS.Ident "await")
                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
                   texp]
@@ -133,7 +146,7 @@ tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
 
 tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
   fscope <- funScope
-  (cscope,_,_,_) <- ask
+  (cscope,_,_,_,_) <- ask
   case M.lookup ident fscope of
       Just _ -> do
         texp <- case exp of
@@ -156,7 +169,7 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
                                                                              
 
 tStmt (ABS.SFieldAss ident@(ABS.Ident var) exp) = do
-  (_, _, _, cls) <- ask
+  (_, _, _, cls,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpWrap pexp
            ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
@@ -215,7 +228,7 @@ liftInterf ident exp@(ABS.NewLocal _ _) = liftInterf' ident exp
 liftInterf ident exp = return id
 liftInterf' ident@(ABS.Ident var) exp =  do
   fscope <- funScope
-  (cscope, _ , _, _)<- ask
+  (cscope, _ , _, _,_)<- ask
   return $ case M.lookup ident (M.union fscope cscope) of
       Nothing -> error $ "Identifier " ++ var ++ " cannot be resolved from scope"
       Just (ABS.TUnderscore) -> error $ "Cannot infer interface type for variable" ++ var

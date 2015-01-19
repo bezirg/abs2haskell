@@ -57,6 +57,6 @@ do
         ../.cabal-sandbox/bin/abs2haskell --main-is=${file} ${file} ; \
         echo "${i})Compiling ${file%.*} with ghc" ; \
         ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -package-db ../.cabal-sandbox/x86_64-linux-ghc-7.8.3-packages.conf.d -hide-package transformers-0.4.1.0; } 
-        [ $? -eq 0 ] && echo "Neg failure at $file"
+        [ $? -eq 0 ] && echo "Neg failure at $file" && exit
     done
 done

@@ -30,11 +30,14 @@ type ExprLiftedM = Reader (ScopeTable -- current function scope
                     ,ScopeTable -- current class scope -- fscope `union` cscope == scope
                     ,ScopeTable -- current method-params
                     ,String -- interface name
+                    ,Bool -- is init block? then it cannot use await and/or synchronous calls
                     )
 
-type StmtM = ReaderT (ScopeTable, -- current class scope
-                      ScopeTable, -- current method-params
-                      String,      -- interface name
-                      String)      -- class name
+type StmtM = ReaderT (ScopeTable -- current class scope
+                     ,ScopeTable -- current method-params
+                     ,String      -- interface name
+                     ,String      -- class name
+                     ,Bool     -- is init block? then it cannot use await and/or synchronous calls
+                     )
     (State [ScopeTable])  -- all function block scopes
     
