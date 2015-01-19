@@ -33,6 +33,7 @@ TestABS.hs
 test/compiler/*/*.hs
 test/compiler/*/*.out
 *.stderr
+*.stdout
 
 # extra files
 

@@ -43,3 +43,20 @@ do
         [ $? -ne 0 ] && echo "Runtime error at $file check its .stderr"
     done
 done
+
+# WARN DIRS passed as argv
+NEG_DIRS=("compiler/neg")
+for dir in $NEG_DIRS
+do
+    # reclean before starting
+    rm -f $dir/*.stderr $dir/*.hs $dir/*.hi $dir/*.o $dir/*.out
+    for file in ./$dir/*.abs
+    do
+        i=$((i+1));
+        { echo "${i})Translating ${file%.*} to haskell" ; \
+        ../.cabal-sandbox/bin/abs2haskell --main-is=${file} ${file} ; \
+        echo "${i})Compiling ${file%.*} with ghc" ; \
+        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -package-db ../.cabal-sandbox/x86_64-linux-ghc-7.8.3-packages.conf.d -hide-package transformers-0.4.1.0; } 
+        [ $? -eq 0 ] && echo "Neg failure at $file"
+    done
+done

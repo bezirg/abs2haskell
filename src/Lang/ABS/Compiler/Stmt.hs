@@ -8,7 +8,7 @@ import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
 import Control.Monad.Trans.State (evalState, withState, put, get)
-import Control.Monad.Trans.Reader (runReader, runReaderT, mapReaderT, ask)
+import Control.Monad.Trans.Reader (runReaderT, mapReaderT, ask)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (ap)
 
@@ -118,11 +118,14 @@ tStmt (ABS.SDec typ ident@(ABS.Ident var)) = -- just rewrites it to Interface x=
     -- TODO: remove the ident from the class attributes to check
 
 tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
-  addToScope ident typ -- add to scope
-  texp <- case exp of
+  addToScope ident typ -- add to scope, but it's lazy monad, otherwise use Monad.State.Strict
+  fscope <- funScope -- so we have to force to WHNF with a lookup
+  case M.lookup ident fscope of -- has to be a lookup and not a member, to force to WHNF
+      Just _ -> do
+        texp <- case exp of
            ABS.ExpP pexp -> tPureExpWrap pexp
            ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
-  return [HS.Generator HS.noLoc 
+        return [HS.Generator HS.noLoc 
                 (case typ of
                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
                    ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp)))
@@ -132,7 +135,7 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
   fscope <- funScope
   (cscope,_,_,_) <- ask
   case M.lookup ident fscope of
-      Just t -> do
+      Just _ -> do
         texp <- case exp of
            ABS.ExpP pexp -> tPureExpWrap pexp
            ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
