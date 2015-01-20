@@ -1,0 +1,34 @@
+module TestAwait;
+
+interface I {
+  Unit m1();
+  Unit m2();
+}
+
+class C implements I {
+  Int x = 0;
+  Unit m1() {
+      this ! m2();
+      await (x==2);
+  }
+  Unit m2() {
+      x = x+1;
+  }
+}
+
+
+{
+    await True;
+
+    I o = new local C();
+
+    Fut<Unit> f = o ! m1();     //inc
+
+    assert True;
+
+    o.m1();                     //inc
+
+    await f?;
+
+    assert True;
+}

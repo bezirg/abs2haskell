@@ -56,7 +56,9 @@ do
         { echo "${i})Translating ${file%.*} to haskell" ; \
         ../.cabal-sandbox/bin/abs2haskell --main-is=${file} ${file} ; \
         echo "${i})Compiling ${file%.*} with ghc" ; \
-        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -package-db ../.cabal-sandbox/x86_64-linux-ghc-7.8.3-packages.conf.d -hide-package transformers-0.4.1.0; } 
+        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -package-db ../.cabal-sandbox/x86_64-linux-ghc-7.8.3-packages.conf.d -hide-package transformers-0.4.1.0; }
+        echo "${i})Running ${file%.*}"
+        ${file%.*}.out 1> /dev/null 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
         [ $? -eq 0 ] && echo "Neg failure at $file" && exit
     done
 done

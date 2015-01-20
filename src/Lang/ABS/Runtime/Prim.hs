@@ -19,7 +19,7 @@ import Control.Concurrent.MVar (isEmptyMVar, readMVar)
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
 import qualified Control.Monad.Catch
-import qualified Control.Exception
+import qualified Control.Exception (fromException)
 
 thisCOG :: (Object__ o) => ABS o COG
 thisCOG = do
@@ -45,10 +45,14 @@ await (FutureGuard f@(FutureRef mvar _ _ ))  = do
 
 await g@(ThisGuard is tg) = do
   check <- tg
-  when (not check) $ do
-       AConf obj _ <- lift $ RWS.ask
-       yield (T obj is)
-       await g
+  if not check
+    then if null is             -- no field-checks, so this will block indefinitely
+         then throw (return BlockedAwaitException)
+         else do
+           AConf obj _ <- lift $ RWS.ask
+           yield (T obj is)
+           await g
+    else return ()                 -- check succeeded, continue
 
 await (left :&: rest) = do
   await left

@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses #-}
+{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable #-}
 
 module Lang.ABS.Runtime.Base where
 
@@ -10,6 +10,8 @@ import qualified Data.Map.Strict as M (Map)
 import qualified Control.Monad.Trans.RWS as RWS (RWST)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield)
+import Data.Typeable
+import qualified Control.Monad.Catch
 
 -- its object value/memory a triple:
 --1) a mutable state
@@ -130,3 +132,10 @@ __eqAnyObject = (==)
 -- this is for ordering inside the cog
 instance Ord AnyObject where
     compare (AnyObject (ObjectRef _ _ id1)) (AnyObject (ObjectRef _ _ id2)) = compare id1 id2
+
+
+-- builtin exceptions
+data BlockedAwaitException = BlockedAwaitException
+    deriving (Eq, Show, Typeable)
+
+instance Control.Monad.Catch.Exception BlockedAwaitException

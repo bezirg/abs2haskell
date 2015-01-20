@@ -1,0 +1,17 @@
+module BlockedAwait;
+
+interface I {
+    Unit m();
+}
+
+class C implements I {
+    Unit m() {
+        await False;
+    }
+}
+
+
+{
+    I o = new local C();
+    o.m();
+}
