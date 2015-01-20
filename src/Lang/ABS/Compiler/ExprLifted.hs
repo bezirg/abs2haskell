@@ -1,8 +1,13 @@
-module Lang.ABS.Compiler.ExprLifted where
+module Lang.ABS.Compiler.ExprLifted
+    (tPureExpStmt
+    ,tEffExpStmt
+    ,runExpr
+    ,tAwaitGuard
+    ) where
 
 import Lang.ABS.Compiler.Base
 import Lang.ABS.Compiler.Utils
-import Lang.ABS.Compiler.Expr (tPattern, joinSub)
+import Lang.ABS.Compiler.Expr (tPattern, joinSub, tType, tTypeOrTyVar)
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
@@ -12,15 +17,17 @@ import qualified Data.Map as M
 import Data.Foldable (foldlM)
 import Control.Monad (liftM)
 
--- tPureExpWrap is a pure expression in the statement world
+-- tPureExpStmt is a pure expression in the statement world
 -- it does 3 things:
--- 1) if a sub-expression is pure it wraps it in a return/pure
--- 2) if a sub-expression reads local-variables it wraps them in readIORef
--- 3) if a sub-expression reads this fields it wraps them in readThis
-tPureExpWrap :: (?moduleTable::ModuleTable) => ABS.PureExp -> StmtM HS.Exp
-tPureExpWrap pexp = do
+-- 1) if a sub-expression reads this fields it *wraps* the whole expression in readThis (by tPureExpWrap)
+-- 2) if a sub-expression is pure it lifts it with return/pure (by tPureExp')
+-- 3) if a sub-expression reads local-variables it calls readIORef on them (by tPureExp')
+tPureExpStmt :: (?moduleTable::ModuleTable) => ABS.PureExp -> StmtM HS.Exp
+tPureExpStmt pexp = do
   (_,_,_,cls, _) <- ask
-  runExpr $ do
+  runExpr (tPureExpWrap pexp cls)
+
+tPureExpWrap pexp cls = do
       vcscope <- visible_cscope
       let thisFields = collectVars pexp vcscope
       texp <- tPureExp' pexp []
@@ -36,12 +43,15 @@ tPureExpWrap pexp = do
                                                          (HS.PVar $ HS.Ident $ "__" ++ arg) )  (nub thisFields))
                                           ] texp)
 
--- | tEffExpWrap is a wrapper arround tEffExp that adds a single read to the object pointer to collect the necessary fields
+tEffExpStmt :: (?moduleTable::ModuleTable) => ABS.EffExp -> StmtM HS.Exp
+tEffExpStmt eexp = do
+  (_,_,_,cls, _) <- ask
+  runExpr (tEffExpWrap eexp cls)
+
+
+-- | tEffExpWrap is a wrapper arround tEffExp' that adds a single read to the object pointer to collect the necessary fields
 -- it is supposed to be an optimization compared to reading each time the field at the place it is accessed
-tEffExpWrap :: (?moduleTable::ModuleTable) => ABS.EffExp -> StmtM HS.Exp
-tEffExpWrap eexp = do
-  (_,_,_,cls,_) <- ask
-  runExpr $ do
+tEffExpWrap eexp cls = do
       vcscope <- visible_cscope
       let argsExps = case eexp of
                          ABS.Get pexp -> [pexp]
@@ -65,6 +75,7 @@ tEffExpWrap eexp = do
                     texp)
 
 
+-- this is the "statement-lifted" version of tPureExp
 tPureExp' :: (?moduleTable::ModuleTable) =>
             ABS.PureExp 
           -> [ABS.TypeIdent] -- ^ TypeVarsInScope
@@ -484,6 +495,7 @@ tPureExp' (ABS.ELit lit) _ = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pur
 tPureExp' (ABS.EThis (ABS.Ident ident)) _ = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") 
                                             (HS.Var $ HS.UnQual $ HS.Ident ("__" ++ ident))
 
+-- this is the "statement-lifted" version of tEffExp
 tEffExp' :: (?moduleTable::ModuleTable) => ABS.EffExp -> ExprLiftedM HS.Exp
 tEffExp' (ABS.New (ABS.TSimple (ABS.QType qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
 tEffExp' (ABS.New _ _) = error "Not valid class name"
@@ -538,25 +550,9 @@ tSyncOrAsync syncOrAsync pexp method args = do
       return $ HS.Paren $ HS.InfixApp targs (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
 
--- | translate an ABS Type or a TypeVar to HS type
-tTypeOrTyVar :: [ABS.TypeIdent] -> ABS.Type -> HS.Type
-tTypeOrTyVar tyvars (ABS.TSimple (ABS.QType qtids))  = 
-       let joinedTid = joinQualTypeIds qtids    
-       in if (ABS.TypeIdent joinedTid) `elem` tyvars -- type variable
-          then HS.TyVar $ HS.Ident $ headToLower joinedTid
-          else HS.TyCon $ if length qtids == 1 
-                          then HS.UnQual $ HS.Ident joinedTid -- unqual
-                          else HS.Qual (HS.ModuleName (joinQualTypeIds (init qtids))) -- qual
-                                   (HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent tid)) -> tid) (last qtids))
-
-tTypeOrTyVar tyvars (ABS.TGen qtyp tyargs) = foldl (\ tyacc tynext -> HS.TyApp tyacc (tTypeOrTyVar tyvars tynext)) (tType (ABS.TSimple qtyp)) tyargs
-
--- | shorthand for only translate ABS Types (no typevars) to HS types 
-tType :: ABS.Type -> HS.Type
-tType t = tTypeOrTyVar [] t     -- no type variables in scope
-
 tAwaitGuard :: (?moduleTable::ModuleTable) => ABS.Guard -> String -> ExprLiftedM HS.Exp
 -- NOTE: both VarGuard and FieldGuard contain futures, but "this.f?" is distinguished as FieldGuard to take into account Cosimo's consideration
+-- awaitguard: f?
 tAwaitGuard (ABS.VarGuard ident) _cls = do
   texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
   return $ HS.Paren $ HS.InfixApp
@@ -564,17 +560,18 @@ tAwaitGuard (ABS.VarGuard ident) _cls = do
              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
              texp
                                              
+-- fieldguard: this.f?
 tAwaitGuard (ABS.FieldGuard (ABS.Ident ident)) cls = error "Not implemented yet, take Cosimo's consideration into account"
 
 
 -- guards with expressions: fields and/or local variables
 -- if the expression contains no fields, then the guard can evaluate it only once and either block (show an error) or continue
 -- if it contains fields, collect them to try them out whenever the object is mutated
-tAwaitGuard (ABS.ExpGuard pexp) _cls = do
+tAwaitGuard (ABS.ExpGuard pexp) cls = do
   (_,cscope,_,_,_) <- ask
   vcscope <- visible_cscope
   let awaitFields = collectVars pexp vcscope
-  texp <- tPureExp' pexp []
+  texp <- tPureExpWrap pexp cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
          HS.App (HS.App (HS.Con $ HS.UnQual $ HS.Ident "ThisGuard") 
                    (HS.List (map (HS.Lit . HS.Int . toInteger) (findIndices ((\ (ABS.Ident field) -> field `elem` awaitFields)) (M.keys cscope)))))

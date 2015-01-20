@@ -14,7 +14,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad (ap)
 
 import Lang.ABS.Compiler.ExprLifted
-import Lang.ABS.Compiler.Expr (tPattern)
+import Lang.ABS.Compiler.Expr (tPattern, tType)
 
 import qualified Data.Map as M
 
@@ -65,8 +65,8 @@ tStmts (stmt:rest) canReturn = do
 tStmt :: (?moduleTable::ModuleTable) => ABS.Stm -> StmtM [HS.Stmt]
 tStmt (ABS.SExp pexp) = do
   texp <- case pexp of  -- TODO: have to force to WHNF
-           ABS.ExpE eexp -> tEffExpWrap eexp
-           ABS.ExpP texp -> tPureExpWrap texp
+           ABS.ExpE eexp -> tEffExpStmt eexp
+           ABS.ExpP texp -> tPureExpStmt texp
   return [HS.Qualifier texp]
 
 tStmt ABS.SSuspend = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend")]
@@ -87,7 +87,7 @@ tStmt (ABS.SBlock stmts) = do
   return [HS.Qualifier tblock]
 
 tStmt (ABS.SThrow pexp) = do
-  texp <- tPureExpWrap pexp
+  texp <- tPureExpStmt pexp
   return [HS.Qualifier (HS.App 
                               (HS.Var (HS.UnQual $ HS.Ident "throw"))
                               texp
@@ -96,14 +96,14 @@ tStmt (ABS.SThrow pexp) = do
 tStmt (ABS.SSkip) = return [HS.Qualifier $ HS.Var $ HS.UnQual $ HS.Ident "skip"]
 
 tStmt (ABS.SIf pexp stm) = do
-  texp <- tPureExpWrap pexp
+  texp <- tPureExpStmt pexp
   tblock <- tBlock [stm] False
   return [HS.Qualifier $ HS.App 
                 (HS.App (HS.Var $ HS.UnQual $ HS.Ident "ifthenM") texp)
                 tblock]
 
 tStmt (ABS.SIfElse pexp stm_then stm_else) = do
-  texp <- tPureExpWrap pexp
+  texp <- tPureExpStmt pexp
   tthen <- tBlock [stm_then] False
   telse <- tBlock [stm_else] False
   return [HS.Qualifier $ (HS.App
@@ -113,12 +113,12 @@ tStmt (ABS.SIfElse pexp stm_then stm_else) = do
                           telse)]
 
 tStmt (ABS.SAssert pexp) = do
-  texp <- tPureExpWrap pexp
+  texp <- tPureExpStmt pexp
   return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "assert") 
                           texp)]
 
 tStmt (ABS.SWhile pexp stm) = do
-  texp <- tPureExpWrap pexp
+  texp <- tPureExpStmt pexp
   tblock <- tBlock (case stm of
                      ABS.SBlock stmts ->  stmts 
                      stmt -> [stmt]) False
@@ -136,8 +136,8 @@ tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
   case M.lookup ident fscope of -- has to be a lookup and not a member, to force to WHNF
       Just _ -> do
         texp <- case exp of
-           ABS.ExpP pexp -> tPureExpWrap pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
+           ABS.ExpP pexp -> tPureExpStmt pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
         return [HS.Generator HS.noLoc 
                 (case typ of
                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
@@ -150,8 +150,8 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
   case M.lookup ident fscope of
       Just _ -> do
         texp <- case exp of
-           ABS.ExpP pexp -> tPureExpWrap pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
+           ABS.ExpP pexp -> tPureExpStmt pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
         return [HS.Qualifier $ HS.App
                 -- lhs
                 (HS.App (HS.Var $ identI "writeRef") (HS.Var $ HS.UnQual $ HS.Ident var))
@@ -171,8 +171,8 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
 tStmt (ABS.SFieldAss ident@(ABS.Ident var) exp) = do
   (_, _, _, cls,_) <- ask
   texp <- case exp of
-           ABS.ExpP pexp -> tPureExpWrap pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpWrap eexp
+           ABS.ExpP pexp -> tPureExpStmt pexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
 
   return [HS.Qualifier (HS.Paren $ HS.InfixApp 
                           (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ var)
