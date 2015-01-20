@@ -67,7 +67,7 @@ spawnCOG c = forkIO $ do        -- each COG is a lightweight Haskell thread
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
                     Left (Yield (T o fields) cont) -> do
                            -- update sleepingo-table
-                           let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) ((AnyObject o,i)) [RunJob obj fut cont] m) sleepingOnAttr' fields
+                           let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) ((AnyObject o,i)) [RunJob obj fut cont] m) sleepingOnAttr fields
                            RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                            return sleepingOnFut
                                                     ) (AConf {aThis = obj, 
@@ -124,7 +124,7 @@ main_is mainABS = do
                 Left (Yield (F f) cont) -> do
                        return (M.insertWith (++) (AnyFuture f) [RunJob obj fut cont] sleepingOnFut)
                 Left (Yield (T o fields) cont) -> do
-                       let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) ((AnyObject o,i)) [RunJob obj fut cont] m) sleepingOnAttr' fields
+                       let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) ((AnyObject o,i)) [RunJob obj fut cont] m) sleepingOnAttr fields
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut
                                               ) (AConf {aThis = obj, 

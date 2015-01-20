@@ -23,7 +23,7 @@ data ObjectRef a = ObjectRef (IORef a) Int ThreadId
 -- a future reference is a triple:
 -- 1) The future value as an MVar. 
 --    A call to ABS' get will try to read this MVar, making the COG block until the value is available (written back).
--- 2) The COG of the callee, i.e. where the future value will be computed inside.
+-- 2) The COG of the parent caller, to respond to.
 -- 3) A unique-per-COG ascending counter being the future's identity inside the cog
 -- Together 2 and 3 makes a future uniquely identified inside the same machine.
 data Fut a = FutureRef (MVar a) COG Int

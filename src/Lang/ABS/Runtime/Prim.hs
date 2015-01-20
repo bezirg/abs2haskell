@@ -43,13 +43,6 @@ await (FutureGuard f@(FutureRef mvar _ _ ))  = do
   when empty $ do
     yield (F f)
 
-await (FutureGuard f@(FutureRef mvar _ _) :&: gs)  = do
-  empty <- lift $ lift $ isEmptyMVar mvar
-  when empty $ do
-    yield (F f)
-  await gs
-
-
 await g@(ThisGuard is tg) = do
   check <- tg
   when (not check) $ do
@@ -57,12 +50,8 @@ await g@(ThisGuard is tg) = do
        yield (T obj is)
        await g
 
-await gs@(ThisGuard is tg :&: rest) = do
-  check <- tg
-  when (not check) $ do
-       AConf obj _ <- lift $ RWS.ask
-       yield (T obj is)
-       await gs
+await (left :&: rest) = do
+  await left
   await rest
 
 while :: (Object__ o) => ABS o Bool -> ABS o a -> ABS o ()
