@@ -557,10 +557,15 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                                    (HS.UnGuardedRhs $ runReader (tPureExp pexp []) (allFields,"AnyObject")) (HS.BDecls [])])
                                                     : acc
                                                 ABS.FieldClassBody t (ABS.Ident fid) ->  
-                                                    if isInterface t
+                                                    if isInterface t 
                                                     then HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing
                                                                                  (HS.UnGuardedRhs $ runReader (tPureExp (ABS.ELit ABS.LNull) []) (allFields,"AnyObject")) (HS.BDecls [])]) : acc
-                                                    else error "A field must be initialised if it is not of a reference type"
+                                                    else case t of
+                                                           -- it is an unitialized future (abs allows this)
+                                                           ABS.TGen (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Fut")])  _ -> 
+                                                               HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_fut")
+                                                                                       : acc
+                                                           _ -> error "A field must be initialised if it is not of a reference type"
                                                 ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                ABS.NoBlock -> acc
                                                                                ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")

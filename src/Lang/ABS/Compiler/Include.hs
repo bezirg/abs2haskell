@@ -21,6 +21,7 @@ module Lang.ABS.Compiler.Include
      Control.Monad.Catch.fromException,
      withReaderT,
      newRef,writeRef,readRef, IORef, -- export also the type for type-checking
+     empty_fut
     )
  where
 
@@ -38,6 +39,9 @@ import qualified Control.Monad.Trans.RWS as RWS
 import qualified Data.Typeable
 import qualified Control.Monad.Catch
 import qualified Control.Exception.Base (PatternMatchFail (..), throw)
+import Control.Applicative
+import Lang.ABS.Runtime.Base
+import Lang.ABS.Runtime.Prim (thisCOG)
 
 -- util function, used in code generation
 withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
@@ -72,3 +76,6 @@ writeRef r v = do
 readRef :: MonadIO m => IORef a -> m a
 readRef r = liftIO $ readIORef r
 
+-- for easier code generation
+empty_fut :: (Object__ o) => ABS o (Fut a)
+empty_fut = FutureRef <$> liftIO newEmptyMVar <*> thisCOG <*> pure (-10 :: Int)

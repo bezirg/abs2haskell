@@ -554,8 +554,12 @@ tAwaitGuard :: (?moduleTable::ModuleTable) => ABS.Guard -> String -> ExprLiftedM
 -- NOTE: both VarGuard and FieldGuard contain futures, but "this.f?" is distinguished as FieldGuard to take into account Cosimo's consideration
 -- awaitguard: f?
 tAwaitGuard (ABS.VarGuard ident) _cls = do
-  texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
-  return $ HS.Paren $ HS.InfixApp
+  vcscope <- visible_cscope
+  if ident `M.member` vcscope   -- if it is statically scoped to a field (pointing implicitly to a field) then rewrite it to a field
+   then tAwaitGuard (ABS.FieldGuard ident) _cls
+   else do
+    texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
+    return $ HS.Paren $ HS.InfixApp
              (HS.Con $ HS.UnQual $ HS.Ident "FutureGuard")
              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
              texp

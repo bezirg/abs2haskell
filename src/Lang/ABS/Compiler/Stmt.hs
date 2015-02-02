@@ -125,9 +125,17 @@ tStmt (ABS.SWhile pexp stm) = do
   return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while") texp) tblock]              
 
 tStmt (ABS.SDec typ ident@(ABS.Ident var)) = -- just rewrites it to Interface x=null, adds also to current scope
-    if isInterface typ
+    if isInterface typ 
     then tStmt (ABS.SDecAss typ ident (ABS.ExpP $ ABS.ELit $ ABS.LNull)) 
-    else error (var ++ "is ADT and has to be initialized")
+    else case typ of
+       -- fut is allowed to be uninitialized
+       ABS.TGen (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Fut")]) _ -> do
+                    addToScope ident typ
+                    return [HS.Generator HS.noLoc
+                                  (case typ of
+                                     ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                     ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
+       _ -> error (var ++ " is ADT and has to be initialized")
     -- TODO: remove the ident from the class attributes to check
 
 tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
