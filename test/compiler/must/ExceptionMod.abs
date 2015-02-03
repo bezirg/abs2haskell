@@ -11,13 +11,13 @@ try {
     x = x + 10;
    }
 catch {
-   MyException(0,False) => assert False;
-   MyException(1,False) => assert False;
+   MyException(0,False) => println(toString(False));
+   MyException(1,False) => println(toString(False));
    MyException(1,True) => {x=x+1; x = x+2;}
 }
 finally {
    x=x+1;
-   assert (x==5);
+   println(toString(x==5));
 }
 
 }

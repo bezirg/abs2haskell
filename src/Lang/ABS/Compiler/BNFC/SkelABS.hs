@@ -153,6 +153,7 @@ transStm x = case x of
   SAwait guard  -> failure x
   SThrow pureexp  -> failure x
   STryCatchFinally stm catchbranchs maybefinally  -> failure x
+  SPrint pureexp  -> failure x
 
 
 transCatchBranch :: CatchBranch -> Result

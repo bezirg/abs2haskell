@@ -8,7 +8,7 @@ import Lang.ABS.Compiler.Utils
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
-import Control.Monad.Trans.State (evalState, withState, put, get)
+import Control.Monad.Trans.State (evalState, withState, put, get, modify)
 import Control.Monad.Trans.Reader (runReaderT, mapReaderT, ask)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (ap)
@@ -39,7 +39,8 @@ tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (
 tBlock :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> Bool -> StmtM HS.Exp
 tBlock [] _canReturn = return $ eReturnUnit
 tBlock stmts canReturn = do
-  ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn
+  ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
+  lift $ modify tail     -- remove the added scope level, after executing
   return $ HS.Do $ ts  ++
                          -- if the last stmt is a dec or assignment, then add a return (R ())
                          -- 
@@ -117,6 +118,11 @@ tStmt (ABS.SAssert pexp) = do
   return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "assert") 
                           texp)]
 
+tStmt (ABS.SPrint pexp) = do
+  texp <- tPureExpStmt pexp
+  return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "println") 
+                          texp)]
+
 tStmt (ABS.SWhile pexp stm) = do
   texp <- tPureExpStmt pexp
   tblock <- tBlock (case stm of
@@ -173,9 +179,8 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
       Nothing -> 
         case M.lookup ident cscope of -- maybe it is in the class scope
           Just _t -> tStmt (ABS.SFieldAss ident exp) -- then normalize it to a field ass
-          Nothing -> error (var ++ " not in scope")
+          Nothing -> error (var ++ "not in scope or cannot modify the variable")
                                                                              
-
 tStmt (ABS.SFieldAss ident@(ABS.Ident var) exp) = do
   (_, _, _, cls,_) <- ask
   texp <- case exp of

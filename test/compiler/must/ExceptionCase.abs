@@ -24,10 +24,10 @@ def Mplo<Int,Bool> h(Int i) = Mplo(i, Exception1(i+1));
 {
  Bool b1 = f(Exception1(1));
  Bool b2 = f(Exception2(False, 2));
- assert (b1 == True);
- assert (b2 == False);
+ println(toString(b1 == True));
+ println(toString(b2 == False));
  Bool b3 = g();
- assert (b3 == True);
+ println(toString(b3 == True));
  Mplo<Int,Bool> j  = h(4);
- assert (j == Mplo(4, Exception1(5)));
+ println(toString(j == Mplo(4, Exception1(5))));
 }

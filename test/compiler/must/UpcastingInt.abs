@@ -3,5 +3,5 @@ module UpcastingInt;
 {
   Int i = 3/4;
   Rat x = i;
-  assert (x == 0);
+  println(toString(x == 0));
 }

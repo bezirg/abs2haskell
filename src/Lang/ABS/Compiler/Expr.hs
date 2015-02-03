@@ -69,7 +69,9 @@ tPureExp (ABS.Case matchE branches) tyvars = do
   where
     tCaseException tmatch brs = do
       talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
-             texp <- tPureExp pexp tyvars
+             let new_vars = collectPatVars pat
+             texp <- local (\ (fscope, interf) -> 
+                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, interf)) (tPureExp pexp tyvars)
              return $ HS.App (HS.Con (identI "PHandler"))
                     -- TODO: if hse support lambdacase, it will lead to cleaner code
                     (HS.Lambda  HS.noLoc (case pat of

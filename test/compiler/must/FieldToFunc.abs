@@ -6,7 +6,7 @@ class C {
   Int x = 0;
   {
   	Int y = inc(this.x);
-  	assert (y==1);
+  	println(toString(y==1));
   }
 }
 

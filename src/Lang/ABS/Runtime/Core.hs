@@ -5,7 +5,6 @@ module Lang.ABS.Runtime.Core
 
 import Lang.ABS.Runtime.Base
 import Data.List (foldl')
-import Control.Monad (when)
 import Control.Concurrent (ThreadId, myThreadId, forkIO)
 import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
@@ -15,6 +14,8 @@ import qualified Control.Monad.Trans.RWS as RWS (runRWST, modify)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
 import System.Exit (exitSuccess)
+import Control.Exception (throw)
+import Control.Monad.Catch (catchAll)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -41,8 +42,9 @@ spawnCOG c = forkIO $ do        -- each COG is a lightweight Haskell thread
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
           RunJob obj fut@(FutureRef mvar (fcog, ftid) _) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
-                  p <- resume coroutine
-                  case p of
+              -- the cog catches any exception and lazily records it into the future-box (mvar)
+              p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
+              case p of
                     -- the job of the callee finished, send a wakeup signal to remote cog that "nourishes" the sleeping caller-process
                     Right fin -> do
                            lift $ putMVar mvar fin
@@ -99,7 +101,7 @@ main_is mainABS = do
            loop c tid sleepingOnFut'' sleepingOnAttr counter
          RunJob obj fut coroutine -> do
            (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
-              p <- resume coroutine
+              p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
               case p of
                 Right fin -> case fut of
                               (FutureRef mvar (fcog, ftid) _) -> do

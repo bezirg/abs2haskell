@@ -50,10 +50,10 @@ Int res2 = f2.get;
 Int res3 = f3.get;
 Int res4 = f4.get;
 
-assert res1 == 500500000;
-assert res2 == 500500000;
-assert res3 == 500500000;
-assert res4 == 500500000;
+println(toString(res1 == 500500000));
+println(toString(res2 == 500500000));
+println(toString(res3 == 500500000));
+println(toString(res4 == 500500000));
 
 }
 

@@ -1,0 +1,15 @@
+module MultiScope;
+
+
+{
+
+ {
+     Int x = 1;
+     x = x+1;
+ }
+ {  
+     Bool x= True;
+     x = False;
+ }
+
+}

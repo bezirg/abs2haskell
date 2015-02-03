@@ -19,7 +19,9 @@ module Lang.ABS.StdLib.Prelude
      -- other
      assert, null,
      -- using a lot of applicative-style for lifted expressions to OO-ABS
-     pure, (<$>), (<*>), (Prelude.>>=), (Prelude.=<<)
+     pure, (<$>), (<*>), (Prelude.>>=), (Prelude.=<<),
+     -- stdout
+     println, toString
     )
         where
 
@@ -34,6 +36,7 @@ import Data.Maybe (fromJust)
 import qualified Data.Array.Unboxed as UArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
+import Control.Monad.IO.Class (liftIO)
 
 class IntOrRational a where
     (/) :: a -> a -> a
@@ -95,3 +98,9 @@ null = NullRef
 -- Dummy for list n-ary constructors
 list :: [a] -> [a]
 list = Prelude.id
+
+println :: (Object__ o) => ABS o Prelude.String -> ABS o ()
+println act = act Prelude.>>= \ s -> liftIO (Prelude.putStr s)
+
+toString :: (Prelude.Show a) => a -> Prelude.String
+toString = Prelude.show

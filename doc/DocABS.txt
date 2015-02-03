@@ -41,10 +41,10 @@ The reserved words used in ABS are the following:
   | ``fimport`` | ``finally`` | ``from`` | ``get``
   | ``if`` | ``implements`` | ``import`` | ``in``
   | ``interface`` | ``let`` | ``local`` | ``module``
-  | ``new`` | ``null`` | ``return`` | ``skip``
-  | ``spawns`` | ``suspend`` | ``then`` | ``this``
-  | ``thisDC`` | ``throw`` | ``try`` | ``type``
-  | ``while`` |  |  | 
+  | ``new`` | ``null`` | ``println`` | ``return``
+  | ``skip`` | ``spawns`` | ``suspend`` | ``then``
+  | ``this`` | ``thisDC`` | ``throw`` | ``try``
+  | ``type`` | ``while`` |  | 
 
 The symbols used in ABS are the following:
   | , | ; | * | .
@@ -157,6 +157,7 @@ All other symbols are terminals.
   |  |  **|**  | ``await`` //Guard// ``;`` 
   |  |  **|**  | ``throw`` //PureExp// ``;`` 
   |  |  **|**  | ``try`` //Stm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
+  |  |  **|**  | ``println`` //PureExp// ``;`` 
   | //CatchBranch// | -> | //Pattern// ``=>`` //Stm// 
   | //[CatchBranch]// | -> | **eps**
   |  |  **|**  | //CatchBranch// //[CatchBranch]// 

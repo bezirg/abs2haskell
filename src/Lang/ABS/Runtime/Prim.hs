@@ -19,7 +19,7 @@ import Control.Concurrent.MVar (isEmptyMVar, readMVar)
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
 import qualified Control.Monad.Catch
-import qualified Control.Exception (fromException)
+import qualified Control.Exception (fromException, evaluate)
 
 thisCOG :: (Object__ o) => ABS o COG
 thisCOG = do
@@ -64,8 +64,8 @@ while predAction loopAction = do
   when res (loopAction >> while predAction loopAction)
 
 get :: (Object__ o) => Fut f -> ABS o f
-get a = (\ (FutureRef mvar _ _) -> liftIO $ readMVar mvar) a
-
+get (FutureRef mvar _ _) = liftIO $ Control.Exception.evaluate =<< readMVar mvar 
+-- forces the reading of the future-box to whnf, so when the future-box is opened (through get) then the remote future exception will be raised
 
 -- for using inside ABS monad
 ifthenM :: Monad m => m Bool -> m () -> m ()

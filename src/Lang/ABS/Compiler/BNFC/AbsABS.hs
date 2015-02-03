@@ -124,6 +124,7 @@ data Stm =
  | SAwait Guard
  | SThrow PureExp
  | STryCatchFinally Stm [CatchBranch] MaybeFinally
+ | SPrint PureExp
   deriving (Eq,Ord,Show,Read)
 
 data CatchBranch =

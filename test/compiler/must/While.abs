@@ -8,6 +8,6 @@ module While;
      j = j+1;
      k = k + 1;
  }
- assert (j == 11);
- assert (k == 8);
+println(toString(j == 11));
+println(toString(k == 8));
 }

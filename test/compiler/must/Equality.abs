@@ -23,15 +23,20 @@ class C2 implements I2 {
 }
 
 {
-  assert (3==3);
+  println(toString(3==3));
   Int x = 4;
   Int y = x;
-  assert (x==y);
+  println(toString(x==y));
   // different classes
   I2 o1 = new C1();
   I2 o2 = new C2();
-  assert (o1!=o2);
+  println(toString(o1!=o2));
   // // same object, different interfaces
   I1 o3 = o2;
-  assert (o2 == o3);
+  println(toString(o2 == o3));
+
+  // shallow equality
+  I1 o4 = new C1();
+  I1 o5 = new C1();
+  println(toString(o4 != o5));
 }

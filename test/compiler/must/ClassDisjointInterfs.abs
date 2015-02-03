@@ -22,5 +22,5 @@ class C implements I2,I1 {
 {
  I1 o1 = new C();
  o1 ! m1();
- assert (o1 != null);
+ println(toString(o1 != null));
 }

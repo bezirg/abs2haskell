@@ -1,0 +1,28 @@
+module CatchClauseBugInOtherBackends;
+
+exception MyException(String);
+
+interface Test {
+    Int calculate();
+}
+
+class CTest implements Test {
+    Int calculate() {
+        throw MyException("Hi there!");
+        return 5;
+    }
+}
+
+{
+    Test t = new CTest();
+    String result = "";
+    Fut<Int> fi = t!calculate();
+    await fi?;
+    try {
+        Int i = fi.get;
+    } catch {
+        MyException(s) => {result = s; 
+                           println(toString(s == result));}
+    }
+}
+

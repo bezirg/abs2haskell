@@ -21,9 +21,9 @@ class Class1(Int p1, Int p2, Int p3) implements Interf1 {
     Fut<Int> f1 = o1 ! method1(3,4);
     await f1?;
     Int res1 = f1.get;
-    assert (res1 == 7);
+    println(toString(res1 == 7));
     Fut<Int> f2 = o2 ! method1(4,5);
     await f2?;
     Int res2 = f2.get;
-    assert (res2 == 9);
+    println(toString(res2 == 9));
 }

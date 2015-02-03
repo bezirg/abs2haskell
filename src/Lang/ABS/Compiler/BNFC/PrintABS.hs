@@ -265,6 +265,7 @@ instance Print Stm where
    SAwait guard -> prPrec i 0 (concatD [doc (showString "await") , prt 0 guard , doc (showString ";")])
    SThrow pureexp -> prPrec i 0 (concatD [doc (showString "throw") , prt 0 pureexp , doc (showString ";")])
    STryCatchFinally stm catchbranchs maybefinally -> prPrec i 0 (concatD [doc (showString "try") , prt 0 stm , doc (showString "catch") , doc (showString "{") , prt 0 catchbranchs , doc (showString "}") , prt 0 maybefinally])
+   SPrint pureexp -> prPrec i 0 (concatD [doc (showString "println") , prt 0 pureexp , doc (showString ";")])
 
   prtList es = case es of
    [] -> (concatD [])

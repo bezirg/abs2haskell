@@ -36,14 +36,14 @@ class Class1(Int p1, Int p2, Int x) implements Interf2 {
 
     Fut<Bool> f = o1 ! check();
     Bool c = f.get;
-    assert c;
+    println(toString(c));
 
 	o1 ! inc(1);
     o1 ! dec_one();
 
     f = o1 ! check();
     c = f.get;
-    assert c;
+    println(toString(c));
 
     o1 ! inc(1);
     o1 ! dec(5);
@@ -51,5 +51,5 @@ class Class1(Int p1, Int p2, Int x) implements Interf2 {
     f = o1 ! check();
     c = f.get;
     
-    assert not(c);
+    println(toString(not(c)));
 }

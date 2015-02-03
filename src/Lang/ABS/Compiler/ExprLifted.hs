@@ -11,7 +11,7 @@ import Lang.ABS.Compiler.Expr (tPattern, joinSub, tType, tTypeOrTyVar)
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
-import Control.Monad.Trans.Reader (ask, local, runReader)
+import Control.Monad.Trans.Reader (ask, runReader)
 import Data.List (nub, findIndices)
 import qualified Data.Map as M
 import Data.Foldable (foldlM)
@@ -93,8 +93,9 @@ tPureExp' (ABS.If predE thenE elseE) tyvars = do
 
 -- | translate it into a lambda exp
 tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.Ident var)) eqE inE) tyvars = do
-  tin <- local (\ (fscope, cscope,mscope,interf,isInit) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
-                                            cscope,mscope,interf,isInit)) $ 
+  tin <- -- local (\ (fscope, cscope,mscope,interf,isInit) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
+        --                                     cscope,mscope,interf,isInit)) $ 
+        -- turned off, let to haskell the pure scoping
         tPureExp' inE tyvars
   teq <- tPureExp' eqE tyvars
   let pat = HS.PVar $ HS.Ident var
@@ -118,10 +119,7 @@ tPureExp' (ABS.Case matchE branches) tyvars = do
     ABS.EParamConstr (ABS.QType [ABS.QTypeSegment tid]) _ | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
     _ -> do
         talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
-                        let new_vars = collectPatVars pat
-                        texp <- local (\ (fscope, cscope, mscope, interf,isInit) -> 
-                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, cscope, mscope, interf,isInit)) -- TODO: tunderscore acts as a placeholder since the types of the new vars in the matchE are not taken into account
-                                                                              (tPureExp' pexp tyvars)
+                        texp <- tPureExp' pexp tyvars
                         return $ HS.Alt HS.noLoc (tPattern pat) (HS.UnGuardedAlt texp) (HS.BDecls []))
                 branches
         return $ HS.Case tmatch talts
@@ -188,7 +186,7 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.Ident st
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
              else error "cannot equate datatype to null"
-    Nothing -> error $ str ++ " not in scope"
+    Nothing -> error $ str ++ "not in scope or not object variable"
 
 tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.Ident str))) _tyvars = do
   tthis <- tPureExp' pthis _tyvars
@@ -201,8 +199,8 @@ tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.Ident st
                                               (HS.ExpTypeSig HS.noLoc tthis (wrapTypeToABSMonad (tType t))))
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
-             else error "cannot equate datatype to null"
-    Nothing -> error $ str ++ " not in scope"
+             else error "cannot equate datatype to this"
+    Nothing -> error $ str ++ " not in scope or not object variable"
   
 -- commutative
 tPureExp' (ABS.EEq pexp pnull@(ABS.ELit (ABS.LNull))) _tyvars = tPureExp' (ABS.EEq pnull pexp) _tyvars
@@ -231,8 +229,18 @@ tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.Ident str1)) pvar2@(ABS.EVar iden
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
-                Nothing -> error $ str2 ++ " not in scope"
-    Nothing -> error $ str1 ++ " not in scope"
+                Nothing -> return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
+                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                           tvar1)
+                                          (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
+                                          tvar2
+                          -- error $ str2 ++ " not in scope" -- todo: turn it into warning
+    Nothing -> return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
+                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                           tvar1)
+                                          (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
+                                          tvar2
+              -- error $ str1 ++ " not in scope" -- todo: turn it into warning
 
 -- tPureExp' (ABS.EEq pfun1@(ABS.EFunCall _ _) pfun2@(ABS.EFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
 -- tPureExp' (ABS.EEq pfun1@(ABS.ENaryFunCall _ _) pfun2@(ABS.ENaryFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
@@ -473,7 +481,7 @@ tPureExp' (ABS.EVar var@(ABS.Ident pid)) _tyvars = do
                                   then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
                                   else id)
                                  (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
-                        Nothing -> error $ pid ++ " not in scope" -- return $ HS.Var $ HS.UnQual $ HS.Ident pid -- TODO: this should be turned into warning
+                        Nothing -> HS.Var $ HS.UnQual $ HS.Ident pid -- error $ pid ++ " not in scope" -- TODO: this should be turned into warning
         -- if it of an int type, upcast it
       Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) -> HS.InfixApp (HS.Var $ identI "fromIntegral") 
                                                                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") 

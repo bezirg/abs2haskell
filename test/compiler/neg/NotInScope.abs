@@ -1,0 +1,9 @@
+module NotInScope;
+
+{
+ {
+  String s = "mplo";
+ }
+ s = "mpli";
+
+}

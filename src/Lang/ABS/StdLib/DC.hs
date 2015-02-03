@@ -21,7 +21,7 @@ import Control.Distributed.Process (NodeId (..), ProcessId (..))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Environment (getArgs)
 import Data.Binary (encode)
-import Data.ByteString.Lazy.UTF8 (toString)
+import qualified Data.ByteString.Lazy.UTF8 as U (toString)
 import Data.List (words)
 import Prelude (readFile, toRational, read, Double)
 import Data.Maybe (fromJust)
@@ -32,7 +32,7 @@ myVmId = fromJust (extractVmId templ)
 
 slaveTemplateWithContext :: ProcessId -> Int -> Int -> String
 slaveTemplateWithContext myPid new_cpu new_memory = showPlain (toPlain (fromJust 
-                                                                        (contextualize (toString (encode myPid)) new_cpu new_memory =<< inheritXmlTemplate templ)))
+                                                                        (contextualize (U.toString (encode myPid)) new_cpu new_memory =<< inheritXmlTemplate templ)))
 
 class (Object__ a) => IDC_ a where
         shutdown :: IDC -> ABS a ()

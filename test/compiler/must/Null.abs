@@ -30,11 +30,11 @@ interface K {}
     I o1 = null;
     H o2 = null;
     Bool x = o1 == o2;
-    assert x;
+    println(toString(x));
     K o3 = null;
     // Bool z = o1 == o3; should not work bcs type(o1) incomparable to type(o3)
     I i = null;
     if (i == null) i = null;
-	assert (i == null);
-	assert (null == null);
+	println(toString(i == null));
+	println(toString(null == null));
 }

@@ -18,8 +18,8 @@ exception Exception2(Int, List<Bool>);
       throw e1;
   }
   catch {
-      Exception1 => assert False; // catched1 = True;
-      Exception2(4,z) => assert False;
+      Exception1 => println(toString(False)); // catched1 = True;
+      Exception2(4,z) => println(toString(False));
       Exception2(x,y) => skip;
       _ => skip;
   }
@@ -30,11 +30,11 @@ exception Exception2(Int, List<Bool>);
   }
   catch {
       Exception1 => skip;
-      Exception2(x,z) => assert True; // catched2 = True;
+      Exception2(x,z) => println(toString(True)); // catched2 = True;
       _ => skip;
   }
   finally {
-      assert True;
+      println(toString(True));
   }
 
   Int x = 0;
