@@ -40,7 +40,7 @@ do
         ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -package-db ../.cabal-sandbox/x86_64-linux-ghc-7.8.3-packages.conf.d -hide-package transformers-0.4.1.0 2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
         [ $? -ne 0 ] && echo "Compile error at $file check its .stderr" && continue
         echo "${i})Running ${file%.*}"
-        ${file%.*}.out 1> /dev/null 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
+        ${file%.*}.out 1> ${file%.*}.stdout 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
         if [ $? -ne 0 ] || (cat ${file%.*}.stdout | grep -q "False");
         then echo "Runtime error at $file check its .stderr"
         fi

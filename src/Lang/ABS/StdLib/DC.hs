@@ -167,12 +167,12 @@ instance Object__ DC where
 
 set_dC_cpu :: Int -> ABS DC ()
 set_dC_cpu v
-  = do (AConf this@(ObjectRef ioref _ _) (thisChan, _)) <- lift
+  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- lift
                                                              RWS.ask
-       astate@(AState _ om) <- lift RWS.get
+       astate@(AState _ om _) <- lift RWS.get
        lift (lift (modifyIORef' ioref (\ c -> c{dC_cpu = v})))
        let (maybeWoken, om')
-             = updateLookupWithKey (\ k v -> Nothing) (AnyObject this, 0) om
+             = updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
        maybe (return ())
          (\ woken -> lift (lift (writeList2Chan thisChan woken)))
          maybeWoken
@@ -180,12 +180,12 @@ set_dC_cpu v
  
 set_dC_load :: Int -> ABS DC ()
 set_dC_load v
-  = do (AConf this@(ObjectRef ioref _ _) (thisChan, _)) <- lift
+  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- lift
                                                              RWS.ask
-       astate@(AState _ om) <- lift RWS.get
+       astate@(AState _ om _) <- lift RWS.get
        lift (lift (modifyIORef' ioref (\ c -> c{dC_load = v})))
        let (maybeWoken, om')
-             = updateLookupWithKey (\ k v -> Nothing) (AnyObject this, 1) om
+             = updateLookupWithKey (\ k v -> Nothing) (oid, 1) om
        maybe (return ())
          (\ woken -> lift (lift (writeList2Chan thisChan woken)))
          maybeWoken
@@ -193,12 +193,12 @@ set_dC_load v
  
 set_dC_memory :: Int -> ABS DC ()
 set_dC_memory v
-  = do (AConf this@(ObjectRef ioref _ _) (thisChan, _)) <- lift
+  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- lift
                                                              RWS.ask
-       astate@(AState _ om) <- lift RWS.get
+       astate@(AState _ om _) <- lift RWS.get
        lift (lift (modifyIORef' ioref (\ c -> c{dC_memory = v})))
        let (maybeWoken, om')
-             = updateLookupWithKey (\ k v -> Nothing) (AnyObject this, 2) om
+             = updateLookupWithKey (\ k v -> Nothing) (oid, 2) om
        maybe (return ())
          (\ woken -> lift (lift (writeList2Chan thisChan woken)))
          maybeWoken
@@ -206,12 +206,12 @@ set_dC_memory v
  
 set_dC_nodeId :: Maybe NodeId -> ABS DC ()
 set_dC_nodeId v
-  = do (AConf this@(ObjectRef ioref _ _) (thisChan, _)) <- lift
+  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- lift
                                                              RWS.ask
-       astate@(AState _ om) <- lift RWS.get
+       astate@(AState _ om _) <- lift RWS.get
        lift (lift (modifyIORef' ioref (\ c -> c{dC_nodeId = v})))
        let (maybeWoken, om')
-             = updateLookupWithKey (\ k v -> Nothing) (AnyObject this, 3) om
+             = updateLookupWithKey (\ k v -> Nothing) (oid, 3) om
        maybe (return ())
          (\ woken -> lift (lift (writeList2Chan thisChan woken)))
          maybeWoken
@@ -219,12 +219,12 @@ set_dC_nodeId v
  
 set_dC_vmId :: Int -> ABS DC ()
 set_dC_vmId v
-  = do (AConf this@(ObjectRef ioref _ _) (thisChan, _)) <- lift
+  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- lift
                                                              RWS.ask
-       astate@(AState _ om) <- lift RWS.get
+       astate@(AState _ om _) <- lift RWS.get
        lift (lift (modifyIORef' ioref (\ c -> c{dC_vmId = v})))
        let (maybeWoken, om')
-             = updateLookupWithKey (\ k v -> Nothing) (AnyObject this, 4) om
+             = updateLookupWithKey (\ k v -> Nothing) (oid, 4) om
        maybe (return ())
          (\ woken -> lift (lift (writeList2Chan thisChan woken)))
          maybeWoken

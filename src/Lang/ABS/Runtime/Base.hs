@@ -75,7 +75,8 @@ data AConf o = AConf {
     }
 data AState = AState {
       aCounter :: Int,           -- generate (unique-per-COG) ascending counters
-      aSleepingO :: ObjectMap
+      aSleepingO :: ObjectMap,
+      aSleepingF :: FutureMap
     }
 
 -- the input to the await
@@ -105,7 +106,7 @@ data Job = forall o a . Object__ o => RunJob (ObjectRef o) (Fut a) (ABS o a)
 
 type FutureMap = M.Map AnyFuture [Job] -- future => jobs
 
-type ObjectMap = M.Map (AnyObject, Int) [Job] -- object.field => jobs
+type ObjectMap = M.Map (Int, Int) [Job] -- object-id.field => jobs
 
 -- Existential wrappers to have different futures and objects inside the same map 
 data AnyFuture = forall a. AnyFuture (Fut a)
@@ -128,10 +129,6 @@ instance Eq AnyObject where
 -- code generation alias for object-reference equality
 __eqAnyObject :: AnyObject -> AnyObject -> Bool
 __eqAnyObject = (==)
-
--- this is for ordering inside the cog
-instance Ord AnyObject where
-    compare (AnyObject (ObjectRef _ _ id1)) (AnyObject (ObjectRef _ _ id2)) = compare id1 id2
 
 
 -- builtin exceptions
