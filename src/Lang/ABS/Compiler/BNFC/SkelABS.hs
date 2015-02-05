@@ -32,22 +32,22 @@ transProgram x = case x of
 
 transModule :: Module -> Result
 transModule x = case x of
-  Modul qualtype exports imports decls maybeblock  -> failure x
+  Modul qtype exports imports decls maybeblock  -> failure x
 
 
 transExport :: Export -> Result
 transExport x = case x of
   AnyExport anyidents  -> failure x
-  AnyFromExport anyidents qualtype  -> failure x
+  AnyFromExport anyidents qtype  -> failure x
   StarExport  -> failure x
-  StarFromExport qualtype  -> failure x
+  StarFromExport qtype  -> failure x
 
 
 transImport :: Import -> Result
 transImport x = case x of
-  AnyImport importtype qualtype anyident  -> failure x
-  AnyFromImport importtype anyidents qualtype  -> failure x
-  StarFromImport importtype qualtype  -> failure x
+  AnyImport importtype ttype anyident  -> failure x
+  AnyFromImport importtype anyidents qtype  -> failure x
+  StarFromImport importtype qtype  -> failure x
 
 
 transImportType :: ImportType -> Result
@@ -59,18 +59,28 @@ transImportType x = case x of
 transType :: Type -> Result
 transType x = case x of
   TUnderscore  -> failure x
-  TSimple qualtype  -> failure x
-  TGen qualtype types  -> failure x
+  TSimple qtype  -> failure x
+  TGen qtype types  -> failure x
 
 
-transQualType :: QualType -> Result
-transQualType x = case x of
-  QType qualtypesegments  -> failure x
+transQType :: QType -> Result
+transQType x = case x of
+  QTyp qtypesegments  -> failure x
 
 
-transQualTypeSegment :: QualTypeSegment -> Result
-transQualTypeSegment x = case x of
-  QTypeSegment typeident  -> failure x
+transQTypeSegment :: QTypeSegment -> Result
+transQTypeSegment x = case x of
+  QTypeSegmen typeident  -> failure x
+
+
+transTType :: TType -> Result
+transTType x = case x of
+  TTyp ttypesegments  -> failure x
+
+
+transTTypeSegment :: TTypeSegment -> Result
+transTTypeSegment x = case x of
+  TTypeSegmen typeident  -> failure x
 
 
 transDecl :: Decl -> Result
@@ -82,11 +92,11 @@ transDecl x = case x of
   FunDecl type' id params funbody  -> failure x
   FunParDecl type' id typeidents params funbody  -> failure x
   InterfDecl typeident methsignats  -> failure x
-  ExtendsDecl typeident qualtypes methsignats  -> failure x
+  ExtendsDecl typeident qtypes methsignats  -> failure x
   ClassDecl typeident classbodys1 maybeblock2 classbodys3  -> failure x
   ClassParamDecl typeident params classbodys1 maybeblock2 classbodys3  -> failure x
-  ClassImplements typeident qualtypes classbodys1 maybeblock2 classbodys3  -> failure x
-  ClassParamImplements typeident params qualtypes classbodys1 maybeblock2 classbodys3  -> failure x
+  ClassImplements typeident qtypes classbodys1 maybeblock2 classbodys3  -> failure x
+  ClassParamImplements typeident params qtypes classbodys1 maybeblock2 classbodys3  -> failure x
 
 
 transConstrIdent :: ConstrIdent -> Result
@@ -199,14 +209,14 @@ transPureExp x = case x of
   ELogNeg pureexp  -> failure x
   EIntNeg pureexp  -> failure x
   EFunCall id pureexps  -> failure x
-  EQualFunCall qualtype id pureexps  -> failure x
+  EQualFunCall ttype id pureexps  -> failure x
   ENaryFunCall id pureexps  -> failure x
-  ENaryQualFunCall qualtype id pureexps  -> failure x
+  ENaryQualFunCall ttype id pureexps  -> failure x
   EVar id  -> failure x
   EThis id  -> failure x
-  EQualVar qualtype id  -> failure x
-  ESinglConstr qualtype  -> failure x
-  EParamConstr qualtype pureexps  -> failure x
+  EQualVar ttype id  -> failure x
+  ESinglConstr qtype  -> failure x
+  EParamConstr qtype pureexps  -> failure x
   ELit literal  -> failure x
   Let param pureexp1 pureexp2  -> failure x
   If pureexp1 pureexp2 pureexp3  -> failure x
@@ -246,6 +256,21 @@ transEffExp x = case x of
   ThisAsyncMethCall id pureexps  -> failure x
   Get pureexp  -> failure x
   Spawns pureexp type' pureexps  -> failure x
+
+
+transAnn :: Ann -> Result
+transAnn x = case x of
+  SimpleAnn pureexp  -> failure x
+
+
+transAnnDecl :: AnnDecl -> Result
+transAnnDecl x = case x of
+  AnnDecl anns decl  -> failure x
+
+
+transAnnType :: AnnType -> Result
+transAnnType x = case x of
+  AnnType anns type'  -> failure x
 
 
 

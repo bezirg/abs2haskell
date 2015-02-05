@@ -1,7 +1,7 @@
 {-# LANGUAGE ImplicitParams #-}
 module Lang.ABS.Compiler.Utils
-    (tModuleName
-    ,joinQualTypeIds
+    (joinQualTypeIds
+    ,joinTTypeIds
     ,identI
     ,symbolI
     ,headToLower
@@ -26,11 +26,11 @@ import Control.Monad.Trans.Class (lift)
 
 -- generate haskell code - helper functions
 
-tModuleName :: ABS.QualType -> HS.ModuleName
-tModuleName (ABS.QType qtis) = HS.ModuleName $ joinQualTypeIds qtis
+joinQualTypeIds :: [ABS.QTypeSegment] -> String
+joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegmen (ABS.TypeIdent str)) -> str) qtids
 
-joinQualTypeIds :: [ABS.QualTypeSegment] -> String
-joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegment (ABS.TypeIdent str)) -> str) qtids
+joinTTypeIds :: [ABS.TTypeSegment] -> String
+joinTTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.TTypeSegmen (ABS.TypeIdent str)) -> str) qtids
 
 
 -- | create Include-qualified Haskell *identifiers* for the generated stub code to *not clash* with ABS user-written code
@@ -107,7 +107,7 @@ typOfConstrType (ABS.RecordConstrType typ _) = typ
 -- state queries
 
 isInterface :: (?moduleTable :: ModuleTable) => ABS.Type -> Bool
-isInterface (ABS.TSimple (ABS.QType [ABS.QTypeSegment iid])) =  iid `M.member` (M.unions (map methods ?moduleTable))
+isInterface (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen iid])) =  iid `M.member` (M.unions (map methods ?moduleTable))
 isInterface _ = False
 
 -- helpers

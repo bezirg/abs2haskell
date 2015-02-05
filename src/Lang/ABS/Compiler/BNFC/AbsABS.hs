@@ -19,20 +19,20 @@ data Program =
   deriving (Eq,Ord,Show,Read)
 
 data Module =
-   Modul QualType [Export] [Import] [Decl] MaybeBlock
+   Modul QType [Export] [Import] [Decl] MaybeBlock
   deriving (Eq,Ord,Show,Read)
 
 data Export =
    AnyExport [AnyIdent]
- | AnyFromExport [AnyIdent] QualType
+ | AnyFromExport [AnyIdent] QType
  | StarExport
- | StarFromExport QualType
+ | StarFromExport QType
   deriving (Eq,Ord,Show,Read)
 
 data Import =
-   AnyImport ImportType QualType AnyIdent
- | AnyFromImport ImportType [AnyIdent] QualType
- | StarFromImport ImportType QualType
+   AnyImport ImportType TType AnyIdent
+ | AnyFromImport ImportType [AnyIdent] QType
+ | StarFromImport ImportType QType
   deriving (Eq,Ord,Show,Read)
 
 data ImportType =
@@ -42,16 +42,24 @@ data ImportType =
 
 data Type =
    TUnderscore
- | TSimple QualType
- | TGen QualType [Type]
+ | TSimple QType
+ | TGen QType [Type]
   deriving (Eq,Ord,Show,Read)
 
-data QualType =
-   QType [QualTypeSegment]
+data QType =
+   QTyp [QTypeSegment]
   deriving (Eq,Ord,Show,Read)
 
-data QualTypeSegment =
-   QTypeSegment TypeIdent
+data QTypeSegment =
+   QTypeSegmen TypeIdent
+  deriving (Eq,Ord,Show,Read)
+
+data TType =
+   TTyp [TTypeSegment]
+  deriving (Eq,Ord,Show,Read)
+
+data TTypeSegment =
+   TTypeSegmen TypeIdent
   deriving (Eq,Ord,Show,Read)
 
 data Decl =
@@ -62,11 +70,11 @@ data Decl =
  | FunDecl Type Ident [Param] FunBody
  | FunParDecl Type Ident [TypeIdent] [Param] FunBody
  | InterfDecl TypeIdent [MethSignat]
- | ExtendsDecl TypeIdent [QualType] [MethSignat]
+ | ExtendsDecl TypeIdent [QType] [MethSignat]
  | ClassDecl TypeIdent [ClassBody] MaybeBlock [ClassBody]
  | ClassParamDecl TypeIdent [Param] [ClassBody] MaybeBlock [ClassBody]
- | ClassImplements TypeIdent [QualType] [ClassBody] MaybeBlock [ClassBody]
- | ClassParamImplements TypeIdent [Param] [QualType] [ClassBody] MaybeBlock [ClassBody]
+ | ClassImplements TypeIdent [QType] [ClassBody] MaybeBlock [ClassBody]
+ | ClassParamImplements TypeIdent [Param] [QType] [ClassBody] MaybeBlock [ClassBody]
   deriving (Eq,Ord,Show,Read)
 
 data ConstrIdent =
@@ -165,14 +173,14 @@ data PureExp =
  | ELogNeg PureExp
  | EIntNeg PureExp
  | EFunCall Ident [PureExp]
- | EQualFunCall QualType Ident [PureExp]
+ | EQualFunCall TType Ident [PureExp]
  | ENaryFunCall Ident [PureExp]
- | ENaryQualFunCall QualType Ident [PureExp]
+ | ENaryQualFunCall TType Ident [PureExp]
  | EVar Ident
  | EThis Ident
- | EQualVar QualType Ident
- | ESinglConstr QualType
- | EParamConstr QualType [PureExp]
+ | EQualVar TType Ident
+ | ESinglConstr QType
+ | EParamConstr QType [PureExp]
  | ELit Literal
  | Let Param PureExp PureExp
  | If PureExp PureExp PureExp
@@ -208,5 +216,17 @@ data EffExp =
  | ThisAsyncMethCall Ident [PureExp]
  | Get PureExp
  | Spawns PureExp Type [PureExp]
+  deriving (Eq,Ord,Show,Read)
+
+data Ann =
+   SimpleAnn PureExp
+  deriving (Eq,Ord,Show,Read)
+
+data AnnDecl =
+   AnnDecl [Ann] Decl
+  deriving (Eq,Ord,Show,Read)
+
+data AnnType =
+   AnnType [Ann] Type
   deriving (Eq,Ord,Show,Read)
 

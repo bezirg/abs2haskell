@@ -17,12 +17,15 @@ import Control.Monad (liftM)
 import Control.Monad.Trans.Reader (runReader)
 
 -- | Takes the name of the ABS source file and its parsed AST
--- Returns the haskell AST
-tProg :: (?moduleTable::ModuleTable) => FilePath -> ABS.Program -> HS.Module
-tProg fp (ABS.Prog [ABS.Modul moduleName exports imports decls maybeMain]) = 
-               HS.Module HS.noLoc (if (fp == main_is conf)
-                                then HS.ModuleName "Main"
-                                else tModuleName moduleName) 
+-- Returns  a list of haskell ASTs, because 1 ABS program AST may correspond to more than 1 haskell module files/asts
+tProg :: (?moduleTable::ModuleTable) => ABS.Program -> [HS.Module]
+tProg (ABS.Prog moduls) = map tModul moduls
+
+tModul :: (?moduleTable::ModuleTable) => ABS.Module -> HS.Module
+tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let strModuleName = joinQualTypeIds qsegs in
+               HS.Module HS.noLoc (HS.ModuleName $ if (strModuleName == main_is conf)
+                                                   then "Main"
+                                                   else strModuleName) 
                      [HS.LanguagePragma HS.noLoc [HS.Ident "Rank2Types"
                                               ,HS.Ident "NoImplicitPrelude" -- for not importing haskell's prelude
                                               ,HS.Ident "FlexibleInstances" -- for subtype null to any interface
@@ -34,9 +37,11 @@ tProg fp (ABS.Prog [ABS.Modul moduleName exports imports decls maybeMain]) =
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
                      ] 
                      Nothing 
-                     Nothing 
+                     (if (strModuleName == main_is conf) -- if it is the main module, it has to export main at least
+                      then Nothing                      -- this exports everything
+                      else Just $ concatMap (tExport mname) exports)
                      -- IMPORT HEADER for the generated haskell module
-                     [HS.ImportDecl {HS.importLoc = HS.noLoc, 
+                     ([HS.ImportDecl {HS.importLoc = HS.noLoc, 
                                      HS.importModule = HS.ModuleName "Lang.ABS.Runtime", 
                                      HS.importSrc = False, 
                                      HS.importQualified = False,
@@ -60,8 +65,28 @@ tProg fp (ABS.Prog [ABS.Modul moduleName exports imports decls maybeMain]) =
                                      HS.importAs = Nothing,
                                      HS.importSpecs = Nothing
                                     } 
-                     ] (tDecls decls ++ tMain maybeMain)
+                     ]
+                      ++        -- the translated ABS imports
+                      map tImport imports
+                     ) (tDecls decls ++ tMain maybeMain)
 
+
+tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
+tExport (ABS.QTyp qsegs) ABS.StarExport = [HS.EModuleContents (HS.ModuleName $ joinQualTypeIds qsegs)]
+tExport _ (ABS.StarFromExport (ABS.QTyp qsegs)) = [HS.EModuleContents (HS.ModuleName $ joinQualTypeIds qsegs)]
+tExport _ (ABS.AnyExport es) = map tExport' es
+    where tExport' (ABS.AnyIden (ABS.Ident ident)) = HS.EVar (HS.UnQual $ HS.Ident ident)
+          tExport' (ABS.AnyTyIden (ABS.TypeIdent ident)) = HS.EThingAll (HS.UnQual $ HS.Ident ident) -- here we wrongly export all its constructors, but it better fits ABS, since ABS module-system cannot distinquish between type constructors and data constructors and exports both if the names are the same, e.g.:  data A = A;
+tExport _ _ = error "we cannot translate that export yet, bcs ABS' module-system has problems"
+
+tImport :: (?moduleTable::ModuleTable) => ABS.Import -> HS.ImportDecl
+tImport (ABS.StarFromImport _ityp (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing Nothing
+tImport (ABS.AnyImport _ityp (ABS.TTyp qsegs) aid) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinTTypeIds qsegs)) True False Nothing Nothing (Just (False, [tImport' aid]))
+tImport (ABS.AnyFromImport _ityp aids (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing (Just (False, map tImport' aids))
+
+tImport' :: ABS.AnyIdent -> HS.ImportSpec
+tImport' (ABS.AnyIden (ABS.Ident ident)) = HS.IVar $ HS.Ident ident
+tImport' (ABS.AnyTyIden (ABS.TypeIdent ident)) = HS.IThingAll $ HS.Ident ident -- compromise since ABS cannot distinguish type constructors to data constructors
 
 
 -- | Creates the mainABS wrapper i.e. main = main_is mainABS
@@ -126,8 +151,8 @@ tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) = let
                              ABS.ParamConstrIdent (ABS.TypeIdent _) args -> 
                                  "Exception" `elem` (map
                                                      (\case
-                                                      ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent x)])) -> x
-                                                      ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent x)])) _ -> x
+                                                      ABS.EmptyConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent x)])) -> x
+                                                      ABS.RecordConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent x)])) _ -> x
                                                       _ -> "") args)) constrs
            pConstr constr = HS.UnQual $ HS.Ident $ case constr of
                                                      ABS.SinglConstrIdent (ABS.TypeIdent tid) -> tid
@@ -139,9 +164,9 @@ tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) = let
                                   ABS.ParamConstrIdent (ABS.TypeIdent tid) args -> 
                                       snd (mapAccumL (\ acc arg -> (acc+1,
                                                      case arg of
-                                                       ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")]))  -> 
+                                                       ABS.EmptyConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Exception")]))  -> 
                                                            HS.PApp (identI "SomeException") [HS.PVar $ HS.Ident $ prefix ++ show acc]
-                                                       ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) _ -> 
+                                                       ABS.RecordConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Exception")])) _ -> 
                                                            HS.PApp (identI "SomeException") [HS.PVar $ HS.Ident $ prefix ++ show acc]
                                                        _ -> HS.PVar $ HS.Ident $ prefix ++ show acc
                                                              )) 1 args)
@@ -166,11 +191,11 @@ tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) = let
                                                        snd (foldl (\ (c,exp) arg -> (c+1,
                                                                                           HS.InfixApp exp (HS.QVarOp $ HS.UnQual $ HS.Symbol "&&") (
                                                          case arg of
-                                                           ABS.EmptyConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")]))  -> 
+                                                           ABS.EmptyConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Exception")]))  -> 
                                                                HS.InfixApp (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__x" ++ show c))
                                                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "==")
                                                                   (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__y" ++ show c))
-                                                           ABS.RecordConstrType (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) _ -> 
+                                                           ABS.RecordConstrType (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Exception")])) _ -> 
                                                                HS.InfixApp (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__x" ++ show c ))
                                                                      (HS.QVarOp $ HS.UnQual $ HS.Symbol "==")
                                                                      (HS.App (HS.Var $ identI "show") (HS.Var $ HS.UnQual $ HS.Ident $ "__y" ++ show c))
@@ -199,11 +224,11 @@ tDecl (ABS.DataParDecl (ABS.TypeIdent tid) tyvars constrs) = let
                                                                                                                                                                                                                                                                                                                                   )
 
     -- empty interface extends automatically from Object
-tDecl (ABS.InterfDecl tid ms) = tDecl (ABS.ExtendsDecl tid [ABS.QType $ [ABS.QTypeSegment $ ABS.TypeIdent "Object_"]]  ms) 
+tDecl (ABS.InterfDecl tid ms) = tDecl (ABS.ExtendsDecl tid [ABS.QTyp $ [ABS.QTypeSegmen $ ABS.TypeIdent "Object_"]]  ms) 
 
 tDecl (ABS.ExtendsDecl (ABS.TypeIdent tname) extends ms) = HS.ClassDecl 
                                                               HS.noLoc 
-                                                              (map (\ (ABS.QType e) -> HS.ClassA (HS.UnQual $ HS.Ident $ joinQualTypeIds e ++ "_") [HS.TyVar (HS.Ident "a")]) extends)
+                                                              (map (\ (ABS.QTyp e) -> HS.ClassA (HS.UnQual $ HS.Ident $ joinQualTypeIds e ++ "_") [HS.TyVar (HS.Ident "a")]) extends)
                                                               (HS.Ident $ tname ++ "_") 
                                                               [HS.UnkindedVar (HS.Ident "a")]
                                                               [] -- no fundeps
@@ -218,7 +243,7 @@ tDecl (ABS.ExtendsDecl (ABS.TypeIdent tname) extends ms) = HS.ClassDecl
        : generateSubSelf tname
        -- for lifting null to I, essentially null is a subtype of I
        : generateSubNull tname
-       : generateSub tname (ABS.QType [ABS.QTypeSegment $ ABS.TypeIdent "AnyObject"]) -- root class
+       : generateSub tname (ABS.QTyp [ABS.QTypeSegmen $ ABS.TypeIdent "AnyObject"]) -- root class
        -- null class is an instance of any interface
        : HS.InstDecl HS.noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ HS.UnQual $ HS.Ident "Null"] 
              (map (\ (ABS.MethSig _ (ABS.Ident mid) _) -> HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mid) [] Nothing 
@@ -247,7 +272,7 @@ tDecl (ABS.ExtendsDecl (ABS.TypeIdent tname) extends ms) = HS.ClassDecl
          [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Symbol "==") [] Nothing (HS.UnGuardedRhs $ HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ tname) (HS.BDecls [])]]
        
 
-       : generateSubs tname (filter (\ (ABS.QType qids) -> qids /= [ABS.QTypeSegment $ ABS.TypeIdent "Object_"])  extends) 
+       : generateSubs tname (filter (\ (ABS.QTyp qids) -> qids /= [ABS.QTypeSegmen $ ABS.TypeIdent "Object_"])  extends) 
 
 
 
@@ -459,7 +484,7 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                    (case find (\case 
                                (ABS.MethClassBody _ (ABS.Ident "run") [] _) -> True
                                _ -> False) mdecls of
-                      Just (ABS.MethClassBody (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Unit")])) _ [] b) -> 
+                      Just (ABS.MethClassBody (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Unit")])) _ [] b) -> 
                           -- then it's the special RUN method
                           [tMethDecl "AnyObject" $ ABS.MethClassBody (error "compiler implementation") (ABS.Ident "__run") [] b]
                       _ -> [])
@@ -501,7 +526,7 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
 
        ++
 
-       generateClsSub clsName (ABS.QType [ABS.QTypeSegment $ ABS.TypeIdent "AnyObject"]) -- root class
+       generateClsSub clsName (ABS.QTyp [ABS.QTypeSegmen $ ABS.TypeIdent "AnyObject"]) -- root class
        : generateClsSubs clsName imps
 
        ++
@@ -562,7 +587,7 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
                                                                                  (HS.UnGuardedRhs $ runReader (tPureExp (ABS.ELit ABS.LNull) []) (allFields,"AnyObject")) (HS.BDecls [])]) : acc
                                                     else case t of
                                                            -- it is an unitialized future (abs allows this)
-                                                           ABS.TGen (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Fut")])  _ -> 
+                                                           ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Fut")])  _ -> 
                                                                HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_fut")
                                                                                        : acc
                                                            _ -> error "A field must be initialised if it is not of a reference type"
@@ -600,8 +625,8 @@ tDecl (ABS.ClassParamImplements (ABS.TypeIdent clsName) params imps ldecls maybe
              where
                scanInterfs' = scan imps
                unionedST = (M.unions $ map hierarchy ?moduleTable)
-               scan :: [ABS.QualType] -> [ABS.TypeIdent] -- gathers all interfaces that must be implemented
-               scan imps = M.foldlWithKey (\ acc k extends ->  if ABS.QType [ABS.QTypeSegment k] `elem` imps
+               scan :: [ABS.QType] -> [ABS.TypeIdent] -- gathers all interfaces that must be implemented
+               scan imps = M.foldlWithKey (\ acc k extends ->  if ABS.QTyp [ABS.QTypeSegmen k] `elem` imps
                                                               then if null extends
                                                                    then k:acc
                                                                    else k:(scan extends ++ acc)
@@ -633,10 +658,10 @@ generateSubNull iname = HS.InstDecl HS.noLoc []
                             ]
                                                       
 
-generateSubs :: (?moduleTable :: ModuleTable) =>String -> [ABS.QualType] -> [HS.Decl]
+generateSubs :: (?moduleTable :: ModuleTable) =>String -> [ABS.QType] -> [HS.Decl]
 generateSubs iname extends = map (generateSub iname) (nub $ collectSubs extends)
 
-generateSub iname (ABS.QType sup) =  HS.InstDecl HS.noLoc [] 
+generateSub iname (ABS.QTyp sup) =  HS.InstDecl HS.noLoc [] 
                               (HS.UnQual $ HS.Ident "Sub")
                               [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup Interf1 Interf1
                               [   -- the upcasting method
@@ -647,10 +672,10 @@ generateSub iname (ABS.QType sup) =  HS.InstDecl HS.noLoc []
                                         ]
 
 
-generateClsSubs :: (?moduleTable :: ModuleTable) => String -> [ABS.QualType] -> [HS.Decl]
+generateClsSubs :: (?moduleTable :: ModuleTable) => String -> [ABS.QType] -> [HS.Decl]
 generateClsSubs clsName impls = map (generateClsSub clsName) (nub $ collectSubs impls)
 
-generateClsSub clsName (ABS.QType sup) =  HS.InstDecl HS.noLoc [] 
+generateClsSub clsName (ABS.QTyp sup) =  HS.InstDecl HS.noLoc [] 
                               (HS.UnQual $ HS.Ident "Sub")
                               [HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "ObjectRef") (HS.TyCon $ HS.UnQual $ HS.Ident clsName), 
                                  HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup (ObjectRef Cls) Interf1
@@ -662,9 +687,9 @@ generateClsSub clsName (ABS.QType sup) =  HS.InstDecl HS.noLoc []
 
 
 
-collectSubs :: (?moduleTable :: ModuleTable) => [ABS.QualType] -> [ABS.QualType]
-collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QType eqids) -> liftM collectSubs (M.lookup (case last eqids of
-                                                                                                            ABS.QTypeSegment eid ->  eid
+collectSubs :: (?moduleTable :: ModuleTable) => [ABS.QType] -> [ABS.QType]
+collectSubs extends = extends ++ concat (mapMaybe (\ (ABS.QTyp eqids) -> liftM collectSubs (M.lookup (case last eqids of
+                                                                                                            ABS.QTypeSegmen eid ->  eid
                                                                                                          )
                                                                                                 interfMap
                                                                                                )) extends)

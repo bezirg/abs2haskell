@@ -135,7 +135,7 @@ tStmt (ABS.SDec typ ident@(ABS.Ident var)) = -- just rewrites it to Interface x=
     then tStmt (ABS.SDecAss typ ident (ABS.ExpP $ ABS.ELit $ ABS.LNull)) 
     else case typ of
        -- fut is allowed to be uninitialized
-       ABS.TGen (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Fut")]) _ -> do
+       ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Fut")]) _ -> do
                     addToScope ident typ
                     return [HS.Generator HS.noLoc
                                   (case typ of
@@ -245,7 +245,7 @@ liftInterf' ident@(ABS.Ident var) exp =  do
   return $ case M.lookup ident (M.union fscope cscope) of
       Nothing -> error $ "Identifier " ++ var ++ " cannot be resolved from scope"
       Just (ABS.TUnderscore) -> error $ "Cannot infer interface type for variable" ++ var
-      Just (ABS.TSimple (ABS.QType qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegment (ABS.TypeIdent iid)) -> iid) (last qids))
+      Just (ABS.TSimple (ABS.QTyp qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegmen (ABS.TypeIdent iid)) -> iid) (last qids))
                                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
       Just _ -> error $ var ++ " not of interface type"
 

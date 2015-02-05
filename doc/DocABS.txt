@@ -47,8 +47,8 @@ The reserved words used in ABS are the following:
   | ``type`` | ``while`` |  | 
 
 The symbols used in ABS are the following:
-  | , | ; | * | .
-  | _ | < | > | =
+  | , | ; | * | _
+  | < | > | . | =
   | ( | ) | | | {
   | } | => | ? | &
   | || | && | == | !=
@@ -72,31 +72,35 @@ All other symbols are terminals.
   | //Program// | -> | //[Module]// 
   | //[Module]// | -> | **eps**
   |  |  **|**  | //Module// //[Module]// 
-  | //Module// | -> | ``module`` //QualType// ``;`` //[Export]// //[Import]// //[Decl]// //MaybeBlock// 
+  | //Module// | -> | ``module`` //QType// ``;`` //[Export]// //[Import]// //[Decl]// //MaybeBlock// 
   | //Export// | -> | ``export`` //[AnyIdent]// 
-  |  |  **|**  | ``export`` //[AnyIdent]// ``from`` //QualType// 
+  |  |  **|**  | ``export`` //[AnyIdent]// ``from`` //QType// 
   |  |  **|**  | ``export`` ``*`` 
-  |  |  **|**  | ``export`` ``*`` ``from`` //QualType// 
+  |  |  **|**  | ``export`` ``*`` ``from`` //QType// 
   | //[Export]// | -> | **eps**
   |  |  **|**  | //Export// ``;`` //[Export]// 
-  | //Import// | -> | //ImportType// //QualType// ``.`` //AnyIdent// 
-  |  |  **|**  | //ImportType// //[AnyIdent]// ``from`` //QualType// 
-  |  |  **|**  | //ImportType// ``*`` ``from`` //QualType// 
+  | //Import// | -> | //ImportType// //TType// //AnyIdent// 
+  |  |  **|**  | //ImportType// //[AnyIdent]// ``from`` //QType// 
+  |  |  **|**  | //ImportType// ``*`` ``from`` //QType// 
   | //[Import]// | -> | **eps**
   |  |  **|**  | //Import// ``;`` //[Import]// 
   | //ImportType// | -> | ``fimport`` 
   |  |  **|**  | ``import`` 
   | //Type// | -> | ``_`` 
-  |  |  **|**  | //QualType// 
-  |  |  **|**  | //QualType// ``<`` //[Type]// ``>`` 
+  |  |  **|**  | //QType// 
+  |  |  **|**  | //QType// ``<`` //[Type]// ``>`` 
   | //[Type]// | -> | //Type// 
   |  |  **|**  | //Type// ``,`` //[Type]// 
-  | //[QualType]// | -> | //QualType// 
-  |  |  **|**  | //QualType// ``,`` //[QualType]// 
-  | //QualType// | -> | //[QualTypeSegment]// 
-  | //QualTypeSegment// | -> | //TypeIdent// 
-  | //[QualTypeSegment]// | -> | //QualTypeSegment// 
-  |  |  **|**  | //QualTypeSegment// ``.`` //[QualTypeSegment]// 
+  | //[QType]// | -> | //QType// 
+  |  |  **|**  | //QType// ``,`` //[QType]// 
+  | //QType// | -> | //[QTypeSegment]// 
+  | //QTypeSegment// | -> | //TypeIdent// 
+  | //[QTypeSegment]// | -> | //QTypeSegment// 
+  |  |  **|**  | //QTypeSegment// ``.`` //[QTypeSegment]// 
+  | //TType// | -> | //[TTypeSegment]// 
+  | //TTypeSegment// | -> | //TypeIdent// 
+  | //[TTypeSegment]// | -> | //TTypeSegment// ``.`` 
+  |  |  **|**  | //TTypeSegment// ``.`` //[TTypeSegment]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
   | //Decl// | -> | ``type`` //TypeIdent// ``=`` //Type// ``;`` 
@@ -106,11 +110,11 @@ All other symbols are terminals.
   |  |  **|**  | ``def`` //Type// //Ident// ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
   |  |  **|**  | ``def`` //Type// //Ident// ``<`` //[TypeIdent]// ``>`` ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
   |  |  **|**  | ``interface`` //TypeIdent// ``{`` //[MethSignat]// ``}`` 
-  |  |  **|**  | ``interface`` //TypeIdent// ``extends`` //[QualType]// ``{`` //[MethSignat]// ``}`` 
+  |  |  **|**  | ``interface`` //TypeIdent// ``extends`` //[QType]// ``{`` //[MethSignat]// ``}`` 
   |  |  **|**  | ``class`` //TypeIdent// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
   |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``implements`` //[QualType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
-  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``implements`` //[QualType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``implements`` //[QType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
+  |  |  **|**  | ``class`` //TypeIdent// ``(`` //[Param]// ``)`` ``implements`` //[QType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
   | //ConstrIdent// | -> | //TypeIdent// 
   |  |  **|**  | //TypeIdent// ``(`` //[ConstrType]// ``)`` 
   | //ConstrType// | -> | //Type// 
@@ -198,14 +202,14 @@ All other symbols are terminals.
   |  |  **|**  | ``-`` //PureExp6// 
   |  |  **|**  | //PureExp7// 
   | //PureExp7// | -> | //Ident// ``(`` //[PureExp]// ``)`` 
-  |  |  **|**  | //QualType// ``.`` //Ident// ``(`` //[PureExp]// ``)`` 
+  |  |  **|**  | //TType// //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //Ident// ``[`` //[PureExp]// ``]`` 
-  |  |  **|**  | //QualType// ``.`` //Ident// ``[`` //[PureExp]// ``]`` 
+  |  |  **|**  | //TType// //Ident// ``[`` //[PureExp]// ``]`` 
   |  |  **|**  | //Ident// 
   |  |  **|**  | ``this`` ``.`` //Ident// 
-  |  |  **|**  | //QualType// ``.`` //Ident// 
-  |  |  **|**  | //QualType// 
-  |  |  **|**  | //QualType// ``(`` //[PureExp]// ``)`` 
+  |  |  **|**  | //TType// //Ident// 
+  |  |  **|**  | //QType// 
+  |  |  **|**  | //QType// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //Literal// 
   |  |  **|**  | ``(`` //PureExp// ``)`` 
   | //CaseBranch// | -> | //Pattern// ``=>`` //PureExp// 
@@ -232,5 +236,15 @@ All other symbols are terminals.
   |  |  **|**  | ``this`` ``!`` //Ident// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` ``get`` 
   |  |  **|**  | //PureExp// ``spawns`` //Type// ``(`` //[PureExp]// ``)`` 
+  | //Ann// | -> | ``[`` //PureExp// ``]`` 
+  | //[Ann]// | -> | **eps**
+  |  |  **|**  | //Ann// //[Ann]// 
+  | //AnnDecl// | -> | //[Ann]// //Decl// 
+  | //[AnnDecl]// | -> | **eps**
+  |  |  **|**  | //AnnDecl// //[AnnDecl]// 
+  | //AnnType// | -> | //[Ann]// //Type// 
+  | //[AnnType]// | -> | **eps**
+  |  |  **|**  | //AnnType// 
+  |  |  **|**  | //AnnType// ``,`` //[AnnType]// 
 
 

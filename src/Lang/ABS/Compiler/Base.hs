@@ -9,8 +9,8 @@ import Control.Monad.Trans.State (State)
 -- | Represents the module table, which is a list of all the modules info
 data ModuleInfo = ModuleInfo {
       filePath :: FilePath,
-      moduleName :: ABS.QualType,
-      hierarchy :: M.Map ABS.TypeIdent [ABS.QualType], -- Interface -> Extends
+      moduleName :: ABS.QType,
+      hierarchy :: M.Map ABS.TypeIdent [ABS.QType], -- Interface -> Extends
       methods :: M.Map ABS.TypeIdent [ABS.Ident],      -- Interface -> Methods
       exceptions :: [ABS.TypeIdent]                    -- names of exceptions, needed for code generating smart-exception-constructors
     } deriving (Show)

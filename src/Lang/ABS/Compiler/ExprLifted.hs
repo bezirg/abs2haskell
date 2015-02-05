@@ -114,9 +114,9 @@ tPureExp' (ABS.Case matchE branches) tyvars = do
   (fscope,cscope,_,_,_) <- ask
   let scope = fscope `M.union` cscope
   case matchE of
-    ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Exception")])) -> tCaseException tmatch branches
-    ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment tid]) | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
-    ABS.EParamConstr (ABS.QType [ABS.QTypeSegment tid]) _ | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
+    ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Exception")])) -> tCaseException tmatch branches
+    ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen tid]) | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
+    ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen tid]) _ | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
     _ -> do
         talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
                         texp <- tPureExp' pexp tyvars
@@ -156,12 +156,28 @@ tPureExp' (ABS.EFunCall (ABS.Ident cid) args) tyvars = liftM HS.Paren $ foldlM
                                             (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident cid)) -- lift the function
                                             args
 
+tPureExp' (ABS.EQualFunCall (ABS.TTyp tsegs) (ABS.Ident cid) args) tyvars = liftM HS.Paren $ foldlM
+                                            (\ acc nextArg -> do
+                                               targ <- tPureExp' nextArg tyvars
+                                               return $ HS.Paren $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ) -- intersperse "<*>", aka "ap" for applicative
+                                            (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.Qual (HS.ModuleName (joinTTypeIds tsegs)) $ HS.Ident cid)) -- lift the function
+                                            args
+
+
 -- normalize
 tPureExp' (ABS.ENaryFunCall fun args) tyvars = tPureExp' (ABS.EFunCall fun 
                                                           -- transform it to one list-argument
-                                                          [foldr (\ arg l -> ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]) [arg, l]) -- arg:rest
-                                                                 (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Nil")])) -- []
+                                                          [foldr (\ arg l -> ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Cons")]) [arg, l]) -- arg:rest
+                                                                 (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Nil")])) -- []
                                                                  args]) tyvars
+
+-- normalize
+tPureExp' (ABS.ENaryQualFunCall ttyp fun args) tyvars = tPureExp' (ABS.EQualFunCall ttyp fun 
+                                                          -- transform it to one list-argument
+                                                          [foldr (\ arg l -> ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Cons")]) [arg, l]) -- arg:rest
+                                                                 (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Nil")])) -- []
+                                                                 args]) tyvars
+
          
 
 -- it does some extras than pure equality
@@ -241,13 +257,6 @@ tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.Ident str1)) pvar2@(ABS.EVar iden
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
               -- error $ str1 ++ " not in scope" -- todo: turn it into warning
-
--- tPureExp' (ABS.EEq pfun1@(ABS.EFunCall _ _) pfun2@(ABS.EFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp' (ABS.EEq pfun1@(ABS.ENaryFunCall _ _) pfun2@(ABS.ENaryFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp' (ABS.EEq pfun@(ABS.EFunCall _ _) _)  _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp' (ABS.EEq pfun@(ABS.ENaryFunCall _ _) _) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp' (ABS.EEq pexp1 pfun@(ABS.EFunCall _ _)) _tyvars = tPureExp' (ABS.EEq pfun pexp1) _tyvars -- commutative
--- tPureExp' (ABS.EEq pexp1 pfun@(ABS.ENaryFunCall _ _)) _tyvars = tPureExp' (ABS.EEq pfun pexp1) _tyvars -- commutative
 
 -- a catch-all for literals,constructors maybe coupled with vars
 tPureExp' (ABS.EEq pexp1 pexp2) _tyvars = do
@@ -396,15 +405,15 @@ tPureExp' (ABS.EIntNeg pexp) tyvars = do
                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
                              texp                -- operand1
 
-tPureExp' (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Nil")])) _ = 
+tPureExp' (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Nil")])) _ = 
     return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $  HS.Con $ HS.Special HS.ListCon -- for the translation to []
 
-tPureExp' (ABS.ESinglConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "EmptyMap")])) _ = 
+tPureExp' (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "EmptyMap")])) _ = 
     return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ HS.Var $ HS.UnQual $ HS.Ident "empty" -- for the translation to Data.Map
 
-tPureExp' (ABS.ESinglConstr (ABS.QType qids)) _ = return $
+tPureExp' (ABS.ESinglConstr (ABS.QTyp qids)) _ = return $
   let mids = init qids
-      tid@(ABS.TypeIdent sid) = (\ (ABS.QTypeSegment cid) -> cid) (last qids)
+      tid@(ABS.TypeIdent sid) = (\ (ABS.QTypeSegmen cid) -> cid) (last qids)
   in HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ if tid `elem` concatMap exceptions ?moduleTable
                                                      -- if is an exception constructor, replace it with its smart constructor
                                                      then HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ headToLower sid  
@@ -415,7 +424,7 @@ tPureExp' (ABS.ESinglConstr (ABS.QType qids)) _ = return $
                                                                   ) $ HS.Ident sid
 
 -- transform it to a function-call of the smart-contructor
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Triple")]) pexps) tyvars =  
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Triple")]) pexps) tyvars =  
     if length pexps == 3
     then liftM HS.Paren $ 
         foldlM (\ acc pexp -> do
@@ -424,7 +433,7 @@ tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Triple"
                    (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Symbol "(,,)"))  pexps
     else error "wrong number of arguments to Triple"
 
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Pair")]) pexps) tyvars = 
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Pair")]) pexps) tyvars = 
     if length pexps == 2
     then liftM HS.Paren $ 
         foldlM (\ acc pexp -> do
@@ -433,7 +442,7 @@ tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Pair")]
                    (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Symbol "(,)"))  pexps
     else error "wrong number of arguments to Pair"
 
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]) [pexp1, pexp2]) tyvars = do
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Cons")]) [pexp1, pexp2]) tyvars = do
   texp1 <- tPureExp' pexp1 tyvars
   texp2 <- tPureExp' pexp2 tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.Special $ HS.Cons) -- operator
@@ -442,9 +451,9 @@ tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
              texp2 -- operand2
 
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "Cons")]) _) _ = error "wrong number of arguments to Cons"
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Cons")]) _) _ = error "wrong number of arguments to Cons"
 
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "InsertAssoc")]) [pexp1, pexp2]) tyvars = do
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "InsertAssoc")]) [pexp1, pexp2]) tyvars = do
   texp1 <- tPureExp' pexp1 tyvars
   texp2 <- tPureExp' pexp2 tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "insertAssoc") -- operator
@@ -453,7 +462,7 @@ tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "InsertA
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
              texp2              -- operand2
 
-tPureExp' (ABS.EParamConstr (ABS.QType [ABS.QTypeSegment (ABS.TypeIdent "InsertAssoc")]) _) _ = error "wrong number of arguments to InsertAssoc"
+tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "InsertAssoc")]) _) _ = error "wrong number of arguments to InsertAssoc"
 
 tPureExp' (ABS.EParamConstr qids args) tyvars = do
     tcon <- tPureExp' (ABS.ESinglConstr qids) tyvars -- first translate the constructor
@@ -461,12 +470,17 @@ tPureExp' (ABS.EParamConstr qids args) tyvars = do
               targ <- tPureExp' nextArg tyvars 
               return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ) tcon args
 
+
+tPureExp' (ABS.EQualVar (ABS.TTyp tsegs) (ABS.Ident pid)) _tyvars = -- todo: we cannot use any scope, so we have to lookup the other modules, to check if it is of an interface type (upcast it) or int (fromIntegral) 
+    return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ HS.Var $ HS.Qual (HS.ModuleName $ joinTTypeIds tsegs) $ HS.Ident pid
+    -- we tread it as pure for now
+
 tPureExp' (ABS.EVar var@(ABS.Ident pid)) _tyvars = do
     (fscope, cscope, mscope,_,_) <- ask
     return $ HS.Paren $ case M.lookup var fscope of
       Nothing -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ -- fields are read from the Wrap function, so they are pure
                 case M.lookup var mscope of
-                  Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) -> 
+                  Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.TypeIdent "Int")]))) -> 
                       HS.App (HS.Var $ identI "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ pid)
                   Just t -> (if isInterface t
                             then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
@@ -475,7 +489,7 @@ tPureExp' (ABS.EVar var@(ABS.Ident pid)) _tyvars = do
                   Nothing ->
                       case M.lookup var cscope of -- lookup in the cscope
                         -- if it of an int type, upcast it
-                        Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) -> 
+                        Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.TypeIdent "Int")]))) -> 
                             HS.App (HS.Var $ identI "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
                         Just t -> (if isInterface t
                                   then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
@@ -483,7 +497,7 @@ tPureExp' (ABS.EVar var@(ABS.Ident pid)) _tyvars = do
                                  (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
                         Nothing -> HS.Var $ HS.UnQual $ HS.Ident pid -- error $ pid ++ " not in scope" -- TODO: this should be turned into warning
         -- if it of an int type, upcast it
-      Just (ABS.TSimple (ABS.QType ([ABS.QTypeSegment (ABS.TypeIdent "Int")]))) -> HS.InfixApp (HS.Var $ identI "fromIntegral") 
+      Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.TypeIdent "Int")]))) -> HS.InfixApp (HS.Var $ identI "fromIntegral") 
                                                                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") 
                                                                                   (HS.App (HS.Var $ identI "readRef") (HS.Var $ HS.UnQual $ HS.Ident pid))
       Just t -> HS.Paren $ (if isInterface t
@@ -505,9 +519,9 @@ tPureExp' (ABS.EThis (ABS.Ident ident)) _ = return $ HS.App (HS.Var $ HS.UnQual 
 
 -- this is the "statement-lifted" version of tEffExp
 tEffExp' :: (?moduleTable::ModuleTable) => ABS.EffExp -> ExprLiftedM HS.Exp
-tEffExp' (ABS.New (ABS.TSimple (ABS.QType qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
+tEffExp' (ABS.New (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
 tEffExp' (ABS.New _ _) = error "Not valid class name"
-tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QType qtids)) pexps) = tNewOrNewLocal "new_local" qtids pexps
+tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new_local" qtids pexps
 tEffExp' (ABS.NewLocal _ _) = error "Not valid class name"
 
 
@@ -524,7 +538,7 @@ tEffExp' (ABS.Get pexp) = do
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "get") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
 -- | shorthand generator, because new and new local are similar
-tNewOrNewLocal :: (?moduleTable::ModuleTable) => String -> [ABS.QualTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tNewOrNewLocal :: (?moduleTable::ModuleTable) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tNewOrNewLocal newOrNewLocal qtids args = do 
   targs <- foldlM
            (\ acc pexp -> do
@@ -536,7 +550,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
                       if null mids
                       then HS.UnQual
                       else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
-                   (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegment (ABS.TypeIdent cid)) -> cid) (last qtids))))))) args -- wrap with the class-constructor function
+                   (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.TypeIdent cid)) -> cid) (last qtids))))))) args -- wrap with the class-constructor function
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident newOrNewLocal) 
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
              targs

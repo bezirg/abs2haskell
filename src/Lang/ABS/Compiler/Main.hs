@@ -5,10 +5,11 @@ import Lang.ABS.Compiler.Conf
 import Lang.ABS.Compiler.Top (tProg)
 import Control.Monad (liftM)
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
+import qualified Language.Haskell.Exts.Syntax as HS
 import Lang.ABS.Compiler.BNFC.ParABS (myLexer, pProgram)
 import Lang.ABS.Compiler.BNFC.ErrM
 import Language.Haskell.Exts.Pretty (prettyPrint)
-import System.FilePath ((</>), replaceExtension)
+import System.FilePath ((</>), replaceExtension, replaceFileName)
 import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
 import Data.List (isSuffixOf)
 import qualified Data.Map as M
@@ -17,16 +18,20 @@ import Control.Monad (when)
 main :: IO ()
 main = do
   let Conf {files = inputFilesOrDirs} = conf
-  asts <- liftM concat $ mapM absParseFileOrDir inputFilesOrDirs
-  let ?moduleTable = map firstPass asts :: ModuleTable -- executes 1st-pass of all modules to collect info
-  mapM_ (\ (fp, ast) -> ppHaskell fp (tProg fp ast)) asts     -- calls the program-translator on each AST and prettyprints its Haskell output
-  -- TODO: do not translate modules that are not dependent in the main module
+  if null inputFilesOrDirs
+   then error "No ABS files to translate are given as input. Try --help"
+   else do
+     asts <- liftM concat $ mapM absParseFileOrDir inputFilesOrDirs
+     let ?moduleTable = concatMap firstPass asts :: ModuleTable -- executes 1st-pass of all modules to collect info
+     mapM_ (\ (fp, ast) -> mapM_ (ppHaskellFile fp) (tProg ast)) asts     -- calls the program-translator on each AST and prettyprints its Haskell output
+     -- TODO: do not translate modules that are not dependent in the main module
 
 
 -- | 1st-pass of an ABS file: Given an ABS source file, it collects info about the module
 -- the interfaces hierarchy, the methods, and exceptions declared in the module
-firstPass :: (FilePath, ABS.Program) -> ModuleInfo
-firstPass (fp, (ABS.Prog [ABS.Modul mName _ _ decls _])) = ModuleInfo {
+firstPass :: (FilePath, ABS.Program) -> [ModuleInfo]
+firstPass (fp, (ABS.Prog moduls)) = map (firstPass' fp) moduls
+firstPass' fp (ABS.Modul mName _ _ decls _) = ModuleInfo {
                                                                    filePath = fp,
                                                                    moduleName = mName,
                                                                    hierarchy = foldl insertInterfs M.empty decls,
@@ -39,7 +44,7 @@ firstPass (fp, (ABS.Prog [ABS.Modul mName _ _ decls _])) = ModuleInfo {
                                                                                          _ -> acc) [] decls
                                                                      }
     where 
-      insertInterfs :: M.Map ABS.TypeIdent [ABS.QualType] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.QualType]
+      insertInterfs :: M.Map ABS.TypeIdent [ABS.QType] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.QType]
       insertInterfs acc (ABS.InterfDecl tident _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident [] acc
       insertInterfs acc (ABS.ExtendsDecl tident extends _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident extends acc
       insertInterfs acc _ = acc
@@ -78,8 +83,10 @@ absParseFileOrDir fileOrDir = do
           return (absFilePath, res)
         Bad _errorString -> error "Error in parsing" -- TODO: move to exceptions
 
-ppHaskell absFilePath translation = do
-  let haskellFilePath = replaceExtension absFilePath ".hs"
-  writeFile haskellFilePath (prettyPrint translation)
+ppHaskellFile fp m@(HS.Module _ (HS.ModuleName s) _ _ _ _ _) = do
+  let haskellFilePath = if s == "Main"
+                        then replaceExtension fp "hs" -- it's the main module, use the name of the parent filepath
+                        else replaceFileName fp (map (\ c -> if c == '.' then '/' else c) s  ++ ".hs")
+  writeFile haskellFilePath (prettyPrint m)
 
 
