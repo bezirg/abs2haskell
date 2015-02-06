@@ -10,9 +10,9 @@ import Control.Monad.Trans.State (State)
 data ModuleInfo = ModuleInfo {
       filePath :: FilePath,
       moduleName :: ABS.QType,
-      hierarchy :: M.Map ABS.TypeIdent [ABS.QType], -- Interface -> Extends
-      methods :: M.Map ABS.TypeIdent [ABS.Ident],      -- Interface -> Methods
-      exceptions :: [ABS.TypeIdent]                    -- names of exceptions, needed for code generating smart-exception-constructors
+      hierarchy :: M.Map ABS.UIdent [ABS.QType], -- Interface -> Extends
+      methods :: M.Map ABS.UIdent [ABS.LIdent],      -- Interface -> Methods
+      exceptions :: [ABS.UIdent]                    -- names of exceptions, needed for code generating smart-exception-constructors
     } deriving (Show)
 
 
@@ -20,7 +20,7 @@ type ModuleTable = [ModuleInfo]
 -- TODO, change it to this
 -- type ModuleTable = M.Map ABS.QualType ModuleInfo
 
-type ScopeTable = M.Map ABS.Ident (ABS.Type)
+type ScopeTable = M.Map ABS.LIdent (ABS.Type)
 
 type ExprM = Reader (ScopeTable -- current function scope
                     ,String -- interface name

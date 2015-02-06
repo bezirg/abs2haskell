@@ -3,6 +3,7 @@ module Main where
 import Lang.ABS.Compiler.Base
 import Lang.ABS.Compiler.Conf
 import Lang.ABS.Compiler.Top (tProg)
+import Lang.ABS.Compiler.Utils
 import Control.Monad (liftM)
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
@@ -44,18 +45,18 @@ firstPass' fp (ABS.Modul mName _ _ decls _) = ModuleInfo {
                                                                                          _ -> acc) [] decls
                                                                      }
     where 
-      insertInterfs :: M.Map ABS.TypeIdent [ABS.QType] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.QType]
-      insertInterfs acc (ABS.InterfDecl tident _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident [] acc
-      insertInterfs acc (ABS.ExtendsDecl tident extends _msigs) = M.insertWith (const $ const $ error "duplicate interface declaration") tident extends acc
+      insertInterfs :: M.Map ABS.UIdent [ABS.QType] -> ABS.Decl -> M.Map ABS.UIdent [ABS.QType]
+      insertInterfs acc (ABS.InterfDecl tident@(ABS.UIdent (p,_)) _msigs) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
+      insertInterfs acc (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) extends _msigs) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident extends acc
       insertInterfs acc _ = acc
 
-      insertMethods :: M.Map ABS.TypeIdent [ABS.Ident] -> ABS.Decl -> M.Map ABS.TypeIdent [ABS.Ident]
+      insertMethods :: M.Map ABS.UIdent [ABS.LIdent] -> ABS.Decl -> M.Map ABS.UIdent [ABS.LIdent]
       insertMethods acc (ABS.InterfDecl tident msigs) = insertMethods acc (ABS.ExtendsDecl tident [] msigs)  -- normalization
-      insertMethods acc (ABS.ExtendsDecl tident extends msigs) = 
+      insertMethods acc (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) _extends msigs) = 
           {- TODO it could generate a compilation error because of duplicate method declaration -}
-          M.insertWith (const $ const $ error "duplicate interface declaration") tident (collectMethods msigs) acc
+          M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident (collectMethods msigs) acc
       insertMethods acc _ = acc
-      collectMethods :: [ABS.MethSignat] -> [ABS.Ident]
+      collectMethods :: [ABS.MethSignat] -> [ABS.LIdent]
       collectMethods = map (\ (ABS.MethSig _ ident _) -> ident)
 
 

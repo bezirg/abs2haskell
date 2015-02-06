@@ -130,21 +130,21 @@ tStmt (ABS.SWhile pexp stm) = do
                      stmt -> [stmt]) False
   return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while") texp) tblock]              
 
-tStmt (ABS.SDec typ ident@(ABS.Ident var)) = -- just rewrites it to Interface x=null, adds also to current scope
+tStmt (ABS.SDec typ ident@(ABS.LIdent (p,var))) = -- just rewrites it to Interface x=null, adds also to current scope
     if isInterface typ 
     then tStmt (ABS.SDecAss typ ident (ABS.ExpP $ ABS.ELit $ ABS.LNull)) 
     else case typ of
        -- fut is allowed to be uninitialized
-       ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.TypeIdent "Fut")]) _ -> do
+       ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))]) _ -> do
                     addToScope ident typ
                     return [HS.Generator HS.noLoc
                                   (case typ of
                                      ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
                                      ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
-       _ -> error (var ++ " is ADT and has to be initialized")
+       _ -> errorPos p (var ++ " is ADT and has to be initialized")
     -- TODO: remove the ident from the class attributes to check
 
-tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
+tStmt (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) exp) = do
   addToScope ident typ -- add to scope, but it's lazy monad, otherwise use Monad.State.Strict
   fscope <- funScope -- so we have to force to WHNF with a lookup
   case M.lookup ident fscope of -- has to be a lookup and not a member, to force to WHNF
@@ -158,7 +158,7 @@ tStmt (ABS.SDecAss typ ident@(ABS.Ident var) exp) = do
                    ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp)))
                 (HS.App (HS.Var $ identI "newRef") texp)]
 
-tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
+tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
   fscope <- funScope
   (cscope,_,_,_,_) <- ask
   case M.lookup ident fscope of
@@ -179,9 +179,9 @@ tStmt (ABS.SAss ident@(ABS.Ident var) exp) = do
       Nothing -> 
         case M.lookup ident cscope of -- maybe it is in the class scope
           Just _t -> tStmt (ABS.SFieldAss ident exp) -- then normalize it to a field ass
-          Nothing -> error (var ++ "not in scope or cannot modify the variable")
+          Nothing -> errorPos p (var ++ "not in scope or cannot modify the variable")
                                                                              
-tStmt (ABS.SFieldAss ident@(ABS.Ident var) exp) = do
+tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
   (_, _, _, cls,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
@@ -235,29 +235,29 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
 
 
 
-liftInterf :: ABS.Ident -> ABS.EffExp -> StmtM (HS.Exp -> HS.Exp)
+liftInterf :: ABS.LIdent -> ABS.EffExp -> StmtM (HS.Exp -> HS.Exp)
 liftInterf ident exp@(ABS.New _ _) = liftInterf' ident exp
 liftInterf ident exp@(ABS.NewLocal _ _) = liftInterf' ident exp
 liftInterf ident exp = return id
-liftInterf' ident@(ABS.Ident var) exp =  do
+liftInterf' ident@(ABS.LIdent (p,var)) exp =  do
   fscope <- funScope
   (cscope, _ , _, _,_)<- ask
   return $ case M.lookup ident (M.union fscope cscope) of
-      Nothing -> error $ "Identifier " ++ var ++ " cannot be resolved from scope"
-      Just (ABS.TUnderscore) -> error $ "Cannot infer interface type for variable" ++ var
-      Just (ABS.TSimple (ABS.QTyp qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegmen (ABS.TypeIdent iid)) -> iid) (last qids))
+      Nothing -> errorPos p $ "Identifier " ++ var ++ " cannot be resolved from scope"
+      Just (ABS.TUnderscore) -> errorPos p $ "Cannot infer interface type for variable" ++ var
+      Just (ABS.TSimple (ABS.QTyp qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegmen (ABS.UIdent (_,iid))) -> iid) (last qids))
                                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
-      Just _ -> error $ var ++ " not of interface type"
+      Just _ -> errorPos p $ var ++ " not of interface type"
 
 
 -- this scope is the oo-scope: it does not allow re-declaration
 -- pure-scope is done with lambdas, so it allows re-declaration
-addToScope :: ABS.Ident -> ABS.Type -> StmtM ()
-addToScope var@(ABS.Ident pid) typ = do
+addToScope :: ABS.LIdent -> ABS.Type -> StmtM ()
+addToScope var@(ABS.LIdent (p,pid)) typ = do
   (topscope:restscopes) <- lift get
   if (any (\ scope -> var `M.member` scope) restscopes)
-    then error $ pid ++ " already defined in an outer scope"
-    else lift $ put $ M.insertWith (const $ const $ error $ pid ++ " already defined in this scope") var typ topscope  : restscopes
+    then errorPos p $ pid ++ " already defined in an outer scope"
+    else lift $ put $ M.insertWith (const $ const $ errorPos p $ pid ++ " already defined in this scope") var typ topscope  : restscopes
 
 
 eReturnUnit :: HS.Exp

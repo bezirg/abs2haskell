@@ -11,6 +11,7 @@ module Lang.ABS.Compiler.Utils
     ,isInterface
     ,typOfConstrType
     ,funScope
+    ,errorPos, showPos
     ) where
 
 import Lang.ABS.Compiler.Base
@@ -27,10 +28,10 @@ import Control.Monad.Trans.Class (lift)
 -- generate haskell code - helper functions
 
 joinQualTypeIds :: [ABS.QTypeSegment] -> String
-joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegmen (ABS.TypeIdent str)) -> str) qtids
+joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegmen (ABS.UIdent (_,str))) -> str) qtids
 
 joinTTypeIds :: [ABS.TTypeSegment] -> String
-joinTTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.TTypeSegmen (ABS.TypeIdent str)) -> str) qtids
+joinTTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.TTypeSegmen (ABS.UIdent (_,str))) -> str) qtids
 
 
 -- | create Include-qualified Haskell *identifiers* for the generated stub code to *not clash* with ABS user-written code
@@ -73,14 +74,14 @@ collectVars (ABS.EIntNeg pexp) ccs           = collectVars pexp ccs
 collectVars (ABS.EFunCall _ pexps) ccs          = concatMap ((flip collectVars) ccs) pexps
 collectVars (ABS.ENaryFunCall _ pexps) ccs      = concatMap ((flip collectVars) ccs) pexps
 collectVars (ABS.EParamConstr _ pexps) ccs    = concatMap ((flip collectVars) ccs) pexps
-collectVars (ABS.EThis (ABS.Ident attr)) _ccs = [attr] -- qualify it
-collectVars (ABS.EVar ident@(ABS.Ident var)) ccs = if ident `M.member` ccs -- currentClassScope
-                                               then [var]
-                                               else []
+collectVars (ABS.EThis (ABS.LIdent (_,attr))) _ccs = [attr] -- qualify it
+collectVars (ABS.EVar ident@(ABS.LIdent (_,var))) ccs = if ident `M.member` ccs -- currentClassScope
+                                                        then [var]
+                                                        else []
 collectVars _ _ = []
 
 -- | collects all vars from a case pattern
-collectPatVars :: ABS.Pattern -> [ABS.Ident]
+collectPatVars :: ABS.Pattern -> [ABS.LIdent]
 collectPatVars (ABS.PIdent i) = [i]
 collectPatVars (ABS.PParamConstr _ ps) = concatMap collectPatVars ps
 collectPatVars _ = []
@@ -91,12 +92,12 @@ collectAssigns (ABS.SWhile _ stmt) fscope = collectAssigns stmt fscope
 collectAssigns (ABS.SIf _ stmt) fscope = collectAssigns stmt fscope
 collectAssigns (ABS.SIfElse _ stmt1 stmt2) fscope = collectAssigns stmt1 fscope ++ collectAssigns stmt2 fscope
 -- old changed variables
-collectAssigns (ABS.SAss ident@(ABS.Ident var) _) fscope = if ident `M.member` fscope
-                                                           then [var]
-                                                           else []
+collectAssigns (ABS.SAss ident@(ABS.LIdent (_,var)) _) fscope = if ident `M.member` fscope
+                                                                then [var]
+                                                                else []
 -- and newly introduced variables
 -- ignore fieldass, since they are iorefs
-collectAssigns (ABS.SDec _ (ABS.Ident var)) _ = [var]
+collectAssigns (ABS.SDec _ (ABS.LIdent (_,var))) _ = [var]
 collectAssigns _ _ = []
 
 typOfConstrType :: ABS.ConstrType -> ABS.Type
@@ -116,3 +117,9 @@ funScope :: StmtM ScopeTable
 funScope = do
   scopes <- lift get
   return $ M.unions scopes
+
+errorPos :: (Int, Int) -> String -> a
+errorPos pos msg = error ("[error #" ++ showPos pos ++ "]" ++  msg)
+
+showPos :: (Int, Int) -> String
+showPos (row,col) = show row ++ ":" ++ show col
