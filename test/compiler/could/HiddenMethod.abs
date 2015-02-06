@@ -19,8 +19,8 @@ class C implements I{
 {
   I i = new local C();
   Int x = i.get_x();
-  assert(x == 0);
+  println(toString(x == 0));
   i.inc();
   x = i.get_x();
-  assert(x == 1);
+  println(toString(x == 1));
 }

@@ -20,5 +20,5 @@ class C1 implements Interf1 {
   Fut<Unit> f1 = o1 ! check();
   o1 ! change_x();
   f1.get;
-  assert(True);
+  println(toString(True));
 }

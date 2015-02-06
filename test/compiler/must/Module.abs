@@ -1,0 +1,48 @@
+module Module;
+
+import M4.h;
+
+{
+  println(toString(M4.h));
+}
+
+module M1;
+
+export * ;
+
+def Unit f() = Unit;
+
+data A = A;
+
+module M2;
+
+import f from M1;
+import A from M1;
+
+def A g() = A;
+
+module M3;
+
+export ExceptionM3;
+export f, g;
+
+exception ExceptionM3(Int, Bool);
+
+def Unit f() = Unit;
+
+def Unit g() = f();
+
+module M4;
+
+export h;
+import M3.f;
+import g from M3;
+import ExceptionM3 from M3;
+
+def Bool h() = M3.f() == g();
+
+class C {
+  Unit m() {
+      throw ExceptionM3(3, False);
+  }
+}

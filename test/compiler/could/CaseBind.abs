@@ -12,6 +12,6 @@ def Bool f() = let (X x) = A in
 	
 
 {
-  assert (f());
+  println(toString(f()));
 
 }

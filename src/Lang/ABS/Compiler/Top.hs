@@ -74,20 +74,31 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
 tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
 tExport (ABS.QTyp qsegs) ABS.StarExport = [HS.EModuleContents (HS.ModuleName $ joinQualTypeIds qsegs)]
 tExport _ (ABS.StarFromExport (ABS.QTyp qsegs)) = [HS.EModuleContents (HS.ModuleName $ joinQualTypeIds qsegs)]
-tExport _ (ABS.AnyExport es) = map tExport' es
-    where tExport' (ABS.AnyIden (ABS.Ident ident)) = HS.EVar (HS.UnQual $ HS.Ident ident)
-          tExport' (ABS.AnyTyIden (ABS.TypeIdent ident)) = HS.EThingAll (HS.UnQual $ HS.Ident ident) -- here we wrongly export all its constructors, but it better fits ABS, since ABS module-system cannot distinquish between type constructors and data constructors and exports both if the names are the same, e.g.:  data A = A;
+tExport m (ABS.AnyExport es) = concatMap tExport' es
+    where tExport' (ABS.AnyIden (ABS.Ident var)) = [HS.EVar (HS.UnQual $ HS.Ident var)]
+          tExport' (ABS.AnyTyIden ident@(ABS.TypeIdent var)) = case find (\ mi -> moduleName mi == m) ?moduleTable of
+                                                                Just (ModuleInfo _ _ _ _ exs) -> if ident `elem` exs
+                                                                                             then [HS.EThingAll (HS.UnQual $ HS.Ident var), -- MyException
+                                                                                                   -- __myException smart constructor
+                                                                                                   HS.EVar (HS.UnQual $ HS.Ident $  "__" ++ headToLower var)]
+                                                                                             else [HS.EThingAll (HS.UnQual $ HS.Ident var)] -- just datatype
+                                                                Nothing -> [HS.EThingAll (HS.UnQual $ HS.Ident var)] -- here we wrongly export all its constructors, but it better fits ABS, since ABS module-system cannot distinquish between type constructors and data constructors and exports both if the names are the same, e.g.:  data A = A;
 tExport _ _ = error "we cannot translate that export yet, bcs ABS' module-system has problems"
 
 tImport :: (?moduleTable::ModuleTable) => ABS.Import -> HS.ImportDecl
 tImport (ABS.StarFromImport _ityp (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing Nothing
-tImport (ABS.AnyImport _ityp (ABS.TTyp qsegs) aid) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinTTypeIds qsegs)) True False Nothing Nothing (Just (False, [tImport' aid]))
-tImport (ABS.AnyFromImport _ityp aids (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing (Just (False, map tImport' aids))
+tImport (ABS.AnyImport _ityp (ABS.TTyp qsegs) aid) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinTTypeIds qsegs)) True False Nothing Nothing (Just (False, tImport' (joinTTypeIds qsegs) aid))
+tImport (ABS.AnyFromImport _ityp aids (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing (Just (False, concatMap (tImport' (joinQualTypeIds qsegs)) aids))
 
-tImport' :: ABS.AnyIdent -> HS.ImportSpec
-tImport' (ABS.AnyIden (ABS.Ident ident)) = HS.IVar $ HS.Ident ident
-tImport' (ABS.AnyTyIden (ABS.TypeIdent ident)) = HS.IThingAll $ HS.Ident ident -- compromise since ABS cannot distinguish type constructors to data constructors
-
+tImport' :: (?moduleTable::ModuleTable) => String -> ABS.AnyIdent -> [HS.ImportSpec]
+tImport' _ (ABS.AnyIden (ABS.Ident ident)) = [HS.IVar $ HS.Ident ident]
+tImport' m (ABS.AnyTyIden ident@(ABS.TypeIdent var)) = case find (\ (ModuleInfo _ (ABS.QTyp qsegs) _ _ _ ) -> joinQualTypeIds qsegs == m) ?moduleTable of
+                                                     Just (ModuleInfo _ _ _ _ exs) -> if ident `elem` exs
+                                                                                       then [HS.IThingAll $ HS.Ident var, -- MyException
+                                                                                             -- __myException smart constructor
+                                                                                             HS.IVar (HS.Ident $  "__" ++ headToLower var)]
+                                                                                       else [HS.IThingAll $ HS.Ident var] -- compromise since ABS cannot distinguish type constructors to data constructors
+                                                     Nothing -> [HS.IThingAll $ HS.Ident var]
 
 -- | Creates the mainABS wrapper i.e. main = main_is mainABS
 -- only if the module has a main block and is declared as main source file in the conf
