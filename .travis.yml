@@ -16,3 +16,4 @@ notifications:
   email:
     on_success: always
     on_failure: always
+  slack: envisage:Y39mhzPxnESyhZUwrPXeJzij
