@@ -18,10 +18,12 @@ import Control.Monad (when)
 
 main :: IO ()
 main = do
-  let Conf {files = inputFilesOrDirs} = conf
+  let Conf {files = inputFilesOrDirs, outputdir = odir} = conf
   if null inputFilesOrDirs
    then error "No ABS files to translate are given as input. Try --help"
    else do
+     isDir <- doesDirectoryExist odir
+     when (not isDir) $ error "Output directory does not exist. Please create it first."
      asts <- liftM concat $ mapM absParseFileOrDir inputFilesOrDirs
      let ?moduleTable = concatMap firstPass asts :: ModuleTable -- executes 1st-pass of all modules to collect info
      mapM_ (\ (fp, ast) -> mapM_ (ppHaskellFile fp) (tProg ast)) asts     -- calls the program-translator on each AST and prettyprints its Haskell output
@@ -88,6 +90,6 @@ ppHaskellFile fp m@(HS.Module _ (HS.ModuleName s) _ _ _ _ _) = do
   let haskellFilePath = if s == "Main"
                         then replaceExtension fp "hs" -- it's the main module, use the name of the parent filepath
                         else replaceFileName fp (map (\ c -> if c == '.' then '/' else c) s  ++ ".hs")
-  writeFile haskellFilePath (prettyPrint m)
+  writeFile (outputdir conf </> haskellFilePath) (prettyPrint m)
 
 
