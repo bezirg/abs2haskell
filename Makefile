@@ -1,20 +1,17 @@
 PREFIX=/usr/local/bin
 
-build: deps
-	cabal install --only-dependencies --force-reinstalls
-	cabal configure
-	cabal build
+default:
+	@echo "Type: 'sudo make install' to make the installation"
 
-install:
-	cp dist/build/abs2haskell/abs2haskell ${PREFIX}
+install: deps
+	cd haxr-browser; cabal install --force-reinstalls
+	cd opennebula; cabal install --force-reinstalls
+	cabal install --force-reinstalls --bindir=${PREFIX}
 
 deps: 
 	-git submodule init
 	git submodule update # clone git submodules
-	-cabal sandbox init
 	cabal update
-	cabal sandbox add-source haxr-browser
-	cabal sandbox add-source opennebula
 	cabal install happy-1.19.4
 
 test:
@@ -42,7 +39,6 @@ dist/build/testGrammar/testGrammar: abs-frontend/src/ABS.cf
 	cp -r dist/build/buildGrammar/Lang/ABS/Compiler/BNFC src/Lang/ABS/Compiler 
 
 clean:
-	-cabal sandbox delete
 	-rm -rf dist/
 	-rm -f src/ParABS.y src/LexABS.x src/TestABS.* src/*.bak # cleanup bnfc intermediate code
 	-rm -f src/*.hi src/*.o examples/*.hi examples/*.o # remove any compiled example
@@ -53,4 +49,4 @@ doc:
 	pandoc -t html -s doc/TODO.md -o doc/TODO.html
 	pandoc -f t2t -t html -s doc/DocABS.txt -o doc/GrammarDocumentation.html
 
-.PHONY: build install deps test grammar clean doc
+.PHONY: default install deps test grammar clean doc

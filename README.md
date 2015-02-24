@@ -21,7 +21,6 @@ The compiler depends on other community packages/libraries. This program will au
 If you have the above installed then simply run inside the `abs2haskell/` directory:
 
 ~~~
-make
 sudo make install
 ~~~
 
@@ -32,36 +31,35 @@ After installing the compiler, you should have the program `abs2haskell` under y
 Examples of running:
 
 ~~~
-abs2haskell examples/BenchMaps.abs 
-
-# An ABS program may have multiple main blocks in different modules. 
-# So you have to specify in which module is the main block you want to build with
-
-abs2haskell --main-is=examples/BenchMaps.abs examples/BenchMaps.abs 
-
-abs2haskell examples/   # will compile all ABS files under examples directory
-
+abs2haskell File1.abs File2.abs FileN.abs # compiles 3 abs source files
+abs2haskell examples/   # compiles *all* ABS files from given directory
 ~~~
 
+For usage and extra options, see `abs2haskell --help`.
 
 The compiler will generate ".hs" files for each compiled ABS module. No other runtime system libraries and dependencies will be generated.
-
-
 
 ## Compiling the generated Haskell code to machine code (so you can run it)
 
 ~~~
-ghc --make -threaded examples/BenchMaps.hs # put the generated haskell file that has the main block here
+ghc --make -threaded BenchMaps.hs 
+
+# An ABS program may have multiple main blocks in different modules. 
+# So you have to specify with option `-main-is` which module (with a main block)n is your entrypoint
+
+ghc --make -threaded examples/BenchMaps.hs examples/BenchLists.hs -main-is BenchMaps
+
+# The above command will generate an executable named after the main compiled module (here: ./BenchMaps[.exe])
 ~~~
 
 ## Running the final program
 
 ~~~
-./examples/BenchMaps -O # means run it on 1 core with default optimizations
-./examples/BenchMaps -O +RTS -N1 # the same as the above
-./examples/BenchMaps -O +RTS -N2 # run it on 2 cores
-./examples/BenchMaps -O +RTS -N4 # run it on 4 cores
-./examples/BenchMaps -O +RTS -NK # run it on K cores
+./BenchMaps -O # means run it on 1 core with default optimizations
+./BenchMaps -O +RTS -N1 # the same as the above
+./BenchMaps -O +RTS -N2 # run it on 2 cores
+./BenchMaps -O +RTS -N4 # run it on 4 cores
+./BenchMaps -O +RTS -NK # run it on K cores
 ~~~
 
 ## (Optional) Building the Grammar
