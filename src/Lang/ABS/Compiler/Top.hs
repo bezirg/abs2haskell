@@ -23,9 +23,7 @@ tProg (ABS.Prog moduls) = map tModul moduls
 
 tModul :: (?moduleTable::ModuleTable) => ABS.Module -> HS.Module
 tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let strModuleName = joinQualTypeIds qsegs in
-               HS.Module HS.noLoc (HS.ModuleName $ if (strModuleName == main_is conf)
-                                                   then "Main"
-                                                   else strModuleName) 
+               HS.Module HS.noLoc (HS.ModuleName strModuleName) 
                      [HS.LanguagePragma HS.noLoc [HS.Ident "Rank2Types"
                                               ,HS.Ident "NoImplicitPrelude" -- for not importing haskell's prelude
                                               ,HS.Ident "FlexibleInstances" -- for subtype null to any interface
@@ -37,9 +35,9 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
                      ] 
                      Nothing 
-                     (if (strModuleName == main_is conf) -- if it is the main module, it has to export main at least
-                      then Nothing                      -- this exports everything
-                      else Just $ concatMap (tExport mname) exports)
+                     (Just $ (case maybeMain of
+                                ABS.JustBlock _ -> ((HS.EVar $ HS.UnQual $ HS.Ident "main") :)
+                                ABS.NoBlock -> id) $ concatMap (tExport mname) exports)
                      -- IMPORT HEADER for the generated haskell module
                      ([HS.ImportDecl {HS.importLoc = HS.noLoc, 
                                      HS.importModule = HS.ModuleName "Lang.ABS.Runtime", 
@@ -86,7 +84,7 @@ tExport m (ABS.AnyExport es) = concatMap tExport' es
 tExport _ _ = error "we cannot translate that export yet, bcs ABS' module-system has problems"
 
 tImport :: (?moduleTable::ModuleTable) => ABS.Import -> HS.ImportDecl
-tImport (ABS.StarFromImport _ityp (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing Nothing
+tImport (ABS.StarFromImport _ityp (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing (Just (True, [HS.IVar $ HS.Ident "main"])) -- hiding main
 tImport (ABS.AnyImport _ityp (ABS.TTyp qsegs) aid) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinTTypeIds qsegs)) True False Nothing Nothing (Just (False, tImport' (joinTTypeIds qsegs) aid))
 tImport (ABS.AnyFromImport _ityp aids (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc (HS.ModuleName (joinQualTypeIds qsegs)) False False Nothing Nothing (Just (False, concatMap (tImport' (joinQualTypeIds qsegs)) aids))
 
