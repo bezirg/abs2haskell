@@ -77,6 +77,7 @@ data TTypeSegment =
 
 data Decl =
    TypeDecl UIdent Type
+ | TypeParDecl UIdent [UIdent] Type
  | ExceptionDecl ConstrIdent
  | DataDecl UIdent [ConstrIdent]
  | DataParDecl UIdent [UIdent] [ConstrIdent]

@@ -103,6 +103,7 @@ All other symbols are terminals.
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
   | //Decl// | -> | ``type`` //UIdent// ``=`` //Type// ``;`` 
+  |  |  **|**  | ``type`` //UIdent// ``<`` //[UIdent]// ``>`` ``=`` //Type// ``;`` 
   |  |  **|**  | ``exception`` //ConstrIdent// ``;`` 
   |  |  **|**  | ``data`` //UIdent// ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``data`` //UIdent// ``<`` //[UIdent]// ``>`` ``=`` //[ConstrIdent]// ``;`` 

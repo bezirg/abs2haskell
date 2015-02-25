@@ -182,6 +182,7 @@ instance Print TTypeSegment where
 instance Print Decl where
   prt i e = case e of
    TypeDecl uident type' -> prPrec i 0 (concatD [doc (showString "type") , prt 0 uident , doc (showString "=") , prt 0 type' , doc (showString ";")])
+   TypeParDecl uident uidents type' -> prPrec i 0 (concatD [doc (showString "type") , prt 0 uident , doc (showString "<") , prt 0 uidents , doc (showString ">") , doc (showString "=") , prt 0 type' , doc (showString ";")])
    ExceptionDecl constrident -> prPrec i 0 (concatD [doc (showString "exception") , prt 0 constrident , doc (showString ";")])
    DataDecl uident constridents -> prPrec i 0 (concatD [doc (showString "data") , prt 0 uident , doc (showString "=") , prt 0 constridents , doc (showString ";")])
    DataParDecl uident uidents constridents -> prPrec i 0 (concatD [doc (showString "data") , prt 0 uident , doc (showString "<") , prt 0 uidents , doc (showString ">") , doc (showString "=") , prt 0 constridents , doc (showString ";")])

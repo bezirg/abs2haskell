@@ -149,7 +149,10 @@ tDecl (ABS.ExceptionDecl constr) = let ((_,cid), cargs) = case constr of
                                          ]
                                                     
     -- TODO pass the type variables env , change tType to tTypeOrTyVar
-tDecl (ABS.TypeDecl (ABS.UIdent (_,tid)) typ) = [HS.TypeDecl HS.noLoc (HS.Ident tid) [{- TODO: type variables lhs -}] (tType typ)]
+tDecl (ABS.TypeDecl (ABS.UIdent (_,tid)) typ) = [HS.TypeDecl HS.noLoc (HS.Ident tid) [{- no typevars -}] (tType typ)]
+
+tDecl (ABS.TypeParDecl (ABS.UIdent (_,tid)) tyvars typ) = [HS.TypeDecl HS.noLoc (HS.Ident tid) 
+                                                                 (map (\ (ABS.UIdent (_,varid)) -> HS.UnkindedVar $ HS.Ident $ headToLower $  varid) tyvars) (tTypeOrTyVar tyvars typ)]
 
 tDecl (ABS.DataDecl tid constrs) =  tDecl (ABS.DataParDecl tid [] constrs) -- just parametric datatype with empty list of type variables
 

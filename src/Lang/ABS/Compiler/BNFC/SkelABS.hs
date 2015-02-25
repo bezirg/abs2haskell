@@ -86,6 +86,7 @@ transTTypeSegment x = case x of
 transDecl :: Decl -> Result
 transDecl x = case x of
   TypeDecl uident type'  -> failure x
+  TypeParDecl uident uidents type'  -> failure x
   ExceptionDecl constrident  -> failure x
   DataDecl uident constridents  -> failure x
   DataParDecl uident uidents constridents  -> failure x
