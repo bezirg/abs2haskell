@@ -34,7 +34,7 @@ main = do
 -- the interfaces hierarchy, the methods, and exceptions declared in the module
 firstPass :: (FilePath, ABS.Program) -> [ModuleInfo]
 firstPass (fp, (ABS.Prog moduls)) = map (firstPass' fp) moduls
-firstPass' fp (ABS.Modul mName _ _ decls _) = ModuleInfo {
+firstPass' fp (ABS.Modul mName es is decls _) = ModuleInfo {
                                                                    filePath = fp,
                                                                    moduleName = mName,
                                                                    hierarchy = foldl insertInterfs M.empty decls,
@@ -44,8 +44,15 @@ firstPass' fp (ABS.Modul mName _ _ decls _) = ModuleInfo {
                                                                                          ABS.ExceptionDecl cident -> (case cident of
                                                                                                                        ABS.SinglConstrIdent tid -> tid
                                                                                                                        ABS.ParamConstrIdent tid _ -> tid) : acc
-                                                                                         _ -> acc) [] decls
-                                                                     }
+                                                                                         _ -> acc) [] decls,
+                                                                   fimports = foldl (\ acc imp ->
+                                                                                         case imp of
+                                                                                           --ABS.AnyImport ABS.ForeignImport anyidents _ TODO: qualified foreign
+                                                                                           ABS.AnyFromImport ABS.ForeignImport anyidents _ -> 
+                                                                                               anyidents ++ acc
+                                                                                           _ -> acc) [] is,
+                                                                   exports = undefined -- TODO
+                                                                }
     where 
       insertInterfs :: M.Map ABS.UIdent [ABS.QType] -> ABS.Decl -> M.Map ABS.UIdent [ABS.QType]
       insertInterfs acc (ABS.InterfDecl tident@(ABS.UIdent (p,_)) _msigs) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc

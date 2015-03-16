@@ -21,5 +21,5 @@ confOpt = Conf {
           , outputdir = "." &= name "outputdir" &= explicit &= typDir
           , ast = def &= help "Output an .ast file containing the parsed AST Haskell datatype"
           }
-          &= program "abs2haskell" &= help "ABS to Haskell transpiler" &= summary "abs2haskell v0.0.2, Nikolaos Bezirgiannis, Envisage Project"
+          &= program "abs2haskell" &= help "ABS to Haskell transpiler" &= summary "abs2haskell v0.0.5, Nikolaos Bezirgiannis, Envisage Project"
           &= helpArg [explicit, name "h", name "help"]

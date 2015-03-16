@@ -1,0 +1,24 @@
+module ForeignImport;
+
+fimport id from Data.Function;
+fimport newArray from Data.Array.IO;
+fimport IOArray from Data.Array.IO;
+
+def Int f(Int a) = id(a);
+
+interface I {
+    Unit m();
+}
+
+class C implements I {
+    Unit m() {
+        IOArray<Int, Int> a;
+        a = newArray(Pair(0,40), 0);
+   }
+
+}
+
+{
+
+
+}

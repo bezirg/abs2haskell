@@ -12,7 +12,9 @@ data ModuleInfo = ModuleInfo {
       moduleName :: ABS.QType,
       hierarchy :: M.Map ABS.UIdent [ABS.QType], -- Interface -> Extends
       methods :: M.Map ABS.UIdent [ABS.LIdent],      -- Interface -> Methods
-      exceptions :: [ABS.UIdent]                    -- names of exceptions, needed for code generating smart-exception-constructors
+      exceptions :: [ABS.UIdent],                    -- names of exceptions, needed for code generating smart-exception-constructors
+      fimports :: [ABS.AnyIdent],                          -- temp fix
+      exports :: [ABS.AnyIdent]
     } deriving (Show)
 
 

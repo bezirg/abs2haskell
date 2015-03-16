@@ -14,7 +14,7 @@ import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
 import Control.Monad.Trans.Reader (ask, runReader)
 import Data.List (nub, findIndices)
 import qualified Data.Map as M
-import Data.Foldable (foldlM)
+import Data.Foldable (foldlM, find)
 import Control.Monad (liftM)
 
 -- tPureExpStmt is a pure expression in the statement world
@@ -22,7 +22,7 @@ import Control.Monad (liftM)
 -- 1) if a sub-expression reads this fields it *wraps* the whole expression in readThis (by tPureExpWrap)
 -- 2) if a sub-expression is pure it lifts it with return/pure (by tPureExp')
 -- 3) if a sub-expression reads local-variables it calls readIORef on them (by tPureExp')
-tPureExpStmt :: (?moduleTable::ModuleTable) => ABS.PureExp -> StmtM HS.Exp
+tPureExpStmt :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.PureExp -> StmtM HS.Exp
 tPureExpStmt pexp = do
   (_,_,_,cls, _) <- ask
   runExpr (tPureExpWrap pexp cls)
@@ -43,7 +43,7 @@ tPureExpWrap pexp cls = do
                                                          (HS.PVar $ HS.Ident $ "__" ++ arg) )  (nub thisFields))
                                           ] texp)
 
-tEffExpStmt :: (?moduleTable::ModuleTable) => ABS.EffExp -> StmtM HS.Exp
+tEffExpStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.EffExp -> StmtM HS.Exp
 tEffExpStmt eexp = do
   (_,_,_,cls, _) <- ask
   runExpr (tEffExpWrap eexp cls)
@@ -76,7 +76,8 @@ tEffExpWrap eexp cls = do
 
 
 -- this is the "statement-lifted" version of tPureExp
-tPureExp' :: (?moduleTable::ModuleTable) =>
+tPureExp' :: (?moduleTable::ModuleTable,
+             ?moduleName::ABS.QType)=>
             ABS.PureExp 
           -> [ABS.UIdent] -- ^ TypeVarsInScope
           -> ExprLiftedM HS.Exp
@@ -149,7 +150,14 @@ tPureExp' (ABS.Case matchE branches) tyvars = do
       return $ HS.App (HS.App (HS.Var (identI "caseEx")) tmatch) (HS.List talts)
 
 
-tPureExp' (ABS.EFunCall (ABS.LIdent (_,cid)) args) tyvars = liftM HS.Paren $ foldlM
+tPureExp' (ABS.EFunCall (ABS.LIdent (_,cid)) args) tyvars = liftM (case find (\ m -> moduleName m == ?moduleName) ?moduleTable of
+        Just (ModuleInfo {fimports = is})  -> case find (\case 
+                                                        (ABS.AnyIden (ABS.LIdent (_,cid'))) -> cid == cid'
+                                                        _ -> False) is of
+                                               Nothing -> id
+                                               Just _ -> HS.App (HS.Var (identI "liftIO")) . (HS.App (HS.Var (identI "join")))
+        Nothing -> error "ModuleInfo not found for this module") $
+                                               liftM HS.Paren $ foldlM
                                             (\ acc nextArg -> do
                                                targ <- tPureExp' nextArg tyvars
                                                return $ HS.Paren $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ) -- intersperse "<*>", aka "ap" for applicative
@@ -519,7 +527,7 @@ tPureExp' (ABS.EThis (ABS.LIdent (_,ident))) _ = return $ HS.App (HS.Var $ HS.Un
                                             (HS.Var $ HS.UnQual $ HS.Ident ("__" ++ ident))
 
 -- this is the "statement-lifted" version of tEffExp
-tEffExp' :: (?moduleTable::ModuleTable) => ABS.EffExp -> ExprLiftedM HS.Exp
+tEffExp' :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.EffExp -> ExprLiftedM HS.Exp
 tEffExp' (ABS.New (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
 tEffExp' (ABS.New _ _) = error "Not valid class name"
 tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new_local" qtids pexps
@@ -539,7 +547,7 @@ tEffExp' (ABS.Get pexp) = do
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "get") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
 -- | shorthand generator, because new and new local are similar
-tNewOrNewLocal :: (?moduleTable::ModuleTable) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tNewOrNewLocal :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tNewOrNewLocal newOrNewLocal qtids args = do 
   targs <- foldlM
            (\ acc pexp -> do
@@ -557,7 +565,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
              targs
 
 -- | shorthand generator, because sync and async are similar
-tSyncOrAsync :: (?moduleTable::ModuleTable) => String -> ABS.PureExp -> String -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> String -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method args = do
   (_,_,_,_, isInit) <- ask
   if (isInit && syncOrAsync == "sync")
@@ -573,7 +581,7 @@ tSyncOrAsync syncOrAsync pexp method args = do
       return $ HS.Paren $ HS.App (HS.Var (identI "join")) tapp
 
 
-tAwaitGuard :: (?moduleTable::ModuleTable) => ABS.Guard -> String -> ExprLiftedM HS.Exp
+tAwaitGuard :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Guard -> String -> ExprLiftedM HS.Exp
 -- NOTE: both VarGuard and FieldGuard contain futures, but "this.f?" is distinguished as FieldGuard to take into account Cosimo's consideration
 -- awaitguard: f?
 tAwaitGuard (ABS.VarGuard ident) _cls = do

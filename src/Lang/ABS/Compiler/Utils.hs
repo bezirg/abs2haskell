@@ -11,7 +11,7 @@ module Lang.ABS.Compiler.Utils
     ,isInterface
     ,typOfConstrType
     ,funScope
-    ,errorPos, showPos
+    ,errorPos, warnPos, showPos
     ) where
 
 import Lang.ABS.Compiler.Base
@@ -24,6 +24,7 @@ import qualified Data.Map as M (member, unions, (\\))
 import Control.Monad.Trans.Reader (ask, runReader)
 import Control.Monad.Trans.State (get)
 import Control.Monad.Trans.Class (lift)
+import Debug.Trace (trace)
 
 -- generate haskell code - helper functions
 
@@ -120,6 +121,9 @@ funScope = do
 
 errorPos :: (Int, Int) -> String -> a
 errorPos pos msg = error ("[error #" ++ showPos pos ++ "]" ++  msg)
+
+warnPos :: (Int,Int) -> String -> a -> a
+warnPos  pos msg = trace ("[warning #" ++ showPos pos ++ "]" ++  msg)
 
 showPos :: (Int, Int) -> String
 showPos (row,col) = show row ++ ":" ++ show col

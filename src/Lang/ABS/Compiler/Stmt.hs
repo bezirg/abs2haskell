@@ -20,7 +20,7 @@ import qualified Data.Map as M
 
 -- | method block or main block
 -- can return
-tBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
                                                                     (clsScope, mthScope, interfName, cls, False))
@@ -29,14 +29,14 @@ tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runR
 -- init block
 -- can always return (with: return Unit)
 -- can not run await and/or sync calls
-tInitBlockWithReturn :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
                                                                     (clsScope, mthScope, interfName, cls, True))
                                                         scopes
 
 -- | block pushes a new scope
-tBlock :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> Bool -> StmtM HS.Exp
+tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM HS.Exp
 tBlock [] _canReturn = return $ eReturnUnit
 tBlock stmts canReturn = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
@@ -54,7 +54,7 @@ tBlock stmts canReturn = do
                           _ -> []
                        )
 
-tStmts :: (?moduleTable :: ModuleTable) => [ABS.Stm] -> Bool -> StmtM [HS.Stmt]
+tStmts :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM [HS.Stmt]
 tStmts (ABS.SReturn e:[]) True = tStmt (ABS.SExp e)
 tStmts (ABS.SReturn _:_) _ = error "Return must be the last statement"
 tStmts [] _canReturn = return $ []
@@ -63,7 +63,7 @@ tStmts (stmt:rest) canReturn = do
     r <- tStmts rest canReturn
     return (s++r) -- can return multiple HS.Stmt
 
-tStmt :: (?moduleTable::ModuleTable) => ABS.Stm -> StmtM [HS.Stmt]
+tStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Stm -> StmtM [HS.Stmt]
 tStmt (ABS.SExp pexp) = do
   texp <- case pexp of  -- TODO: have to force to WHNF
            ABS.ExpE eexp -> tEffExpStmt eexp
@@ -141,7 +141,13 @@ tStmt (ABS.SDec typ ident@(ABS.LIdent (p,var))) = -- just rewrites it to Interfa
                                   (case typ of
                                      ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
                                      ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
-       _ -> errorPos p (var ++ " is ADT and has to be initialized")
+       _ -> warnPos p (var ++ " is ADT and has to be initialized") (do
+                                                                    addToScope ident typ
+                                                                    return [HS.Generator HS.noLoc
+                                                                            (case typ of
+                                                                               ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                                                               ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "undefined"))]
+                                                                  )
     -- TODO: remove the ident from the class attributes to check
 
 tStmt (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) exp) = do

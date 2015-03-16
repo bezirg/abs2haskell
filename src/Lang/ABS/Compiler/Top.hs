@@ -3,7 +3,6 @@ module Lang.ABS.Compiler.Top
     ) where
 
 import Lang.ABS.Compiler.Base
-import Lang.ABS.Compiler.Conf
 import Lang.ABS.Compiler.Utils
 import Lang.ABS.Compiler.Stmt (tBlockWithReturn, tInitBlockWithReturn)
 import Lang.ABS.Compiler.Expr (tPureExp,tBody, tType, tTypeOrTyVar)
@@ -12,7 +11,7 @@ import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
 import qualified Data.Map as M
 import Data.List ((\\), mapAccumL, nub, find)
-import Data.Maybe (mapMaybe, isNothing)
+import Data.Maybe (mapMaybe, isNothing, fromJust)
 import Control.Monad (liftM)
 import Control.Monad.Trans.Reader (runReader)
 
@@ -66,7 +65,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                      ]
                       ++        -- the translated ABS imports
                       map tImport imports
-                     ) (tDecls decls ++ tMain maybeMain)
+                     ) (let ?moduleName = mname in tDecls decls ++ tMain maybeMain)
 
 
 tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
@@ -75,7 +74,7 @@ tExport _ (ABS.StarFromExport (ABS.QTyp qsegs)) = [HS.EModuleContents (HS.Module
 tExport m (ABS.AnyExport es) = concatMap tExport' es
     where tExport' (ABS.AnyIden (ABS.LIdent (_,var))) = [HS.EVar (HS.UnQual $ HS.Ident var)]
           tExport' (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ mi -> moduleName mi == m) ?moduleTable of
-                                                                Just (ModuleInfo _ _ _ _ exs) -> if ident `elem` exs
+                                                                Just (ModuleInfo _ _ _ _ exs _ _) -> if ident `elem` exs
                                                                                              then [HS.EThingAll (HS.UnQual $ HS.Ident var), -- MyException
                                                                                                    -- __myException smart constructor
                                                                                                    HS.EVar (HS.UnQual $ HS.Ident $  "__" ++ headToLower var)]
@@ -90,8 +89,8 @@ tImport (ABS.AnyFromImport _ityp aids (ABS.QTyp qsegs)) = HS.ImportDecl HS.noLoc
 
 tImport' :: (?moduleTable::ModuleTable) => String -> ABS.AnyIdent -> [HS.ImportSpec]
 tImport' _ (ABS.AnyIden (ABS.LIdent (_,ident))) = [HS.IVar $ HS.Ident ident]
-tImport' m (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ (ModuleInfo _ (ABS.QTyp qsegs) _ _ _ ) -> joinQualTypeIds qsegs == m) ?moduleTable of
-                                                     Just (ModuleInfo _ _ _ _ exs) -> if ident `elem` exs
+tImport' m (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ (ModuleInfo _ (ABS.QTyp qsegs) _ _ _ _ _) -> joinQualTypeIds qsegs == m) ?moduleTable of
+                                                     Just (ModuleInfo _ _ _ _ exs _ _) -> if ident `elem` exs
                                                                                        then [HS.IThingAll $ HS.Ident var, -- MyException
                                                                                              -- __myException smart constructor
                                                                                              HS.IVar (HS.Ident $  "__" ++ headToLower var)]
@@ -100,7 +99,7 @@ tImport' m (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ (ModuleInfo
 
 -- | Creates the mainABS wrapper i.e. main = main_is mainABS
 -- only if the module has a main block and is declared as main source file in the conf
-tMain :: (?moduleTable::ModuleTable) => ABS.MaybeBlock -> [HS.Decl]
+tMain :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.MaybeBlock -> [HS.Decl]
 tMain ABS.NoBlock = []
 tMain (ABS.JustBlock (ABS.Bloc block)) = 
        -- main can only return with: return Unit;
@@ -117,12 +116,12 @@ tMain (ABS.JustBlock (ABS.Bloc block)) =
                                                                       (HS.Var (HS.UnQual (HS.Ident "mainABS"))))) (HS.BDecls [])]
 
 
-tDecls :: (?moduleTable::ModuleTable) => [ABS.Decl] -> [HS.Decl]
+tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.Decl] -> [HS.Decl]
 tDecls = concatMap tDecl
 
 -- can return more than 1 decl, because of creating accessors for records
 -- or putting type signatures
-tDecl :: (?moduleTable::ModuleTable) => ABS.Decl -> [HS.Decl]
+tDecl :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Decl -> [HS.Decl]
 
 tDecl (ABS.ExceptionDecl constr) = let ((_,cid), cargs) = case constr of
                                                             ABS.SinglConstrIdent (ABS.UIdent tid) -> (tid, [])
@@ -589,7 +588,9 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                        ABS.MethClassBody _ _ _ _ -> Nothing
                                                                       ) ldecls
          fieldInits :: [HS.Stmt]
-         fieldInits = foldr (\ fdecl acc -> (case fdecl of
+         fieldInits = let is = fimports $ fromJust $ (find (\ m -> moduleName m == ?moduleName) ?moduleTable) -- fimports of current module
+                      in
+                        foldr (\ fdecl acc -> (case fdecl of
                                                 ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) pexp -> 
                                                     HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing 
                                                                                    (HS.UnGuardedRhs $ runReader (tPureExp pexp []) (allFields,"AnyObject")) (HS.BDecls [])])
@@ -603,6 +604,19 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                            ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))])  _ -> 
                                                                HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_fut")
                                                                                        : acc
+                                                           -- maybe it is a foreign polymorphic datatype, 
+                                                           -- so it can be left uninitialized, because its creation may be monadic
+                                                           ABS.TGen (ABS.QTyp qsegs) _ -> case find (\case
+                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
+                                                              _ -> False) is of
+                                                                              Just _ -> HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing (HS.UnGuardedRhs (HS.Var $ identI "undefined")) (HS.BDecls [])]) : acc
+                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
+                                                           -- maybe it is a foreign simple datatype, 
+                                                           ABS.TSimple (ABS.QTyp qsegs) -> case find (\case
+                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
+                                                              _ -> False) is of
+                                                                              Just _ -> HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing (HS.UnGuardedRhs (HS.Var $ identI "undefined")) (HS.BDecls [])]) : acc
+                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
                                                            _ -> errorPos p "A field must be initialised if it is not of a reference type"
                                                 ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                ABS.NoBlock -> acc
