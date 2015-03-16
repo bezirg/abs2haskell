@@ -1,0 +1,21 @@
+module FixBugMonadicStyle;
+
+interface I {
+    Int m(Int y);
+    Unit g();
+}
+
+class C(Int x) implements I {
+    Int m(Int y) {
+        return y;
+    }
+    Unit g() {
+        Int z = 3;
+        this.m(z);
+    }
+}
+
+{
+ I o = new local C(4);
+ o.g();
+}

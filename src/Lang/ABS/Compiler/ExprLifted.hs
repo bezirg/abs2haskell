@@ -202,7 +202,7 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
              else errorPos p "cannot equate datatype to null"
-    Nothing -> errorPos p $ str ++ "not in scope or not object variable"
+    Nothing -> errorPos p $ str ++ " not in scope or not object variable"
 
 tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tthis <- tPureExp' pthis _tyvars
@@ -563,14 +563,14 @@ tSyncOrAsync syncOrAsync pexp method args = do
   if (isInit && syncOrAsync == "sync")
     then error "Synchronous method calls are not allowed inside init block"
     else do
-      texp <- tPureExp' pexp [] -- the callee object
-      targs <- foldlM                                -- the method's arguments
+      texp <- tPureExp' pexp [] -- the callee object (usually, the this)
+      tapp <- foldlM                                -- the method's arguments
              (\ acc arg -> do
                 targ <- tPureExp' arg []
-                return $ HS.Paren (HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") targ))
-             (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync)
+                return $ HS.Paren (HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ))
+             (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") texp))
              args
-      return $ HS.Paren $ HS.InfixApp targs (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
+      return $ HS.Paren $ HS.App (HS.Var (identI "join")) tapp
 
 
 tAwaitGuard :: (?moduleTable::ModuleTable) => ABS.Guard -> String -> ExprLiftedM HS.Exp

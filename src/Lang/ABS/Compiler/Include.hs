@@ -17,6 +17,7 @@ module Lang.ABS.Compiler.Include
      Prelude.undefined,
      Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
      RWS.ask, RWS.get, RWS.put,
+     Control.Monad.join, -- for applicative style method (sync and async) applications
      Control.Monad.Catch.Handler (..), PHandler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..), caseEx,
      Control.Monad.Catch.fromException,
      withReaderT,

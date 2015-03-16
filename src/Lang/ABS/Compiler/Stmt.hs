@@ -179,7 +179,7 @@ tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
       Nothing -> 
         case M.lookup ident cscope of -- maybe it is in the class scope
           Just _t -> tStmt (ABS.SFieldAss ident exp) -- then normalize it to a field ass
-          Nothing -> errorPos p (var ++ "not in scope or cannot modify the variable")
+          Nothing -> errorPos p (var ++ " not in scope or cannot modify the variable")
                                                                              
 tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
   (_, _, _, cls,_) <- ask
