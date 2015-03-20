@@ -25,6 +25,8 @@ library
                       exceptions>=0.6.1,
                       -- for contacting OpenNebula through XML-RPC
                       opennebula, 
+                      -- for decoding the $TEMPLATE context-variable of OpenNebula
+                      base64-string,
                       -- take the local network interfaces info: MAC, IP
                       network-info, 
                       utf8-string,
@@ -61,6 +63,7 @@ library
   ghc-options:       -Wall
   hs-source-dirs:    src
 
+-- this is the (trans)compiler that translate ABS to Haskell
 executable abs2haskell
   main-is:            Lang/ABS/Compiler/Main.hs
   other-modules:

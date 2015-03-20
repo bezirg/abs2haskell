@@ -233,11 +233,11 @@ set_dC_vmId v
 instance IDC_ DC where
         shutdown this = do
                    DC { dC_vmId = thisVmId } <- readThis
-                   (True, _, errCode) <- lift (lift (xmlrpc server session (Just proxy) (vm_action "cancel" thisVmId)))
+                   (True, _, errCode) <- lift (lift (xmlrpc server session (Just proxy) (vm_action "delete" thisVmId)))
                    return ()
         getLoad this = do 
                    DC { dC_vmId = thisVmId } <- readThis
-                   -- only works when called on this dc (whereami)
+                   -- only works when called on this dc (thisDC)
                    -- otherwise raises a not-implemented-yet error
                    if (thisVmId == myVmId)
                       then do
