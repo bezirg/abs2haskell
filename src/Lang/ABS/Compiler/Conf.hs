@@ -8,6 +8,7 @@ module Lang.ABS.Compiler.Conf
 import System.IO.Unsafe (unsafePerformIO)
 import System.Console.CmdArgs
 
+{-# NOINLINE conf #-}
 conf = unsafePerformIO (cmdArgs confOpt)
 
 data Conf = Conf {

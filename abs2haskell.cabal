@@ -22,21 +22,21 @@ library
                       containers>=0.5.0.0,
                       monad-coroutine>=0.8,
                       -- for lifting exceptions to ABS monad
-                      exceptions==0.6.1,
+                      exceptions>=0.6.1,
                       -- for contacting OpenNebula through XML-RPC
                       opennebula, 
-                      base64-string, 
+                      -- take the local network interfaces info: MAC, IP
                       network-info, 
-                      xml, 
                       utf8-string,
                       -- for cloud abs / distributed communication of Haskell nodes
-                      distributed-process==0.5.1, 
+                      distributed-process>=0.5.1, 
                       -- the node discovery/topology backend, this is the automatic: UDP broadcast
-                      distributed-process-simplelocalnet ==0.2.1.0,
-                      network-transport==0.4.0.0, 
-                      rank1dynamic==0.2.0.0, 
-                      network-transport-tcp==0.4.0, 
-                      distributed-static==0.3.0.0,
+                      distributed-process-simplelocalnet>=0.2.2.0,
+                      network-transport>=0.4.1.0, 
+                      -- data and typeable instances for rank-1 polymorphic types
+                      rank1dynamic>=0.2.0.0, 
+                      network-transport-tcp>=0.4.1, 
+                      distributed-static>=0.3.0.0,
                       binary>=0.7.1.0
   exposed-modules:    
                      -- imitating the abslang.abs
@@ -119,17 +119,15 @@ test-suite test_runtime
                       HUnit,
                       -- for contacting OpenNebula through XML-RPC
                       opennebula, 
-                      base64-string, 
                       network-info, 
-                      xml, 
                       utf8-string,
                       -- for cloud abs / distributed communication of Haskell nodes
-                      distributed-process==0.5.1, 
-                      network-transport==0.4.0.0, 
-                      rank1dynamic==0.2.0.0, 
-                      network-transport-tcp==0.4.0, 
-                      distributed-static==0.3.0.0,
-                      binary==0.7.1.0
+                      distributed-process>=0.5.1, 
+                      network-transport>=0.4.1.0, 
+                      rank1dynamic>=0.2.0.0, 
+                      network-transport-tcp>=0.4.1, 
+                      distributed-static>=0.3.0.0,
+                      binary>=0.7.1.0
   extensions:        LambdaCase,
                      ImplicitParams
   ghc-options:
