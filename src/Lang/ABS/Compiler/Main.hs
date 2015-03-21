@@ -37,8 +37,14 @@ firstPass (fp, (ABS.Prog moduls)) = map (firstPass' fp) moduls
 firstPass' fp (ABS.Modul mName es is decls _) = ModuleInfo {
                                                                    filePath = fp,
                                                                    moduleName = mName,
-                                                                   hierarchy = foldl insertInterfs M.empty decls,
-                                                                   methods = foldl insertMethods M.empty decls,
+                                                                   hierarchy = foldl insertInterfs 
+                                                                               -- the IDC is a principal interface of the stdlib
+                                                                               (M.singleton (ABS.UIdent ((-1,-1), "IDC")) []) decls,
+                                                                   methods = foldl insertMethods 
+                                                                             -- the IDC is the stdlib interface with 2 methods
+                                                                             (M.singleton (ABS.UIdent ((-1,-1),"IDC")) 
+                                                                                   [ABS.LIdent ((-1,-1),"shutdown"),
+                                                                                    ABS.LIdent ((-1,-1),"getLoad")]) decls,
                                                                    exceptions = foldl (\ acc decl -> 
                                                                                        case decl of
                                                                                          ABS.ExceptionDecl cident -> (case cident of

@@ -1,0 +1,26 @@
+module NebulaDC;
+
+fimport * from OpenNebula; // for making RPC calls
+fimport NodeId from Control.Distributed.Process; // for CloudHaskell
+fimport readFile from System.IO; // for reading the /proc/loadavg
+fimport words from Data.List; // for processing the /proc/loadavg
+fimport Double from Prelude; // the type of avgs
+fimport read from Text.Read; // for conversion String to Double
+fimport toRational from Prelude; // for conversion Double to Rational
+fimport getArgs from System.Environment; // for getting the $argv
+fimport unsafePerformIO from System.IO.Unsafe; // for purely extracting the $argv
+
+class NebulaDC(Int cpu, Int memory) implements IDC {
+      Int load = 0;
+      Int vmId = -1; // will correctly be set in init block on vm_allocate
+      Maybe<NodeId> nodeId = Nothing;  // will be initialized later, by an ACK
+      {
+          // empty init
+      }
+      Unit shutdown() {
+          // empty shutdown
+      }
+      Triple<Rat,Rat,Rat> getLoad() { // unix style average load, (last minute, 5mins , 15 mins)
+          return Triple(1/2,1/2,1/2); // stub
+      }
+}

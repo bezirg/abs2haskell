@@ -1,0 +1,7 @@
+module DC;
+
+interface IDC {
+    Unit shutdown();
+    Triple<Rat,Rat,Rat> getLoad();
+}
+

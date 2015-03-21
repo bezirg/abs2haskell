@@ -355,7 +355,7 @@ tPureExp (ABS.ELit lit) _ = return $ case lit of
                                     ABS.LInt i ->  HS.Lit $ HS.Int i
                                     ABS.LThis -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "this")
                                     ABS.LNull -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
-
+                                    ABS.LThisDC -> error "thisDC not allowed in pure expressions"
 
 tPureExp (ABS.EThis (ABS.LIdent (p, _))) _ = return $ errorPos p "Cannot compile object accesses in mathematically pure expressions"
 

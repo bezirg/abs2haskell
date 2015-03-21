@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.0.5
+version:               0.0.6
 synopsis:              abs2haskell, a transcompiler from the ABS language to Haskell
 description:           (longer) abs2haskell, a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -24,7 +24,7 @@ library
                       -- for lifting exceptions to ABS monad
                       exceptions>=0.6.1,
                       -- for contacting OpenNebula through XML-RPC
-                      opennebula, 
+                      opennebula>=0.0.4, 
                       -- for decoding the $TEMPLATE context-variable of OpenNebula
                       base64-string,
                       -- take the local network interfaces info: MAC, IP
