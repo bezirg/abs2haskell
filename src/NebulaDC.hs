@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
-module NebulaDC () where
+module NebulaDC where
 import Lang.ABS.Runtime
 import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.StdLib
@@ -73,8 +73,8 @@ instance Object__ NebulaDC where
         -- ADDED: init block
         __init this = do
           NebulaDC { nebulaDC_cpu = newCpu, nebulaDC_memory = newMem } <- readThis
-          let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub")
-          (success, vmId, errCode) <- I__.liftIO (xmlrpc server session (Just proxy) (vm_allocate (fromJust maybeNewTempl)))
+          let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession
+          (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           I__.when (not success) (I__.error "Allocating VM failed")
           set_nebulaDC_vmId vmId
 
@@ -161,7 +161,7 @@ instance Sub (ObjectRef NebulaDC) IDC where
 instance IDC_ NebulaDC where
         shutdown this = do
                    NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
-                   (True, _, errCode) <- I__.liftIO (xmlrpc server session (Just proxy) (vm_action "delete" thisVmId))
+                   (True, _, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_action "delete" thisVmId))
                    return ()
         getLoad this = do 
                    NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
@@ -173,14 +173,14 @@ instance IDC_ NebulaDC where
                         return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
                       else I__.error "TODO: remote checking the load of the system is not implemented yet"
 
-{-# NOINLINE typ #-}
-{-# NOINLINE creatorPid #-}
-{-# NOINLINE server #-}
-{-# NOINLINE session #-}
-{-# NOINLINE proxy #-}
+{-# NOINLINE myTyp #-}
+{-# NOINLINE myCreatorPid #-}
+{-# NOINLINE myRpcServer #-}
+{-# NOINLINE mySession #-}
+{-# NOINLINE myRpcProxy #-}
 {-# NOINLINE myTempl #-}
-[typ, creatorPid, server, session, proxy, myTempl] = unsafePerformIO getArgs -- the args passed to this slave by OpenNebula framework
+[myTyp, myCreatorPid, myRpcServer, mySession, myRpcProxy, myTempl] = unsafePerformIO getArgs -- the args passed to this slave by OpenNebula framework
 
 {-# NONLINE myVmId #-}
-myVmId = fromJust (templateVmId myTempl)
+myVmId = fromJust (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
 
