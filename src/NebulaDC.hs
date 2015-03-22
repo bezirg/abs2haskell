@@ -187,5 +187,7 @@ instance IDC_ NebulaDC where
     in map (\ v -> fromMaybe "" (lookup v env))   ["TYPE","FROM_PID","RPC_SERVER","SESSION","RPC_PROXY","VM_TEMPLATE"]
 
 {-# NONLINE myVmId #-}
-myVmId = fromJust (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
+myVmId = fromMaybe 
+         (-1)                   -- signals erroneous extraction of VM ID
+         (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
 
