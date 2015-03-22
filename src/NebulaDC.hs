@@ -15,8 +15,11 @@ import Data.List (words)
 import Prelude (Double(..))
 import Text.Read (read)
 import Prelude (toRational)
-import System.Environment (getArgs)
+import System.Environment (getEnvironment)
 import System.IO.Unsafe (unsafePerformIO)
+import Data.List (lookup)
+import Data.List (map)
+import Data.Maybe (fromMaybe)
  
 data NebulaDC = NebulaDC{nebulaDC_loc :: (Object__ o) => ABS o COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
@@ -179,7 +182,9 @@ instance IDC_ NebulaDC where
 {-# NOINLINE mySession #-}
 {-# NOINLINE myRpcProxy #-}
 {-# NOINLINE myTempl #-}
-[myTyp, myCreatorPid, myRpcServer, mySession, myRpcProxy, myTempl] = unsafePerformIO getArgs -- the args passed to this slave by OpenNebula framework
+[myTyp, myCreatorPid, myRpcServer, mySession, myRpcProxy, myTempl] = 
+    let env = unsafePerformIO getEnvironment
+    in map (\ v -> fromMaybe "" (lookup v env))   ["TYPE","FROM_PID","RPC_SERVER","SESSION","RPC_PROXY","VM_TEMPLATE"]
 
 {-# NONLINE myVmId #-}
 myVmId = fromJust (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code

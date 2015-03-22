@@ -9,8 +9,11 @@ fimport words from Data.List; // for processing the /proc/loadavg
 fimport Double from Prelude; // the type of avgs
 fimport read from Text.Read; // for conversion String to Double
 fimport toRational from Prelude; // for conversion Double to Rational
-fimport getArgs from System.Environment; // for getting the $argv
-fimport unsafePerformIO from System.IO.Unsafe; // for purely extracting the $argv
+fimport getEnvironment from System.Environment; // for getting the $env
+fimport lookup from Data.List; // for filtering the $env
+fimport map from Data.List; // for filtering the $env
+fimport fromMaybe from Data.List; // for filtering the $env
+fimport unsafePerformIO from System.IO.Unsafe; // for purely extracting the $env
 
 class NebulaDC(Int cpu, Int memory) implements IDC {
       Int load = 0;
