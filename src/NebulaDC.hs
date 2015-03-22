@@ -20,6 +20,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.List (lookup)
 import Data.List (map)
 import Data.Maybe (fromMaybe)
+import Control.Concurrent (myThreadId)
  
 data NebulaDC = NebulaDC{nebulaDC_loc :: (Object__ o) => ABS o COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
@@ -206,4 +207,4 @@ thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
               (-2)                   -- a stub object-id of the DC object
-              I__.undefined)                  -- no threadid (COG id) associated with the DC object
+              (unsafePerformIO myThreadId))                  -- no threadid (COG id) associated with the DC object

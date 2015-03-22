@@ -45,16 +45,16 @@ __eqIDC _ _ = False
 instance I__.Eq IDC where
         (==) = __eqIDC
 shutdown_sync ((IDC __obj@(ObjectRef __ioref _ _)))
-  = do 
-       -- REMOVED: we don't do same-COG-check for DC objects
+  = do error "sync method calls of DC objects not allowed"
+       -- REMOVED: we don't allow sync calls of DC objects
        -- __hereCOG <- thisCOG
        -- __obj1 <- I__.readRef __ioref
        -- otherCOG <- __cog __obj1
        -- I__.when (not (__hereCOG == otherCOG))
        --   (I__.error "Sync Call on a different COG detected")
-       I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
-         (shutdown __obj)
-shutdown_sync (IDC NullRef) = I__.error "sync call to null"
+       -- I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
+       --   (shutdown __obj)
+shutdown_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
 shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
        (__chan, _) <- thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
@@ -68,16 +68,16 @@ shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
        return __f
 shutdown_async (IDC NullRef) = I__.error "async call to null"
 getLoad_sync ((IDC __obj@(ObjectRef __ioref _ _)))
-  = do 
+  = do error "sync method calls of DC objects not allowed"
        -- REMOVED: we don't do same-COG-check for DC objects
        -- __hereCOG <- thisCOG
        -- __obj1 <- I__.readRef __ioref
        -- otherCOG <- __cog __obj1
        -- I__.when (not (__hereCOG == otherCOG))
        --   (I__.error "Sync Call on a different COG detected")
-       I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
-         (getLoad __obj)
-getLoad_sync (IDC NullRef) = I__.error "sync call to null"
+       -- I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
+       --   (getLoad __obj)
+getLoad_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
 getLoad_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
        (__chan, _) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
