@@ -35,25 +35,29 @@ instance IDC_ Null where
         getLoad
           = I__.error
               "this should not happen. report the program to the compiler developers"
+
+-- THIS, WILL NOT WORK. we need a *BUILT-IN* node attribute, like __cog
 __eqIDC (IDC NullRef) (IDC NullRef) = True
 __eqIDC (IDC (ObjectRef _ id1 tid1)) (IDC (ObjectRef _ id2 tid2))
-  = (id1 == id2) && (tid1 == tid2)
+  = (id1 == id2) -- && (tid1 == tid2) -- REMOVED
 __eqIDC _ _ = False
  
 instance I__.Eq IDC where
         (==) = __eqIDC
 shutdown_sync ((IDC __obj@(ObjectRef __ioref _ _)))
-  = do __hereCOG <- thisCOG
-       __obj1 <- I__.readRef __ioref
-       otherCOG <- __cog __obj1
-       I__.when (not (__hereCOG == otherCOG))
-         (I__.error "Sync Call on a different COG detected")
+  = do 
+       -- REMOVED: we don't do same-COG-check for DC objects
+       -- __hereCOG <- thisCOG
+       -- __obj1 <- I__.readRef __ioref
+       -- otherCOG <- __cog __obj1
+       -- I__.when (not (__hereCOG == otherCOG))
+       --   (I__.error "Sync Call on a different COG detected")
        I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
          (shutdown __obj)
 shutdown_sync (IDC NullRef) = I__.error "sync call to null"
 shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
-       (__chan, _) <- __cog __obj1
+       (__chan, _) <- thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
        __hereCOG <- thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
@@ -64,17 +68,19 @@ shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
        return __f
 shutdown_async (IDC NullRef) = I__.error "async call to null"
 getLoad_sync ((IDC __obj@(ObjectRef __ioref _ _)))
-  = do __hereCOG <- thisCOG
-       __obj1 <- I__.readRef __ioref
-       otherCOG <- __cog __obj1
-       I__.when (not (__hereCOG == otherCOG))
-         (I__.error "Sync Call on a different COG detected")
+  = do 
+       -- REMOVED: we don't do same-COG-check for DC objects
+       -- __hereCOG <- thisCOG
+       -- __obj1 <- I__.readRef __ioref
+       -- otherCOG <- __cog __obj1
+       -- I__.when (not (__hereCOG == otherCOG))
+       --   (I__.error "Sync Call on a different COG detected")
        I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
          (getLoad __obj)
 getLoad_sync (IDC NullRef) = I__.error "sync call to null"
 getLoad_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
-       (__chan, _) <- __cog __obj1
+       (__chan, _) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
        __hereCOG <- thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get

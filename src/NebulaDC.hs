@@ -54,22 +54,27 @@ instance Object__ NebulaDC where
                   I__.liftIO (I__.writeChan __chan (RunJob __obj __f (__run __obj)))
                return __obj
         new_local __cont
-          = do let load = 0
-               let vmId = (-1)
-               let nodeId = Nothing
-               __thisCOG@(_, __tid) <- thisCOG
-               let __c
-                     = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
-                              nebulaDC_nodeId = nodeId, nebulaDC_loc = return __thisCOG}
-               __ioref <- I__.liftIO (I__.newIORef __c)
-               __astate@(AState{aCounter = __counter}) <- I__.lift I__.get
-               I__.lift (I__.put (__astate{aCounter = __counter + 1}))
-               let __obj = ObjectRef __ioref __counter __tid
-               I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
-                 (__init __obj)
-               I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
-                 (__run __obj)
-               return __obj
+          = 
+            -- REMOVED:
+            -- do let load = 0
+            --    let vmId = (-1)
+            --    let nodeId = Nothing
+            --    __thisCOG@(_, __tid) <- thisCOG
+            --    let __c
+            --          = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
+            --                   nebulaDC_nodeId = nodeId, nebulaDC_loc = return __thisCOG}
+            --    __ioref <- I__.liftIO (I__.newIORef __c)
+            --    __astate@(AState{aCounter = __counter}) <- I__.lift I__.get
+            --    I__.lift (I__.put (__astate{aCounter = __counter + 1}))
+            --    let __obj = ObjectRef __ioref __counter __tid
+            --    I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
+            --      (__init __obj)
+            --    I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
+            --      (__run __obj)
+            --    return __obj
+            
+            -- ADDED
+            I__.error "Local DC objects cannot be created (new local)"
         __cog = nebulaDC_loc
         -- REMOVED: init block
         --__init this = return ()
@@ -191,3 +196,14 @@ myVmId = fromMaybe
          (-1)                   -- signals erroneous extraction of VM ID
          (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
 
+{-# NOINLINE thisDC #-}
+thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
+                                                        NebulaDC{nebulaDC_loc = I__.undefined,
+                                                                 nebulaDC_cpu = -1, -- TODO
+                                                                 nebulaDC_memory = -1, -- TODO
+                                                                 nebulaDC_load = -1, -- it's for sim purposes
+                                                                 nebulaDC_nodeId = Nothing, -- TODO
+                                                                 nebulaDC_vmId = myVmId}
+                                                       ))) 
+              (-2)                   -- a stub object-id of the DC object
+              I__.undefined)                  -- no threadid (COG id) associated with the DC object
