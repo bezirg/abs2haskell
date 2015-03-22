@@ -169,7 +169,7 @@ instance Sub (ObjectRef NebulaDC) IDC where
 instance IDC_ NebulaDC where
         shutdown this = do
                    NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
-                   (True, _, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_action "delete" thisVmId))
+                   (True, _, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_action "cancel" thisVmId))
                    return ()
         getLoad this = do 
                    NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
