@@ -10,6 +10,8 @@ import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.StdLib
 import OpenNebula hiding (main)
 import Control.Distributed.Process (NodeId(..))
+import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under a null COG-process
+--import Network.Transport.TCP (encodeEndPointAddress)
 import System.IO (readFile)
 import Data.List (words)
 import Prelude (Double(..))
@@ -31,7 +33,7 @@ __nebulaDC cpu memory
 instance Object__ NebulaDC where
         new __cont
           = do __chan <- I__.liftIO I__.newChan
-               __new_tid <- I__.liftIO (spawnCOG __chan)
+               __new_tid <- I__.lift (I__.lift (spawnCOG __chan))
                let load = 0
                let vmId = (-1)
                let nodeId = Nothing
@@ -207,4 +209,4 @@ thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
               (-2)                   -- a stub object-id of the DC object
-              (unsafePerformIO myThreadId))                  -- no threadid (COG id) associated with the DC object
+              (nullProcessId (I__.undefined)))                  -- no processid (COG id) associated with the DC object

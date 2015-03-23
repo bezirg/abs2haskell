@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.0.9
+version:               0.1.0
 synopsis:              abs2haskell, a transcompiler from the ABS language to Haskell
 description:           (longer) abs2haskell, a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -37,7 +37,9 @@ library
                       rank1dynamic>=0.2.0.0, 
                       network-transport-tcp>=0.4.1, 
                       distributed-static>=0.3.0.0,
-                      binary>=0.7.1.0
+                      -- for serializing some values
+                      binary>=0.7.1.0,
+                      bytestring
   exposed-modules:    
                      -- imitating the abslang.abs
                      Lang.ABS.StdLib,
@@ -130,7 +132,10 @@ test-suite test_runtime
                       rank1dynamic>=0.2.0.0, 
                       network-transport-tcp>=0.4.1, 
                       distributed-static>=0.3.0.0,
-                      binary>=0.7.1.0
+                      -- for serializing some values
+                      binary>=0.7.1.0,
+                      bytestring
+
   extensions:        LambdaCase,
                      ImplicitParams
   ghc-options:

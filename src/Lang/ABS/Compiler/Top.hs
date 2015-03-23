@@ -371,7 +371,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                         (HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__chan") $ HS.App (HS.Var $ identI "liftIO") (HS.Var $ identI "newChan"))
                                         :
                                         -- __new_tid <- lift $ lift $ spawnCOG __chan
-                                        (HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__new_tid") $ HS.App (HS.Var $ identI "liftIO")
+                                        (HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__new_tid") $ HS.App (HS.Var $ identI "lift") $ HS.App (HS.Var $ identI "lift")
                                                        (HS.App (HS.Var $ HS.UnQual $ HS.Ident "spawnCOG") (HS.Var $ HS.UnQual $ HS.Ident "__chan")))
                                         :
                                         -- let __field = initialized_value

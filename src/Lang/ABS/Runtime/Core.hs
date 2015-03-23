@@ -4,8 +4,7 @@ module Lang.ABS.Runtime.Core
     ) where
 
 import Lang.ABS.Runtime.Base
-import Data.List (foldl')
-import Control.Concurrent (ThreadId, myThreadId, forkIO)
+import Data.List (foldl', find)
 import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, writeList2Chan, Chan)
@@ -16,29 +15,38 @@ import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
 import System.Exit (exitSuccess)
 import Control.Exception (throw)
 import Control.Monad.Catch (catchAll)
+import qualified Control.Distributed.Process as CH
+import Control.Distributed.Process.Node
+import Network.Transport.TCP (createTransport, defaultTCPParameters, socketToEndPoint)
+import Network.Transport (newEndPoint, address)
+import Network.Info -- querying NIC IPs
+import System.Environment (getEnv)
+import System.IO.Error (tryIOError)
+import qualified Data.Binary as Bin (decode)
+import Data.String (fromString)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
-spawnCOG :: Chan Job -> IO ThreadId
-spawnCOG c = forkIO $ do        -- each COG is a lightweight Haskell thread
-  tid <- myThreadId
+spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- ThreadId
+spawnCOG c = CH.spawnLocal $ do        -- each COG is a lightweight Haskell thread
+  pid <- CH.getSelfPid
   -- each COG holds two tables:
   let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
   let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
   -- start the loop of the COG
-  loop tid sleepingOnFut sleepingOnAttr 1
+  loop pid sleepingOnFut sleepingOnAttr 1
 
     where
       -- COG loop definition
-      loop tid sleepingOnFut sleepingOnAttr counter = do
+      loop pid sleepingOnFut sleepingOnAttr counter = do
         -- on each iteration, it listens for next job on the input job queue
-        nextJob <- readChan c
+        nextJob <- CH.liftIO $ readChan c
         case nextJob of
           -- wake signals are transmitted (implicitly) from a COG to another COG to wakeup some of the latter's sleeping process
           WakeupSignal f -> do
              let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture f) sleepingOnFut
-             maybe (return ()) (\ woken -> writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
-             loop tid sleepingOnFut'' sleepingOnAttr counter
+             maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
+             loop pid sleepingOnFut'' sleepingOnAttr counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
           RunJob obj fut@(FutureRef mvar (fcog, ftid) _) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
@@ -47,21 +55,21 @@ spawnCOG c = forkIO $ do        -- each COG is a lightweight Haskell thread
               case p of
                     -- the job of the callee finished, send a wakeup signal to remote cog that "nourishes" the sleeping caller-process
                     Right fin -> do
-                           lift $ putMVar mvar fin
-                           if ftid /= tid -- remote job finished, wakeup the remote cog
+                           CH.liftIO $ putMVar mvar fin
+                           if ftid /= pid -- remote job finished, wakeup the remote cog
                               then do
-                                lift $ writeChan fcog (WakeupSignal fut)
+                                CH.liftIO $ writeChan fcog (WakeupSignal fut)
                                 return sleepingOnFut
                               else do
                                 -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                 -- because it adds an extra iteration
                                 let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture fut) sleepingOnFut
                                 -- put the woken back to the enabled queue
-                                maybe (return ()) (\ woken -> lift $ writeList2Chan c woken) maybeWoken
+                                maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                 return sleepingOnFut'
                     -- the process deliberately suspended (by calling suspend)
                     Left (Yield S cont) -> do
-                           lift $ writeChan c (RunJob obj fut cont) -- reschedule its continuation at the end of the job-queue
+                           CH.liftIO $ writeChan c (RunJob obj fut cont) -- reschedule its continuation at the end of the job-queue
                            return sleepingOnFut
                     -- the process deliberately decided to await on a future to finish (by calling await f?;)
                     Left (Yield (F f) cont) -> do
@@ -73,55 +81,84 @@ spawnCOG c = forkIO $ do        -- each COG is a lightweight Haskell thread
                            RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                            return sleepingOnFut
                                                     ) (AConf {aThis = obj, 
-                                                              aCOG = (c, tid)
+                                                              aCOG = (c, pid)
                                                              })
                                                                      (AState {aCounter = counter,
                                                                               aSleepingO = sleepingOnAttr})
-             loop tid sleepingOnFut'' sleepingOnAttr'' counter''
+             loop pid sleepingOnFut'' sleepingOnAttr'' counter''
 
 
 -- ABS Main-block thread (COG-like thread)
 main_is :: ABS Null () -> IO () 
 main_is mainABS = do
-  tid <- myThreadId
+  -- initialize this CH node
+  -- which is the lan IP? it is under eth0 nic
+  nics <- getNetworkInterfaces
+  let myIp = maybe "127.0.0.1" (show . ipv4) $ find (\ nic -> name nic == "eth0") nics
+
+  Right trans <- createTransport myIp "8888" defaultTCPParameters
+
+  myLocalNode <- newLocalNode trans initRemoteTable -- the local point
+  Right ep <- newEndPoint trans                     -- the outside point
+
+  maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
+  -- was there a creator remote process? then connect with its node and answer back
+  case maybeCreatorPidStr of
+    Right "" -> return ()
+    Right creatorPidStr -> do
+                    -- try to establish TCP connection with the creator
+                    let creatorPid = Bin.decode (fromString creatorPidStr) :: CH.ProcessId
+                    let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
+                    let myNodeAddress = address ep
+                    Right _ <- socketToEndPoint myNodeAddress creatorNodeAddress
+                              True -- reuseaddr
+                              (Just 10000000) -- 10secs timeout to establish connection
+                    return () -- TODO, send ack to creatorPid
+    Left ex -> return ()
+
+  -- starting the COG process and the FWD_COG process
+
   let sleepingOnFut = M.empty :: FutureMap
   let sleepingOnAttr = M.empty :: ObjectMap
   c <- newChan
-  writeChan c (RunJob (error "not this at top-level") TopRef mainABS)
-  -- start the main-block loop
-  loop c tid sleepingOnFut sleepingOnAttr 1
+  -- forkProcess myLocalNode (fwd_cog)
 
+  writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- turned off , early exiting
+
+
+  runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid sleepingOnFut sleepingOnAttr 1) -- start without CH
+  -- TODO: still will main thread will exit early
    where
-     loop c tid sleepingOnFut sleepingOnAttr counter = do
-       nextJob <- readChan c
+     loop c pid sleepingOnFut sleepingOnAttr counter = do
+       nextJob <- CH.liftIO $ readChan c
        case nextJob of
          WakeupSignal f -> do
            let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture f) sleepingOnFut
-           maybe (return ()) (\ woken -> writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
-           loop c tid sleepingOnFut'' sleepingOnAttr counter
+           maybe (return ()) (\ woken -> CH.liftIO (writeList2Chan c woken)) maybeWoken -- put the woken back to the enabled queue
+           loop c pid sleepingOnFut'' sleepingOnAttr counter
          RunJob obj fut coroutine -> do
            (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
               case p of
                 Right fin -> case fut of
                               (FutureRef mvar (fcog, ftid) _) -> do
-                                 lift $ putMVar mvar fin
-                                 if ftid /= tid
+                                 CH.liftIO $ putMVar mvar fin
+                                 if ftid /= pid
                                    then do -- remote job finished, wakeup the remote cog
-                                     lift $ writeChan fcog (WakeupSignal fut)
+                                     CH.liftIO $ writeChan fcog (WakeupSignal fut)
                                      return sleepingOnFut
                                    else do
                                      -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                      -- because it adds an extra iteration
                                      let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture fut) sleepingOnFut
                                      -- put the woken back to the enabled queue
-                                     maybe (return ()) (\ woken -> lift $ writeList2Chan c woken) maybeWoken
+                                     maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                      return sleepingOnFut'
                               TopRef -> do
-                                       lift $ print "Main COG has exited with success"
-                                       lift $ exitSuccess
+                                       CH.liftIO $ print "Main COG has exited with success"
+                                       CH.liftIO $ exitSuccess
                 Left (Yield S cont) -> do
-                       lift $ writeChan c (RunJob obj fut cont) 
+                       CH.liftIO $ writeChan c (RunJob obj fut cont) 
                        return sleepingOnFut
                 Left (Yield (F f) cont) -> do
                        return (M.insertWith (++) (AnyFuture f) [RunJob obj fut cont] sleepingOnFut)
@@ -130,7 +167,7 @@ main_is mainABS = do
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut
                                               ) (AConf {aThis = obj, 
-                                                        aCOG = (c, tid)
+                                                        aCOG = (c, pid)
                                                        }) (AState {aCounter = counter,
                                                                    aSleepingO = sleepingOnAttr})
-           loop c tid sleepingOnFut'' sleepingOnAttr'' counter''
+           loop c pid sleepingOnFut'' sleepingOnAttr'' counter''

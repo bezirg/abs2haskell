@@ -11,14 +11,16 @@ import qualified Control.Monad.Trans.RWS as RWS (RWST)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield)
 import Data.Typeable
-import qualified Control.Monad.Catch
+import Control.Monad.Catch
+import qualified Control.Distributed.Process as CH
+import Control.Exception.Base (throwIO)
 
 -- its object value/memory a triple:
 --1) a mutable state
 --2) a unique-per-COG ascending counter being the object' identity inside the cog
 --3) the thread identifier of its COG
 -- Together 2 and 3 makes any object uniquely identified inside the same machine.
-data ObjectRef a = ObjectRef (IORef a) Int ThreadId
+data ObjectRef a = ObjectRef (IORef a) Int CH.ProcessId
                  | NullRef
                  deriving Eq
 
@@ -66,7 +68,7 @@ instance Object__ Null where
 
 -- ABS pure-code operates in the haskell pure-world
 -- whereas ABS effectful-code operates inside this ABS monad-stack
-type ABS o = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState IO)
+type ABS o = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState CH.Process)
 
 -- every ABS monad (computation) holds a reader AConf and a state AState
 data AConf o = AConf {
@@ -96,7 +98,7 @@ data AwaitOn = S -- suspend is called
 ---------------------
 
 -- a COG is identified by its jobqueue+threadid
-type COG = (Chan Job, ThreadId)
+type COG = (Chan Job, CH.ProcessId)
 
 -- Incoming jobs to the COG thread
 data Job = forall o a . Object__ o => RunJob (ObjectRef o) (Fut a) (ABS o a)
@@ -136,3 +138,13 @@ data BlockedAwaitException = BlockedAwaitException
     deriving (Eq, Show, Typeable)
 
 instance Control.Monad.Catch.Exception BlockedAwaitException
+
+instance MonadThrow CH.Process where
+    throwM = CH.liftIO . throwIO
+    
+instance MonadCatch CH.Process where
+    catch  = CH.catch
+
+instance MonadMask CH.Process where
+    mask = CH.mask
+    -- uninterruptibleMask, not provided by CH
