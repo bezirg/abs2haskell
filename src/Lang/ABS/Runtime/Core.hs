@@ -107,7 +107,7 @@ main_is mainABS = do
 
   Right trans <- createTransport myIp "8888" defaultTCPParameters
 
-  myLocalNode <- newLocalNode trans initRemoteTable -- the local point
+  myLocalNode <- newLocalNode trans (DC.__remoteTable initRemoteTable) -- the local point
   Right ep <- newEndPoint trans                     -- the outside point
 
   maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
