@@ -24,17 +24,26 @@ import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
+import Control.Distributed.Process.Serializable
+import qualified Lang.ABS.StdLib.DC as DC (__remoteTable)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
-spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- ThreadId
-spawnCOG c = CH.spawnLocal $ do        -- each COG is a lightweight Haskell thread
-  pid <- CH.getSelfPid
+fwd_cog :: Chan Job -> CH.Process ()
+fwd_cog c = do
+  AnyFuture j <- CH.expect :: CH.Process AnyFuture
+  -- TODO: putMVar to local future
+  CH.liftIO $ writeChan c (WakeupSignal j)
+
+spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
+spawnCOG c = do -- each COG is two lightweight Cloud Haskell threads
+  fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
+  CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
   -- each COG holds two tables:
   let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
   let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
   -- start the loop of the COG
-  loop pid sleepingOnFut sleepingOnAttr 1
+  loop fwdPid sleepingOnFut sleepingOnAttr 1
 
     where
       -- COG loop definition
@@ -48,7 +57,7 @@ spawnCOG c = CH.spawnLocal $ do        -- each COG is a lightweight Haskell thre
              maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
              loop pid sleepingOnFut'' sleepingOnAttr counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
-          RunJob obj fut@(FutureRef mvar (fcog, ftid) _) coroutine -> do
+          RunJob obj fut@(FutureRef mvar (COG (fcog, ftid)) _) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               -- the cog catches any exception and lazily records it into the future-box (mvar)
               p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
@@ -81,7 +90,7 @@ spawnCOG c = CH.spawnLocal $ do        -- each COG is a lightweight Haskell thre
                            RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                            return sleepingOnFut
                                                     ) (AConf {aThis = obj, 
-                                                              aCOG = (c, pid)
+                                                              aCOG = COG (c, pid)
                                                              })
                                                                      (AState {aCounter = counter,
                                                                               aSleepingO = sleepingOnAttr})
@@ -141,7 +150,7 @@ main_is mainABS = do
               p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
               case p of
                 Right fin -> case fut of
-                              (FutureRef mvar (fcog, ftid) _) -> do
+                              (FutureRef mvar (COG (fcog, ftid)) _) -> do
                                  CH.liftIO $ putMVar mvar fin
                                  if ftid /= pid
                                    then do -- remote job finished, wakeup the remote cog
@@ -167,7 +176,7 @@ main_is mainABS = do
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut
                                               ) (AConf {aThis = obj, 
-                                                        aCOG = (c, pid)
+                                                        aCOG = COG (c, pid)
                                                        }) (AState {aCounter = counter,
                                                                    aSleepingO = sleepingOnAttr})
            loop c pid sleepingOnFut'' sleepingOnAttr'' counter''

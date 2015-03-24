@@ -40,7 +40,7 @@ instance Object__ NebulaDC where
                let __c
                      = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
                               nebulaDC_nodeId = nodeId,
-                              nebulaDC_loc = return (__chan, __new_tid)}
+                              nebulaDC_loc = return (COG (__chan, __new_tid))}
                __ioref <- I__.liftIO (I__.newIORef __c)
                let __obj = ObjectRef __ioref 0 __new_tid
                do __mvar <- I__.liftIO I__.newEmptyMVar
@@ -91,7 +91,7 @@ instance Object__ NebulaDC where
 
 set_nebulaDC_cpu :: Int -> ABS NebulaDC ()
 set_nebulaDC_cpu v
-  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- I__.lift
+  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        astate@(AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
@@ -104,7 +104,7 @@ set_nebulaDC_cpu v
  
 set_nebulaDC_load :: Int -> ABS NebulaDC ()
 set_nebulaDC_load v
-  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- I__.lift
+  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        astate@(AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
@@ -117,7 +117,7 @@ set_nebulaDC_load v
  
 set_nebulaDC_memory :: Int -> ABS NebulaDC ()
 set_nebulaDC_memory v
-  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- I__.lift
+  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        astate@(AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
@@ -130,7 +130,7 @@ set_nebulaDC_memory v
  
 set_nebulaDC_nodeId :: Maybe NodeId -> ABS NebulaDC ()
 set_nebulaDC_nodeId v
-  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- I__.lift
+  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        astate@(AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
@@ -143,7 +143,7 @@ set_nebulaDC_nodeId v
  
 set_nebulaDC_vmId :: Int -> ABS NebulaDC ()
 set_nebulaDC_vmId v
-  = do (AConf (ObjectRef ioref oid _) (thisChan, _)) <- I__.lift
+  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        astate@(AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
@@ -178,11 +178,11 @@ instance IDC_ NebulaDC where
                    NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
                    -- only works when called on this dc (thisDC)
                    -- otherwise raises a not-implemented-yet error
-                   if (thisVmId == myVmId)
-                      then do
-                        (s1: s5: s15: _) <- I__.liftIO (I__.liftM words (readFile "/proc/loadavg"))
-                        return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
-                      else I__.error "TODO: remote checking the load of the system is not implemented yet"
+                   -- if (thisVmId == myVmId)
+                      -- then do
+                   (s1: s5: s15: _) <- I__.liftIO (I__.liftM words (readFile "/proc/loadavg"))
+                   return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
+                   -- else I__.error "TODO: remote checking the load of the system is not implemented yet"
 
 {-# NOINLINE myTyp #-}
 {-# NOINLINE myCreatorPid #-}

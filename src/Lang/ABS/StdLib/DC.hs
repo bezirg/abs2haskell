@@ -1,15 +1,25 @@
 {-# LANGUAGE Rank2Types, NoImplicitPrelude, FlexibleInstances,
   ExistentialQuantification, MultiParamTypeClasses,
-  ScopedTypeVariables, DeriveDataTypeable #-}
+  ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
 module Lang.ABS.StdLib.DC where
-import Lang.ABS.Runtime
+import Lang.ABS.Runtime.Prim
+import Lang.ABS.Runtime.Base
 import qualified Lang.ABS.Compiler.Include as I__
 -- import Lang.ABS.StdLib -- removed
 import Lang.ABS.Compiler.Include -- added
 import Lang.ABS.StdLib.Prelude -- added
+import Control.Distributed.Process
+import Control.Distributed.Process.Closure
+import Control.Distributed.Process.Node
+import Data.List (words)
+import System.IO (readFile)
+import Prelude (Double(..))
+import Text.Read (read)
+import Prelude (toRational)
+import Control.Concurrent.MVar (newMVar)
  
 class (Object__ a) => IDC_ a where
          
@@ -57,7 +67,7 @@ shutdown_sync ((IDC __obj@(ObjectRef __ioref _ _)))
 shutdown_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
 shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
-       (__chan, _) <- thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
+       COG (__chan, _) <- thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
        __hereCOG <- thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
@@ -67,6 +77,16 @@ shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
          (I__.writeChan __chan (RunJob __obj __f (shutdown __obj)))
        return __f
 shutdown_async (IDC NullRef) = I__.error "async call to null"
+
+rload :: ProcessId -> Process ()
+rload pid = do
+  (s1: s5: s15: _) <- I__.liftIO (I__.liftM words (readFile "/proc/loadavg"))
+  send pid (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
+  return ()
+
+$(remotable ['rload])
+
+
 getLoad_sync ((IDC __obj@(ObjectRef __ioref _ _)))
   = do error "sync method calls of DC objects not allowed"
        -- REMOVED: we don't do same-COG-check for DC objects
@@ -78,15 +98,27 @@ getLoad_sync ((IDC __obj@(ObjectRef __ioref _ _)))
        -- I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
        --   (getLoad __obj)
 getLoad_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
-getLoad_async ((IDC __obj@(ObjectRef __ioref _ _)))
+getLoad_async ((IDC __obj@(ObjectRef __ioref _ pid)))
   = do __obj1 <- I__.readRef __ioref
-       (__chan, _) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
+       lnid <- I__.lift (I__.lift getSelfNode)
+       let rnid = processNodeId pid
+       COG (__chan, _) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
        __hereCOG <- thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
        I__.lift (I__.put (astate{aCounter = __counter + 1}))
-       let __f = FutureRef __mvar __hereCOG __counter
-       I__.liftIO
-         (I__.writeChan __chan (RunJob __obj __f (getLoad __obj)))
-       return __f
+       if rnid == lnid
+         then do
+           let __f = FutureRef __mvar __hereCOG __counter
+           I__.liftIO (I__.writeChan __chan (RunJob __obj __f (getLoad __obj)))
+           return __f
+         else do
+           self <- lift $ lift $ getSelfPid
+           lift $ lift $ spawn rnid ($(mkClosure 'rload) pid)
+           res <- lift $ lift $ expect :: ABS o (Triple Rat Rat Rat)
+           __mvar <- I__.liftIO (newMVar res)
+           let __f = FutureRef __mvar __hereCOG __counter
+           return __f
+
 getLoad_async (IDC NullRef) = I__.error "async call to null"
+

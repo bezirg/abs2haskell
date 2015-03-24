@@ -125,7 +125,7 @@ run_sync (AnyObject NullRef) = error "sync call to null"
 
 run_async (AnyObject __obj@(ObjectRef __ioref _ _))
   = do __obj1 <- liftIO (readIORef __ioref)
-       (__chan, _) <- __cog __obj1
+       COG (__chan, _) <- __cog __obj1
        __mvar <- liftIO newEmptyMVar
        AConf{aCOG = __cog} <- lift RWS.ask
        astate@(AState{aCounter = __counter}) <- lift RWS.get
