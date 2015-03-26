@@ -1,7 +1,7 @@
 name:                  abs2haskell
-version:               0.1.2
-synopsis:              abs2haskell, a transcompiler from the ABS language to Haskell
-description:           (longer) abs2haskell, a transcompiler from the ABS language to Haskell
+version:               0.1.3
+synopsis:              a transcompiler from the ABS language to Haskell
+description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
 maintainer:            NikolaosBezirgiannis <bezirgia@cwi.nl>
 stability:             provisional
@@ -102,7 +102,9 @@ executable abs2haskell
                       filepath,
                       directory,
                       -- hse 1.16, datatype-incompatible
-                      haskell-src-exts<1.16
+                      haskell-src-exts<1.16,
+                      -- for injecting package version into cmdargs --help menu
+                      cabal-file-th
   extensions:         LambdaCase,
                       ImplicitParams
   ghc-options:        -Wall 
