@@ -105,7 +105,7 @@ main_is mainABS = do
   nics <- getNetworkInterfaces
   let myIp = maybe "127.0.0.1" (show . ipv4) $ find (\ nic -> name nic == "eth0") nics
 
-  Right trans <- createTransport myIp "8888" defaultTCPParameters
+  Right trans <- createTransport myIp "8889" defaultTCPParameters
 
   myLocalNode <- newLocalNode trans (DC.__remoteTable initRemoteTable) -- the local point
   Right ep <- newEndPoint trans                     -- the outside point

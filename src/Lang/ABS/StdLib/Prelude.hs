@@ -13,14 +13,14 @@ module Lang.ABS.StdLib.Prelude
      -- Maybe, Either datatypes and functions
      Prelude.Maybe (..), Prelude.Either (..), left, right, Prelude.maybe, fromJust,
      -- List and array functions
-     list, length, listArray, replace, elemAt, Prelude.repeat, Array,
+     list, length, concatenate, appendright, listArray, replace, elemAt, Prelude.repeat, Array,
      -- ABS Map datatypes and functions
      M.Map, M.empty, put, insertAssoc, lookupUnsafe, removeKey,
      -- other
      assert, null,
      -- using a lot of applicative-style for lifted expressions to OO-ABS
      pure, (<$>), (<*>), (Prelude.>>=), (Prelude.=<<),
-     -- stdout
+     -- string manipulation
      println, toString
     )
         where
@@ -99,8 +99,14 @@ null = NullRef
 list :: [a] -> [a]
 list = Prelude.id
 
+concatenate :: [a] -> [a] -> [a]
+concatenate = (Prelude.++)
+
+appendright :: [a] -> a -> [a]
+appendright l p = l Prelude.++ [p]
+
 println :: (Object__ o) => ABS o Prelude.String -> ABS o ()
-println act = act Prelude.>>= \ s -> liftIO (Prelude.putStr s)
+println act = act Prelude.>>= \ s -> liftIO (Prelude.putStrLn s)
 
 toString :: (Prelude.Show a) => a -> Prelude.String
 toString = Prelude.show
