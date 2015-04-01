@@ -26,4 +26,5 @@ confOpt = Conf {
           &= program "abs2haskell" 
           &= help "a transcompiler from the ABS language to Haskell" 
           &= helpArg [explicit, name "h", name "help"]
-          &= summary ("abs2haskell " ++ $(packageVariable (pkgVersion . package))  ++ " Nikolaos Bezirgiannis, Envisage Project") -- this text is printed on --version
+          -- summary is --version
+          &= summary ("The abs2haskell compiler v" ++ $(packageVariable (pkgVersion . package))  ++ " Nikolaos Bezirgiannis, Envisage Project")

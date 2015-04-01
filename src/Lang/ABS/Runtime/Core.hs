@@ -24,6 +24,8 @@ import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable)
+import System.Environment (getArgs)
+import Control.Monad (when)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -59,7 +61,11 @@ spawnCOG c = do -- each COG is two lightweight Cloud Haskell threads
           RunJob obj fut@(FutureRef mvar (COG (fcog, ftid)) _) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               -- the cog catches any exception and lazily records it into the future-box (mvar)
-              p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
+              p <- resume coroutine `catchAll` (\ someEx -> do
+                                                 args <- CH.liftIO getArgs
+                                                 when ("--trace-exceptions" `elem` args) $ 
+                                                      CH.liftIO $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
+                                                 return $ Right $ throw someEx) 
               case p of
                     -- the job of the callee finished, send a wakeup signal to remote cog that "nourishes" the sleeping caller-process
                     Right fin -> do
@@ -146,7 +152,11 @@ main_is mainABS = do
            loop c pid sleepingOnFut'' sleepingOnAttr counter
          RunJob obj fut coroutine -> do
            (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
-              p <- resume coroutine `catchAll` (\ someEx -> return $ Right $ throw someEx) 
+              p <- resume coroutine `catchAll` (\ someEx -> do
+                                                 args <- CH.liftIO getArgs
+                                                 when ("--trace-exceptions" `elem` args) $ 
+                                                      CH.liftIO $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
+                                                 return $ Right $ throw someEx) 
               case p of
                 Right fin -> case fut of
                               (FutureRef mvar (COG (fcog, ftid)) _) -> do
