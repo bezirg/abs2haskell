@@ -113,7 +113,7 @@ getLoad_async ((IDC __obj@(ObjectRef __ioref _ pid)))
            I__.liftIO (I__.writeChan __chan (RunJob __obj __f (getLoad __obj)))
            return __f
          else do
-           self <- lift $ lift $ getSelfPid
+           self <- lift $ lift $ getSelfPid -- this is probably wrong, it has to record the forwarder_pid, not the cog_pid
            lift $ lift $ spawn rnid ($(mkClosure 'rload) pid)
            res <- lift $ lift $ expect :: ABS o (Triple Rat Rat Rat)
            __mvar <- I__.liftIO (newMVar res)

@@ -8,7 +8,6 @@ import Data.List (foldl', find)
 import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, writeList2Chan, Chan)
-import Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.RWS as RWS (runRWST, modify)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
@@ -24,7 +23,6 @@ import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
-import Control.Distributed.Process.Serializable
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
@@ -38,12 +36,13 @@ fwd_cog c = do
 spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
 spawnCOG c = do -- each COG is two lightweight Cloud Haskell threads
   fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
-  CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
-  -- each COG holds two tables:
-  let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
-  let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
-  -- start the loop of the COG
-  loop fwdPid sleepingOnFut sleepingOnAttr 1
+  _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
+        -- each COG holds two tables:
+        let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
+        let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
+        -- start the loop of the COG
+        loop fwdPid sleepingOnFut sleepingOnAttr 1
+  return fwdPid
 
     where
       -- COG loop definition

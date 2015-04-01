@@ -7,11 +7,11 @@ module Lang.ABS.Compiler.ExprLifted
 
 import Lang.ABS.Compiler.Base
 import Lang.ABS.Compiler.Utils
-import Lang.ABS.Compiler.Expr (tPattern, joinSub, tType, tTypeOrTyVar)
+import Lang.ABS.Compiler.Expr (tPattern, joinSub, tType, tTypeOrTyVar, tPureExp)
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
 import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
-import Control.Monad.Trans.Reader (ask, runReader)
+import Control.Monad.Trans.Reader (ask, runReader, withReader)
 import Data.List (nub, findIndices)
 import qualified Data.Map as M
 import Data.Foldable (foldlM, find)
@@ -111,7 +111,8 @@ tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
 
 -- NOTE: leave the case for now. It might work out of the box
 tPureExp' (ABS.Case matchE branches) tyvars = do
-  tmatch <- tPureExp' matchE tyvars
+  -- we use the Expr.hs pureExp , because we do not want to lift it
+  tmatch <- withReader (\ (fscope,_,mscope,iname,_) -> (fscope `M.union` mscope,iname)) $ tPureExp matchE tyvars 
   (fscope,cscope,_,_,_) <- ask
   let scope = fscope `M.union` cscope
   case matchE of

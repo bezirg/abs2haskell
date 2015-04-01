@@ -3,7 +3,6 @@
 module Lang.ABS.Runtime.Base where
 
 import Data.IORef (IORef)
-import Control.Concurrent (ThreadId)
 import Control.Concurrent.MVar (MVar)
 import Control.Concurrent.Chan (Chan)
 import qualified Data.Map.Strict as M (Map)
@@ -130,7 +129,7 @@ data AwaitOn = S -- suspend is called
 --- COG related -----
 ---------------------
 
--- a COG is identified by its jobqueue+threadid
+-- a COG is identified by its jobqueue+processid
 newtype COG = COG { fromCOG :: (Chan Job, CH.ProcessId)}
 
 instance Eq COG where
