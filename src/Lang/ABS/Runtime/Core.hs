@@ -135,12 +135,11 @@ main_is mainABS = do
   let sleepingOnFut = M.empty :: FutureMap
   let sleepingOnAttr = M.empty :: ObjectMap
   c <- newChan
-  -- forkProcess myLocalNode (fwd_cog)
+  fwdPid <- forkProcess myLocalNode (fwd_cog c)
 
-  writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- turned off , early exiting
+  writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- this will exit early, not suitable for a distributed setting
 
-
-  runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid sleepingOnFut sleepingOnAttr 1) -- start without CH
+  runProcess myLocalNode (loop c fwdPid sleepingOnFut sleepingOnAttr 1)
   -- TODO: still will main thread will exit early
    where
      loop c pid sleepingOnFut sleepingOnAttr counter = do
