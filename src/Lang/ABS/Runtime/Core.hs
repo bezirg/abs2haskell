@@ -36,15 +36,28 @@ fwd_cog c = do
   CH.liftIO $ writeChan c (WakeupSignal j)
 
 spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
-spawnCOG c = do -- each COG is two lightweight Cloud Haskell threads
-  fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
-  _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
-        -- each COG holds two tables:
+spawnCOG c = do
+  args <- CH.liftIO getArgs
+  if "--local-only" `elem` args
+    -- LOCAL-ONLY (multicore) (1 COG Process)
+    then do
+      fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
+      _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
+            -- each COG holds two tables:
         let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
         let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
         -- start the loop of the COG
         loop fwdPid sleepingOnFut sleepingOnAttr 1
-  return fwdPid
+      return fwdPid
+    -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
+    else do
+      CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
+           -- each COG holds two tables:
+           let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
+           let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
+           -- start the loop of the COG
+           myPid <- CH.getSelfPid
+           loop myPid sleepingOnFut sleepingOnAttr 1
 
     where
       -- COG loop definition
@@ -105,21 +118,26 @@ spawnCOG c = do -- each COG is two lightweight Cloud Haskell threads
 -- ABS Main-block thread (COG-like thread)
 main_is :: ABS Null () -> IO () 
 main_is mainABS = do
-  -- initialize this CH node
-  -- which is the lan IP? it is under eth0 nic
-  nics <- getNetworkInterfaces
-  let myIp = maybe "127.0.0.1" (show . ipv4) $ find (\ nic -> name nic == "eth0") nics
+  args <- getArgs
 
-  Right trans <- createTransport myIp "8889" defaultTCPParameters
+  -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
+  if "--distributed" `elem` args
+    then do
+      -- which is the lan IP? it is under eth0 nic
+      nics <- getNetworkInterfaces
+      let myIp = maybe 
+             (error "An outside network interface was not found.")
+             (show . ipv4) $ find (\ nic -> name nic == "eth0") nics -- otherwise, eth0's IP
+      Right trans <- createTransport myIp "8889" defaultTCPParameters
+      myLocalNode <- newLocalNode trans (DC.__remoteTable initRemoteTable) -- new my-node
+      Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
 
-  myLocalNode <- newLocalNode trans (DC.__remoteTable initRemoteTable) -- the local point
-  Right ep <- newEndPoint trans                     -- the outside point
-
-  maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
-  -- was there a creator remote process? then connect with its node and answer back
-  case maybeCreatorPidStr of
-    Right "" -> return ()
-    Right creatorPidStr -> do
+      -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack
+      maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
+      case maybeCreatorPidStr of
+        Left _ex -> return ()       -- no creator, this is the START-SYSTEM
+        Right "" -> return ()      -- no creator, this is the START-SYSTEM
+        Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let creatorPid = Bin.decode (fromString creatorPidStr) :: CH.ProcessId
                     let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
@@ -127,20 +145,23 @@ main_is mainABS = do
                     Right _ <- socketToEndPoint myNodeAddress creatorNodeAddress
                               True -- reuseaddr
                               (Just 10000000) -- 10secs timeout to establish connection
-                    return () -- TODO, send ack to creatorPid
-    Left ex -> return ()
+                    return () -- TODO: send ack to creatorPid
+      c <- newChan            -- sharing in-memory channel between Forwarder and Cog
+      fwdPid <- forkProcess myLocalNode (fwd_cog c)
+      runProcess myLocalNode (loop c fwdPid M.empty M.empty 1)
 
-  -- starting the COG process and the FWD_COG process
+  -- LOCAL-ONLY (DEFAULT) (multicore) (1 COG Process)
+    else do
+      let myIp = "127.0.0.1" -- a placeholder for identifying the local node. No outside connection will be created.
+      Right trans <- createTransport myIp "8889" defaultTCPParameters
+      myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
-  let sleepingOnFut = M.empty :: FutureMap
-  let sleepingOnAttr = M.empty :: ObjectMap
-  c <- newChan
-  fwdPid <- forkProcess myLocalNode (fwd_cog c)
+      c <- newChan               -- in-memory channel
+      when ("--keep-alive" `notElem` args) $
+           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- this will exit early, not suitable for a distributed setting
+      runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid M.empty M.empty 1)
 
-  writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- this will exit early, not suitable for a distributed setting
 
-  runProcess myLocalNode (loop c fwdPid sleepingOnFut sleepingOnAttr 1)
-  -- TODO: still will main thread will exit early
    where
      loop c pid sleepingOnFut sleepingOnAttr counter = do
        nextJob <- CH.liftIO $ readChan c
