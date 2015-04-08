@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.1.9
+version:               0.2.0
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis

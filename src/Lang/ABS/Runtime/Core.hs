@@ -130,11 +130,16 @@ main_is mainABS outsideRemoteTable = do
       myLocalNode <- newLocalNode trans (DC.__remoteTable outsideRemoteTable) -- new my-node
       Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
 
+      c <- newChan            -- sharing in-memory channel between Forwarder and Cog
+      fwdPid <- forkProcess myLocalNode (fwd_cog c) -- start the Forwarder process
+
       -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
-        Left _ex -> return ()       -- no creator, this is the START-SYSTEM
-        Right "" -> return ()      -- no creator, this is the START-SYSTEM
+        Left _ex ->  -- no creator, this is the START-SYSTEM and runs MAIN
+           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
+        Right "" -> -- no creator, this is the START-SYSTEM and runs MAIN
+           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
         Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let creatorPid = Bin.decode (fromString creatorPidStr) :: CH.ProcessId
@@ -144,9 +149,7 @@ main_is mainABS outsideRemoteTable = do
                               True -- reuseaddr
                               (Just 10000000) -- 10secs timeout to establish connection
                     return () -- TODO: send ack to creatorPid
-      c <- newChan            -- sharing in-memory channel between Forwarder and Cog
-      fwdPid <- forkProcess myLocalNode (fwd_cog c)
-      runProcess myLocalNode (loop c fwdPid M.empty M.empty 1)
+      runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
 
   -- LOCAL-ONLY (DEFAULT) (multicore) (1 COG Process)
     else do
