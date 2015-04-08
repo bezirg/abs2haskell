@@ -22,7 +22,8 @@ module Lang.ABS.Compiler.Include
      Control.Monad.Catch.fromException,
      withReaderT,
      newRef,writeRef,readRef, IORef, -- export also the type for type-checking
-     empty_fut
+     empty_fut,
+     initRemoteTable
     )
  where
 
@@ -43,11 +44,11 @@ import qualified Control.Exception.Base (PatternMatchFail (..), throw)
 import Control.Applicative
 import Lang.ABS.Runtime.Base
 import Lang.ABS.Runtime.Prim (thisCOG)
+import Control.Distributed.Process.Node (initRemoteTable)
 
 -- util function, used in code generation
 withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
 withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
-
 
 
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx

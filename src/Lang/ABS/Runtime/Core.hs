@@ -4,6 +4,7 @@ module Lang.ABS.Runtime.Core
     ) where
 
 import Lang.ABS.Runtime.Base
+import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
 import Data.List (foldl', find)
 import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
@@ -38,8 +39,7 @@ fwd_cog c = do
 spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
 spawnCOG c = do
   args <- CH.liftIO getArgs
-  if "--local-only" `elem` args
-    -- LOCAL-ONLY (multicore) (1 COG Process)
+  if "--distributed" `elem` args     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
     then do
       fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
       _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
@@ -49,16 +49,14 @@ spawnCOG c = do
         -- start the loop of the COG
         loop fwdPid sleepingOnFut sleepingOnAttr 1
       return fwdPid
-    -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
-    else do
-      CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
+  -- LOCAL-ONLY (multicore) (1 COG Process)
+    else CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
            -- each COG holds two tables:
            let sleepingOnFut = M.empty :: FutureMap  -- sleeping processes waiting on a future to be finished and arrive, so they can wake-up
            let sleepingOnAttr = M.empty :: ObjectMap  -- sleeping process waiting on a this.field to be mutated, so they can wake-up
            -- start the loop of the COG
            myPid <- CH.getSelfPid
            loop myPid sleepingOnFut sleepingOnAttr 1
-
     where
       -- COG loop definition
       loop pid sleepingOnFut sleepingOnAttr counter = do
@@ -116,8 +114,8 @@ spawnCOG c = do
 
 
 -- ABS Main-block thread (COG-like thread)
-main_is :: ABS Null () -> IO () 
-main_is mainABS = do
+main_is :: ABS Null () -> CH.RemoteTable -> IO () 
+main_is mainABS outsideRemoteTable = do
   args <- getArgs
 
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
@@ -129,7 +127,7 @@ main_is mainABS = do
              (error "An outside network interface was not found.")
              (show . ipv4) $ find (\ nic -> name nic == "eth0") nics -- otherwise, eth0's IP
       Right trans <- createTransport myIp "8889" defaultTCPParameters
-      myLocalNode <- newLocalNode trans (DC.__remoteTable initRemoteTable) -- new my-node
+      myLocalNode <- newLocalNode trans (DC.__remoteTable outsideRemoteTable) -- new my-node
       Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
 
       -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack

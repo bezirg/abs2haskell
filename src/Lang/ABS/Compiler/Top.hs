@@ -112,9 +112,10 @@ tMain (ABS.JustBlock (ABS.Bloc block)) =
                                                                ) (HS.BDecls [])
                                       :
                                       [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "main")) Nothing 
-                                             (HS.UnGuardedRhs (HS.App (HS.Var (HS.UnQual (HS.Ident "main_is")))
-                                                                      (HS.Var (HS.UnQual (HS.Ident "mainABS"))))) (HS.BDecls [])]
-
+                                             (HS.UnGuardedRhs (HS.App 
+                                                                     (HS.App (HS.Var (HS.UnQual (HS.Ident "main_is")))
+                                                                            (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
+                                                                      (HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
 
 tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.Decl] -> [HS.Decl]
 tDecls = concatMap tDecl
