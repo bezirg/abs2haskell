@@ -18,10 +18,6 @@
 - Pointer equality using StableNames. Then we can derive
 an Eq instance for each datatype and having proper equality between objects
 of the same interface but of a different class. This will also enable the Erlang-style part of pattern matching for ABS.
-- When the main block COG exits, the main program exits, and all the other running COGs are killed. This is in contrast
-with the Java backend, whereas the program exits only when all threads have exited. This will be fixed
-for the cloud abs (with the Cloud Haskell), since processes are long-living and any node has to
-be explicitly (with a Cloud Haskell API call) shutted down.
 
 # Comments about the ABS language for Translation
 
@@ -38,24 +34,8 @@ So then what is the point of this class? => This method can only be called local
 - 1-to-1 correspondence of OO interface inheritance and Haskell's typeclasses
 - ABS and Haskell has the exact same module system (almost the same, except circular dependencies, ambiguous imports)
 - Type Inference because of Milner type system
-- Add support for lambda functions and thus higher-order functions?
-
-# TODO enhance syntax
-
-- Add support for polymorphic type synonyms <https://envisage.ifi.uio.no:8080/redmine/issues/108>
+- Support for polymorphic type synonyms
 
 # TODO enhance ABS language
 
-- add lambdas
-- add function arrow-type (->)
-- thus add higher-order functions
-- maybe eta reduction
-- add let-polymorphism (need to change the translation of ABS let from lambdas to Haskell's letrec with name sanitation)
-
-let-polymorphism examples:
-
-~~~
-let f x = x in (f "a", f True)
-
-let i = id in (i "a", i True)
-~~~
+- Polymorphic Methods

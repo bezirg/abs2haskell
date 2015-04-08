@@ -157,8 +157,7 @@ main_is mainABS = do
       myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
       c <- newChan               -- in-memory channel
-      when ("--keep-alive" `notElem` args) $
-           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- this will exit early, not suitable for a distributed setting
+      writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
       runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid M.empty M.empty 1)
 
 
@@ -192,9 +191,14 @@ main_is mainABS = do
                                      -- put the woken back to the enabled queue
                                      maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                      return sleepingOnFut'
-                              TopRef -> do
-                                       CH.liftIO $ print "Main COG has exited with success"
-                                       CH.liftIO $ exitSuccess
+                              TopRef -> CH.liftIO $ do
+                                         args <- getArgs
+                                         if ("--distributed" `elem` args || "--keep-alive" `elem` args)
+                                           then return sleepingOnFut
+                                           -- exit early otherwise
+                                           else do
+                                            print "Main COG has exited with success"
+                                            exitSuccess
                 Left (Yield S cont) -> do
                        CH.liftIO $ writeChan c (RunJob obj fut cont) 
                        return sleepingOnFut

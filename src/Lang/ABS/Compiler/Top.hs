@@ -187,7 +187,7 @@ tDecl (ABS.DataParDecl (ABS.UIdent (_,tid)) tyvars constrs) = let
            (map (\case
                  ABS.SinglConstrIdent (ABS.UIdent (_,cid)) -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
                  ABS.ParamConstrIdent (ABS.UIdent (_,cid)) args -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
-           (if hasEx then [] else [(identI "Eq", [])])
+           (if hasEx then [] else [(identI "Eq", []), (identI "Show", [])])
         : 
         if hasEx                
         -- then manual Eq instance
@@ -250,6 +250,9 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
 
         HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident tname) [] [HS.QualConDecl HS.noLoc [HS.UnkindedVar $ HS.Ident "a"] [HS.ClassA (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyVar (HS.Ident "a")]] (HS.ConDecl (HS.Ident tname) [HS.UnBangedTy (HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident "ObjectRef") (HS.TyVar $ HS.Ident "a"))])] []
                                                               
+       : -- show instance
+       HS.InstDecl HS.noLoc [] (identI "Show") [HS.TyCon $ HS.UnQual $ HS.Ident $ tname]
+             [HS.InsDecl (HS.FunBind  [HS.Match HS.noLoc (HS.Ident "show") [HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Lit $ HS.String tname) (HS.BDecls [])])]
        -- Sub instances generation
        : generateSubSelf tname
        -- for lifting null to I, essentially null is a subtype of I
@@ -358,9 +361,15 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                     )
                     (HS.BDecls [])
                    ]
+
+       -- show instance for object turned off, because we rely on show instance of interface wrapper-datatype
+       -- :
+       -- -- a Show instance for object
+       -- HS.InstDecl HS.noLoc [] (identI "Show") [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
+       --       [HS.InsDecl (HS.FunBind  [HS.Match HS.noLoc (HS.Ident "show") [HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Lit $ HS.String clsName) (HS.BDecls [])])]
        :
-        -- the Object instance
-        HS.InstDecl HS.noLoc [{- empty context for now, may need to fix later -}] 
+       -- the Object instance
+       HS.InstDecl HS.noLoc [{- empty context for now, may need to fix later -}] 
               (HS.UnQual $ HS.Ident "Object__") -- interface name
               [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
               (

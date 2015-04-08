@@ -13,7 +13,7 @@ module Lang.ABS.StdLib.Prelude
      -- Maybe, Either datatypes and functions
      Prelude.Maybe (..), Prelude.Either (..), left, right, Prelude.maybe, fromJust,
      -- List and array functions
-     list, length, concatenate, appendright, listArray, replace, elemAt, Prelude.repeat, Array,
+     list, length, concatenate, appendright, listArray, replace, elemAt, Prelude.repeat, Array, without,
      -- ABS Map datatypes and functions
      M.Map, M.empty, put, insertAssoc, lookupUnsafe, removeKey,
      -- other
@@ -110,3 +110,10 @@ println act = act Prelude.>>= \ s -> liftIO (Prelude.putStrLn s)
 
 toString :: (Prelude.Show a) => a -> Prelude.String
 toString = Prelude.show
+
+-- Removes all occurences of an element from a list
+without :: Prelude.Eq t => [t] -> t -> [t]
+without [] _ = []
+without (x:xs) a | x Prelude.== a = without xs a 
+                 | Prelude.otherwise = x : without xs a
+

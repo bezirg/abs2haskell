@@ -27,6 +27,7 @@ interface Pong {
 class PingImpl(Pong pong) implements Ping {
     Unit run(){
       pong!hello(this); 
+      println("Ping: hello");
     }
 
     Unit ping(PingMsg msg){
@@ -38,6 +39,7 @@ class PingImpl(Pong pong) implements Ping {
       
       if (reply != NoMsg) {
          Fut<Unit> fu = pong!pong(reply);
+         println(concatenate("Ping: ", toString(reply)));
       	 fu.get;
       }
      }
@@ -49,13 +51,18 @@ class PongImpl implements Pong {
     Unit hello(Ping ping) {
        this.ping = ping;
        ping!ping(HelloPing);
+       println("Pong: hello, Ping");
     }
 
     Unit pong(PongMsg msg){
-       if (msg == HowAreYou)
+       if (msg == HowAreYou) {
            ping!ping(Fine);
-       else
+           println("Pong: Fine");
+       }  
+       else {
            ping!ping(ByePing);
+           println("Pong: Bye, Ping");
+           }
     } 
 
 }
