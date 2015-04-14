@@ -219,4 +219,4 @@ thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
               (-2)                   -- a stub object-id of the DC object
-              (nullProcessId (NodeId (encodeEndPointAddress myVmIP "8889" 0))))         -- no processid (ForwarderCOG ID) associated with the DC object
+              (nullProcessId (NodeId (encodeEndPointAddress myVmIP "9000" 0))))         -- no processid (ForwarderCOG ID) associated with the DC object

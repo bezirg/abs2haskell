@@ -126,7 +126,7 @@ main_is mainABS outsideRemoteTable = do
       let myIp = maybe 
              (error "An outside network interface was not found.")
              (show . ipv4) $ find (\ nic -> name nic == "eth0") nics -- otherwise, eth0's IP
-      Right trans <- createTransport myIp "8889" defaultTCPParameters
+      Right trans <- createTransport myIp "9000" defaultTCPParameters
       myLocalNode <- newLocalNode trans (DC.__remoteTable outsideRemoteTable) -- new my-node
       Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
 
