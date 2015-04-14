@@ -46,10 +46,9 @@ instance IDC_ Null where
           = I__.error
               "this should not happen. report the program to the compiler developers"
 
--- THIS, WILL NOT WORK. we need a *BUILT-IN* node attribute, like __cog
 __eqIDC (IDC NullRef) (IDC NullRef) = True
-__eqIDC (IDC (ObjectRef _ id1 tid1)) (IDC (ObjectRef _ id2 tid2))
-  = (id1 == id2) -- && (tid1 == tid2) -- REMOVED
+__eqIDC (IDC (ObjectRef _ id1 pid1)) (IDC (ObjectRef _ id2 pid2))
+  = (id1 == id2) && (pid1 == pid2)
 __eqIDC _ _ = False
  
 instance I__.Eq IDC where
