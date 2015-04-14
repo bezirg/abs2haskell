@@ -102,9 +102,8 @@ getLoad_async ((IDC __obj@(ObjectRef __ioref _ pid)))
   = do __obj1 <- I__.readRef __ioref
        lnid <- I__.lift (I__.lift getSelfNode)
        let rnid = processNodeId pid
-       COG (__chan, _) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
+       __hereCOG@(COG (__chan, _)) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
-       __hereCOG <- thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
        I__.lift (I__.put (astate{aCounter = __counter + 1}))
        if rnid == lnid

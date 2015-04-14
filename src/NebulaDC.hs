@@ -23,6 +23,7 @@ import Data.List (lookup)
 import Data.List (map)
 import Data.Maybe (fromMaybe)
 import Control.Concurrent (myThreadId)
+import Network.Transport.TCP (encodeEndPointAddress)
  
 data NebulaDC = NebulaDC{nebulaDC_loc :: (Object__ o) => ABS o COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
@@ -199,6 +200,11 @@ myVmId = fromMaybe
          (-1)                   -- signals erroneous extraction of VM ID
          (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
 
+{-# NONLINE myVmId #-}
+myVmIP = fromMaybe
+         "127.0.0.1"
+         (templateVmIP myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
+
 {-# NOINLINE thisDC #-}
 thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
                                                         NebulaDC{nebulaDC_loc = I__.undefined,
@@ -209,4 +215,4 @@ thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
               (-2)                   -- a stub object-id of the DC object
-              (nullProcessId (I__.undefined)))                  -- no processid (COG id) associated with the DC object
+              (nullProcessId (NodeId (encodeEndPointAddress myVmIP "8889" 0))))         -- no processid (ForwarderCOG ID) associated with the DC object
