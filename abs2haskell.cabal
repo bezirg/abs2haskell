@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.2.3
+version:               0.2.4
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -16,6 +16,7 @@ Source-repository this
 -- this library include the ABS stdlib & runtime, exported and installed as a Haskell package
 library
   build-depends:      base,
+                      -- temporal support for arrays in ABS (PA case study)
                       array,
                       transformers<0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
@@ -25,19 +26,19 @@ library
                       exceptions>=0.6.1,
                       -- for contacting OpenNebula through XML-RPC
                       opennebula>=0.0.8, 
-                      -- take the local network interfaces info: MAC, IP
+                      -- OS-generic way to read the info of network hardware: MAC, IP
                       network-info, 
-                      utf8-string,
+                      -- utf8-string, (probably not needed anymore)
                       -- for cloud abs / distributed communication of Haskell nodes
                       distributed-process>=0.5.1, 
-                      -- the node discovery/topology backend, this is the automatic: UDP broadcast
-                      distributed-process-simplelocalnet>=0.2.2.0,
-                      network-transport>=0.4.1.0, 
-                      -- data and typeable instances for rank-1 polymorphic types
-                      rank1dynamic>=0.2.0.0, 
+                      -- usual distributed-network transport through TCP
                       network-transport-tcp>=0.4.1, 
+                      -- the node discovery/topology backend, this is the automatic: UDP broadcast (turned-off for now)
+                      -- distributed-process-simplelocalnet>=0.2.2.0,
+                      network-transport>=0.4.1.0, 
+                      -- the rest are for serialization (data, closures)
+                      rank1dynamic>=0.2.0.0, 
                       distributed-static>=0.3.0.0,
-                      -- for serializing some values
                       binary>=0.7.1.0,
                       bytestring
   exposed-modules:    
@@ -78,7 +79,9 @@ executable abs2haskell
                       Lang.ABS.Compiler.Top,
                       -- the translate-functions for ABS statements
                       Lang.ABS.Compiler.Stmt,
-                      -- the translate-functions for pure functional ABS code
+                      -- the translate-functions for pure-expressions and effectful expressions, running in the ABS-object-layer  
+                      Lang.ABS.Compiler.ExprLifted,
+                      -- the translate-functions for the (pure) functional core of ABS
                       Lang.ABS.Compiler.Expr,
                       -- utility functions used by Main,Top,Stmt,Expr
                       Lang.ABS.Compiler.Utils,
@@ -110,36 +113,3 @@ executable abs2haskell
                       ImplicitParams
   ghc-options:        -Wall 
   hs-source-dirs:     src
-
-test-suite test_runtime
-  type:               exitcode-stdio-1.0
-  main-is:            TestRuntime.hs
-  -- same as runtime library + test framework
-  build-depends:      base,
-                      array,
-                      transformers<0.4,
-                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
-                      containers>=0.5.0.0,
-                      monad-coroutine>=0.8,
-                      test-framework, 
-                      test-framework-hunit, 
-                      test-framework-th, 
-                      HUnit,
-                      -- for contacting OpenNebula through XML-RPC
-                      opennebula>=0.0.8, 
-                      network-info, 
-                      utf8-string,
-                      -- for cloud abs / distributed communication of Haskell nodes
-                      distributed-process>=0.5.1, 
-                      network-transport>=0.4.1.0, 
-                      rank1dynamic>=0.2.0.0, 
-                      network-transport-tcp>=0.4.1, 
-                      distributed-static>=0.3.0.0,
-                      -- for serializing some values
-                      binary>=0.7.1.0,
-                      bytestring
-
-  extensions:        LambdaCase,
-                     ImplicitParams
-  ghc-options:
-  hs-source-dirs:     src, test                        
