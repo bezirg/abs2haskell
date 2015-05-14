@@ -4,6 +4,7 @@ module Lang.ABS.Runtime.Core
     ) where
 
 import Lang.ABS.Runtime.Base
+import Lang.ABS.Runtime.Conf
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
 import Data.List (foldl', find)
 import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
@@ -25,8 +26,8 @@ import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable)
-import System.Environment (getArgs)
 import Control.Monad (when)
+
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -38,8 +39,7 @@ fwd_cog c = do
 
 spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
 spawnCOG c = do
-  args <- CH.liftIO getArgs
-  if "--distributed" `elem` args     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
+  if (distributed conf)     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
     then do
       fwdPid <- CH.spawnLocal (fwd_cog c) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
       _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
@@ -73,8 +73,7 @@ spawnCOG c = do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               -- the cog catches any exception and lazily records it into the future-box (mvar)
               p <- resume coroutine `catchAll` (\ someEx -> do
-                                                 args <- CH.liftIO getArgs
-                                                 when ("--trace-exceptions" `elem` args) $ 
+                                                 when (traceExceptions conf) $ 
                                                       CH.liftIO $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
                                                  return $ Right $ throw someEx) 
               case p of
@@ -116,10 +115,8 @@ spawnCOG c = do
 -- ABS Main-block thread (COG-like thread)
 main_is :: ABS Null () -> CH.RemoteTable -> IO () 
 main_is mainABS outsideRemoteTable = do
-  args <- getArgs
-
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
-  if "--distributed" `elem` args
+  if (distributed conf)
     then do
       -- which is the lan IP? it is under eth0 nic
       nics <- getNetworkInterfaces
@@ -173,8 +170,7 @@ main_is mainABS outsideRemoteTable = do
          RunJob obj fut coroutine -> do
            (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               p <- resume coroutine `catchAll` (\ someEx -> do
-                                                 args <- CH.liftIO getArgs
-                                                 when ("--trace-exceptions" `elem` args) $ 
+                                                 when (traceExceptions conf) $ 
                                                       CH.liftIO $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
                                                  return $ Right $ throw someEx) 
               case p of
@@ -193,8 +189,7 @@ main_is mainABS outsideRemoteTable = do
                                      maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                      return sleepingOnFut'
                               TopRef -> CH.liftIO $ do
-                                         args <- getArgs
-                                         if ("--distributed" `elem` args || "--keep-alive" `elem` args)
+                                         if (distributed conf || keepAlive conf)
                                            then return sleepingOnFut
                                            -- exit early otherwise
                                            else do

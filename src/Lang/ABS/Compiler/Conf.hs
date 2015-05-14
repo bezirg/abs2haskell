@@ -1,27 +1,24 @@
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
 module Lang.ABS.Compiler.Conf
-    (conf
+    (confOpt
     ,Conf (..)
     ) where
 
-import System.IO.Unsafe (unsafePerformIO)
 import System.Console.CmdArgs
 import Distribution.PackageDescription.TH -- for injecting  cabal version
 
-{-# NOINLINE conf #-}
-conf = unsafePerformIO (cmdArgs confOpt)
-
 data Conf = Conf {
-      files :: [FilePath]
-      , ast :: Bool
-      , outputdir :: FilePath
+      srcFiles :: [FilePath]
+    , dumpAST :: Bool
+    , outputDir :: FilePath
     } deriving (Show, Eq, Data, Typeable)
 
+confOpt :: Conf
 confOpt = Conf {
-          files = def &= args &= typ "FILES/DIRS"
-          , outputdir = "." &= name "outputdir" &= explicit &= typDir
-          , ast = def &= help "Output an .ast file containing the parsed AST Haskell datatype"
+          srcFiles = def &= args &= typ "FILES/DIRS"
+          , outputDir = "." &= name "output-dir" &= explicit &= typDir
+          , dumpAST = def &= name "dump-ast" &= name "a" &= explicit &= help "Output an .ast file containing the parsed AST Haskell datatype"
           }
           &= program "abs2haskell" 
           &= help "a transcompiler from the ABS language to Haskell" 

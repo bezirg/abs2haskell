@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 module Lang.ABS.Runtime.Prim
     (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
      throw, catches, finally, Exception,

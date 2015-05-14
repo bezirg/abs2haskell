@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.2.4
+version:               0.2.8
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -40,7 +40,10 @@ library
                       rank1dynamic>=0.2.0.0, 
                       distributed-static>=0.3.0.0,
                       binary>=0.7.1.0,
-                      bytestring
+                      bytestring,
+                      cmdargs,
+                      -- for injecting package version into cmdargs --help menu
+                      cabal-file-th
   exposed-modules:    
                      -- imitating the abslang.abs
                      Lang.ABS.StdLib,
@@ -61,7 +64,9 @@ library
                      -- declarations of data structures used in the Runtime
                      Lang.ABS.Runtime.Base, 
                      -- the logic of the main thread and each COG thread of the ABS-Runtime
-                     Lang.ABS.Runtime.Core
+                     Lang.ABS.Runtime.Core,
+                     -- the ABS-RTS-options
+                     Lang.ABS.Runtime.Conf
   extensions:         LambdaCase,
                       ImplicitParams
   ghc-options:       -Wall
