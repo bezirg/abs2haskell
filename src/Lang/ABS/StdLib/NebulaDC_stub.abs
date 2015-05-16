@@ -11,7 +11,7 @@ fimport read from Text.Read; // for conversion String to Double
 fimport toRational from Prelude; // for conversion Double to Rational
 fimport getEnvironment from System.Environment; // for getting the $env
 fimport lookup from Data.List; // for filtering the $env
-fimport map from Data.List; // for filtering the $env
+fimport fmap from Prelude; // for filtering the $env
 fimport fromMaybe from Data.List; // for filtering the $env
 fimport unsafePerformIO from System.IO.Unsafe; // for purely extracting the $env
 

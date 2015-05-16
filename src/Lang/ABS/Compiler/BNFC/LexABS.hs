@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP,MagicHash #-}
-{-# LINE 3 "Lang/ABS/Compiler/BNFC/LexABS.x" #-}
 
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
@@ -41,7 +40,6 @@ alex_deflt :: AlexAddr
 alex_deflt = AlexA# "\xff\xff\x0b\x00\xff\xff\xff\xff\x0b\x00\x0b\x00\x0c\x00\x0c\x00\x0e\x00\xff\xff\x0e\x00\x0b\x00\x14\x00\x14\x00\xff\xff\xff\xff\xff\xff\xff\xff\x15\x00\x15\x00\x15\x00\x15\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"#
 
 alex_accept = listArray (0::Int,33) [AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccSkip,AlexAccSkip,AlexAccSkip,AlexAcc (alex_action_3),AlexAcc (alex_action_3),AlexAcc (alex_action_3),AlexAcc (alex_action_3),AlexAcc (alex_action_3),AlexAcc (alex_action_3),AlexAcc (alex_action_4),AlexAcc (alex_action_5),AlexAcc (alex_action_7),AlexAcc (alex_action_8)]
-{-# LINE 40 "Lang/ABS/Compiler/BNFC/LexABS.x" #-}
 
 
 tok f p s = f p s
@@ -158,7 +156,6 @@ alexGetByte (p, _, [], s) =
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar (p, c, bs, s) = c
 
-  -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
 utf8Encode = map fromIntegral . go . ord
  where

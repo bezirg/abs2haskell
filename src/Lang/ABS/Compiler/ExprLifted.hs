@@ -411,7 +411,7 @@ tPureExp' (ABS.ELogNeg pexp) tyvars = do
 tPureExp' (ABS.EIntNeg pexp) tyvars = do
   texp <- tPureExp' pexp tyvars
   return $ HS.Paren $ HS.InfixApp 
-                             (HS.Var $ HS.UnQual $ HS.Ident "negate") -- operator
+                             (HS.Var $ identI "negate") -- operator
                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
                              texp                -- operand1
 

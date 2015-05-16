@@ -21,12 +21,18 @@ import Text.Read (read)
 import Prelude (toRational)
 import Control.Concurrent.MVar (newMVar)
  
+-- * The DC interface
+
+-- | The deployment component ("IDC_") interface extends the "Object__" root-interface. Thus, deployment components are objects.
+--
+-- All DC classes must implement two methods: 'shutdown' and 'getLoad'.
 class (Object__ a) => IDC_ a where
          
         shutdown :: ObjectRef a -> ABS a Unit
          
         getLoad :: ObjectRef a -> ABS a (Triple Rat Rat Rat)
  
+-- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
 data IDC = forall a . (IDC_ a) => IDC (ObjectRef a)
  
 instance Sub IDC IDC where
@@ -45,6 +51,8 @@ instance IDC_ Null where
         getLoad
           = I__.error
               "this should not happen. report the program to the compiler developers"
+
+-- * DC Internals
 
 __eqIDC (IDC NullRef) (IDC NullRef) = True
 __eqIDC (IDC (ObjectRef _ id1 pid1)) (IDC (ObjectRef _ id2 pid2))
@@ -79,7 +87,7 @@ shutdown_async (IDC NullRef) = I__.error "async call to null"
 
 rload :: ProcessId -> Process ()
 rload pid = do
-  (s1: s5: s15: _) <- I__.liftIO (I__.liftM words (readFile "/proc/loadavg"))
+  (s1: s5: s15: _) <- I__.liftIO (words <$> (readFile "/proc/loadavg"))
   send pid (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
   return ()
 

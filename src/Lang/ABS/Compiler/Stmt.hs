@@ -222,11 +222,11 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
                                                    )
                                (case pat of
                                   -- wrap the normal returned expression in a just
-                                  ABS.PUnderscore -> (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ tcstm))
+                                  ABS.PUnderscore -> HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") (HS.Paren $ tcstm)
                                   _ -> HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0")
                                       [HS.Alt HS.noLoc (tPattern pat)
                                        -- wrap the normal returned expression in a just
-                                       (HS.UnGuardedAlt (HS.App (HS.App (HS.Var $ identI "liftM") (HS.Con $ HS.UnQual $ HS.Ident "Just")) (HS.Paren $ tcstm))) (HS.BDecls []),
+                                       (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") (HS.Paren $ tcstm))) (HS.BDecls []),
                                        -- pattern match fail, return nothing
                                        HS.Alt HS.noLoc HS.PWildCard (HS.UnGuardedAlt $ (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Con $ HS.UnQual $ HS.Ident "Nothing"))) (HS.BDecls [])])))
               cbranches

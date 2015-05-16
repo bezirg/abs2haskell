@@ -1,36 +1,55 @@
-{-# LANGUAGE NoImplicitPrelude, ExistentialQuantification #-}
-
--- Wrapper Module to include extra functions in the translated code
+-- | Wrapper Module to include extra functions in the translated code
 -- because they are called by the translated code
-
+-- 
 -- This wrapper module makes the translated code less verbose,
 -- because we don't have to import more modules
--- jus this module
+
+{-# LANGUAGE NoImplicitPrelude, ExistentialQuantification #-}
 
 module Lang.ABS.Compiler.Include 
     (
-     Control.Exception.evaluate, Data.Typeable.Typeable,  Prelude.error,
-     Control.Monad.Trans.Class.lift, Control.Monad.liftM, Control.Monad.IO.Class.liftIO,
-     Data.IORef.newIORef, Data.IORef.modifyIORef', Data.IORef.readIORef, Control.Monad.when, Control.Monad.Coroutine.mapMonad,
+     -- * Typeable must be automatically derived on all newly-created ABS exceptions (Haskell-compatible)
+     Data.Typeable.Typeable,
+     Prelude.error,
+     -- * lifting State operations and IO operations (for both threads and cloudhaskell) to the ABS monad
+     Control.Monad.Trans.Class.lift, Control.Monad.IO.Class.liftIO,
+
+     -- * For sending actor messages (making asynchronous calls)
      Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.writeList2Chan, Control.Concurrent.newEmptyMVar,
      Data.Map.Strict.updateLookupWithKey,
+     -- * mostly used as stub for uninitialized data
      Prelude.undefined,
      Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
+     -- * For reading the runtime configuration "AConf" by "Prim"itive statements : this + thisCOG
      RWS.ask, RWS.get, RWS.put,
-     Control.Monad.join, -- for applicative style method (sync and async) applications
+     -- * Applicative style and monad utilities
+     Control.Monad.when, Control.Monad.Coroutine.mapMonad, Control.Monad.join,
+     -- * Exceptions
      Control.Monad.Catch.Handler (..), PHandler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..), caseEx,
      Control.Monad.Catch.fromException,
      withReaderT,
-     newRef,writeRef,readRef, IORef, -- export also the type for type-checking
+
+     -- * For creating objects (by the runtime)
+     newIORef, readIORef, writeIORef, modifyIORef', 
+
+     -- * For creating local variable (by the ABS user)
+     newRef, readRef, writeRef, IORef,  -- export also the type for type-checking
+
      empty_fut,
-     initRemoteTable
+     initRemoteTable,
+     -- * for shortening code
+     Prelude.maybe,
+     -- * Haskell's 'negate' (-) unary function used in lifted code
+     
+     -- | Haskell's unary (-) has the same repr as the binary (-) subtract. When we have to lift code, we cannot use (-),
+     -- because Haskell defaults to 'subtract'. Thus, instead, we explicitly lift and call the 'negate' function.
+     Prelude.negate
     )
  where
 
 
 import Prelude
 import Control.Monad.Trans.Class
-import qualified Control.Exception
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad
 import Data.IORef

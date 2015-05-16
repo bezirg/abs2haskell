@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.2.8
+version:               0.3.2
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -73,7 +73,7 @@ library
   hs-source-dirs:    src
 
 -- this is the (trans)compiler that translate ABS to Haskell
-executable abs2haskell
+executable a2h
   main-is:            Lang/ABS/Compiler/Main.hs
   other-modules:
                       -- compiler options passed to compiler program

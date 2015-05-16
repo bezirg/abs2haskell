@@ -1,3 +1,10 @@
+-- | An implementation of deployment components for OpenNebula clouds.
+-- 
+-- Since it is packaged in the ABS standard-library, the ABS user has to simply import it in an ABS program as:
+-- 
+-- > import NebulaDC
+--
+-- More about the open-source OpenNebula project at <http://opennebula.org>
 {-# LANGUAGE Rank2Types, NoImplicitPrelude, FlexibleInstances,
   ExistentialQuantification, MultiParamTypeClasses,
   ScopedTypeVariables, DeriveDataTypeable #-}
@@ -14,17 +21,18 @@ import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under
 --import Network.Transport.TCP (encodeEndPointAddress)
 import System.IO (readFile)
 import Data.List (words)
-import Prelude (Double(..), (++), elem)
+import Prelude (Double(..), (++), elem, fmap)
 import Text.Read (read)
 import Prelude (toRational)
 import System.Environment (getEnvironment, getArgs)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.List (lookup)
-import Data.List (map)
 import Data.Maybe (fromMaybe)
 import Control.Concurrent (myThreadId)
 import Network.Transport.TCP (encodeEndPointAddress)
  
+-- * Internals
+
 data NebulaDC = NebulaDC{nebulaDC_loc :: (Object__ o) => ABS o COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
                          nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
@@ -98,7 +106,7 @@ set_nebulaDC_cpu v
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
-       maybe (return ())
+       I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
@@ -111,7 +119,7 @@ set_nebulaDC_load v
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 1) om
-       maybe (return ())
+       I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
@@ -124,7 +132,7 @@ set_nebulaDC_memory v
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 2) om
-       maybe (return ())
+       I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
@@ -137,7 +145,7 @@ set_nebulaDC_nodeId v
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 3) om
-       maybe (return ())
+       I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
@@ -150,7 +158,7 @@ set_nebulaDC_vmId v
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 4) om
-       maybe (return ())
+       I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
@@ -181,7 +189,7 @@ instance IDC_ NebulaDC where
                    -- otherwise raises a not-implemented-yet error
                    -- if (thisVmId == myVmId)
                       -- then do
-                   (s1: s5: s15: _) <- I__.liftIO (I__.liftM words (readFile "/proc/loadavg"))
+                   (s1: s5: s15: _) <- I__.liftIO (words <$> (readFile "/proc/loadavg"))
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
                    -- else I__.error "TODO: remote checking the load of the system is not implemented yet"
 
@@ -195,7 +203,7 @@ instance IDC_ NebulaDC where
 (myTyp:myCreatorPid:myRpcServer:mySession:myRpcProxy:myTempl:myArgs) = 
     let env = unsafePerformIO getEnvironment
         args = unsafePerformIO getArgs
-    in map (\ v -> fromMaybe "" (lookup v env))   ["TYPE","FROM_PID","RPC_SERVER","SESSION","RPC_PROXY","VM_TEMPLATE"] Prelude.++ args
+    in fmap (\ v -> fromMaybe "" (lookup v env))   ["TYPE","FROM_PID","RPC_SERVER","SESSION","RPC_PROXY","VM_TEMPLATE"] Prelude.++ args
 
 {-# NONLINE myVmId #-}
 myVmId = fromMaybe 

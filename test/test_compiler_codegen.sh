@@ -16,7 +16,7 @@ do
         i=$((i+1));
         echo "${i})Translating ${file%.*} to haskell"
         # all examples should contain a main block
-        $twd/../.cabal-sandbox/bin/abs2haskell ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
+        $twd/../.cabal-sandbox/bin/a2h ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
         echo "${i})Compiling ${file%.*} with ghc"
         ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
         echo "${i})Executing ${file%.*}"
@@ -39,7 +39,7 @@ do
         i=$((i+1));
         echo "${i})Translating ${file%.*} to haskell"
         # all examples should contain a main block
-        $twd/../.cabal-sandbox/bin/abs2haskell ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
+        $twd/../.cabal-sandbox/bin/a2h ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
         [ $? -ne 0 ] && echo "Translate error at $file check its .stderr" && continue
         echo "${i})Compiling ${file%.*} with ghc"
         ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
@@ -64,7 +64,7 @@ do
     do
         i=$((i+1));
         { echo "${i})Translating ${file%.*} to haskell" ; \
-        $twd/../.cabal-sandbox/bin/abs2haskell ${file} ; \
+        $twd/../.cabal-sandbox/bin/a2h ${file} ; \
         echo "${i})Compiling ${file%.*} with ghc" ; \
         ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d ; }
         echo "${i})Running ${file%.*}"
