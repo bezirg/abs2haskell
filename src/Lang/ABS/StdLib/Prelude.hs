@@ -217,10 +217,10 @@ elemAt(a, i) = a UArray.! i
 ----------------------------
 
 
-println :: (Object__ o) => ABS o Prelude.String -> ABS o ()
+println :: (Root_ o) => ABS o Prelude.String -> ABS o ()
 println act = act Prelude.>>= \ s -> liftIO (Prelude.putStrLn s)
 
-readln :: (Object__ o) => ABS o Prelude.String
+readln :: (Root_ o) => ABS o Prelude.String
 readln = liftIO Prelude.getLine
 
 toString :: (Prelude.Show a) => a -> Prelude.String
@@ -246,9 +246,11 @@ strlen = Prelude.length
 ----------------------------
 
 -- | The ABS assertions. To disable assertions pass to the Haskell runtime system options: _+RTS -fignore-asserts_
-assert :: (Object__ o) => ABS o Bool -> ABS o ()
+assert :: (Root_ o) => ABS o Bool -> ABS o ()
 assert act = act Prelude.>>= \ b -> Control.Exception.assert b (Prelude.return ())
 
 -- | The reference to a null object
-null :: ObjectRef Null
+--
+-- The class of a null object is "Null".
+null :: Obj Null
 null = NullRef

@@ -1,3 +1,10 @@
+-- | The core of the ABS-Haskell runtime execution. 
+--
+-- This module implements the execution-logic of 
+-- 
+-- 1. a main COG with 'main-is' action
+-- 2. a local or distributed COG (depending on if --distributed is enabled) with 'spawnCOG' action
+
 module Lang.ABS.Runtime.Core 
     (spawnCOG
     ,main_is
@@ -25,19 +32,25 @@ import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
-import qualified Lang.ABS.StdLib.DC as DC (__remoteTable)
 import Control.Monad (when)
 
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
-fwd_cog :: Chan Job -> CH.Process ()
+-- | (only applied when --distributed). This is a so-called cog-forwarder which is an extra (lightweight) thread
+-- that accompanies the COG thread and acts as the mediator from the outside-world to the local world.
+--
+-- It listens in a remote queue (mailbox) and forwards any messages to the COG's local queue ("Chan")
+fwd_cog :: Chan Job              -- ^ the local Chan queue
+        -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog c = do
-  AnyFuture j <- CH.expect :: CH.Process AnyFuture
+  AnyFut j <- CH.expect :: CH.Process AnyFut
   -- TODO: putMVar to local future
   CH.liftIO $ writeChan c (WakeupSignal j)
 
-spawnCOG :: Chan Job -> CH.Process CH.ProcessId -- it returns a ProcessId to update the new (1st object in the COG) location value.
+-- | Each COG is a thread or a process
+spawnCOG :: Chan Job            -- ^ the caller is responsible to create a communication-queue. The caller is responsible for creating an object and _schedule_ its init process by sending a message to this channel
+         -> CH.Process CH.ProcessId -- ^ it returns the created COG-thread ProcessId. This is used to update the location of the 1st created object
 spawnCOG c = do
   if (distributed conf)     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
     then do
@@ -65,7 +78,7 @@ spawnCOG c = do
         case nextJob of
           -- wake signals are transmitted (implicitly) from a COG to another COG to wakeup some of the latter's sleeping process
           WakeupSignal f -> do
-             let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture f) sleepingOnFut
+             let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
              maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
              loop pid sleepingOnFut'' sleepingOnAttr counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
@@ -87,7 +100,7 @@ spawnCOG c = do
                               else do
                                 -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                 -- because it adds an extra iteration
-                                let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture fut) sleepingOnFut
+                                let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
                                 -- put the woken back to the enabled queue
                                 maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                 return sleepingOnFut'
@@ -97,7 +110,7 @@ spawnCOG c = do
                            return sleepingOnFut
                     -- the process deliberately decided to await on a future to finish (by calling await f?;)
                     Left (Yield (F f) cont) -> do
-                           return (M.insertWith (++) (AnyFuture f) [RunJob obj fut cont] sleepingOnFut) -- update sleepingf-table
+                           return (M.insertWith (++) (AnyFut f) [RunJob obj fut cont] sleepingOnFut) -- update sleepingf-table
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
                     Left (Yield (T o@(ObjectRef _ oid _)  fields) cont) -> do
                            -- update sleepingo-table
@@ -112,8 +125,10 @@ spawnCOG c = do
              loop pid sleepingOnFut'' sleepingOnAttr'' counter''
 
 
--- ABS Main-block thread (COG-like thread)
-main_is :: ABS Null () -> CH.RemoteTable -> IO () 
+-- | ABS main-block thread (COG-like thread)
+main_is :: ABS Null () -- ^ a main-block monadic action (a fully-applied method with a null this-context that returns "Unit")
+        -> CH.RemoteTable        -- ^ this is a _remotely-shared_ table of pointers to __remotable__ methods (methods that can be called remotely)
+        -> IO ()                  -- ^ returns void. It is the main procedure of a compiled ABS application.
 main_is mainABS outsideRemoteTable = do
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
   if (distributed conf)
@@ -134,9 +149,9 @@ main_is mainABS outsideRemoteTable = do
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex ->  -- no creator, this is the START-SYSTEM and runs MAIN
-           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
+           writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
         Right "" -> -- no creator, this is the START-SYSTEM and runs MAIN
-           writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
+           writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
         Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let creatorPid = Bin.decode (fromString creatorPidStr) :: CH.ProcessId
@@ -155,7 +170,7 @@ main_is mainABS outsideRemoteTable = do
       myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
       c <- newChan               -- in-memory channel
-      writeChan c (RunJob (error "not this at top-level") TopRef mainABS) -- send the Main Block as the 1st created process
+      writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
       runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid M.empty M.empty 1)
 
 
@@ -164,7 +179,7 @@ main_is mainABS outsideRemoteTable = do
        nextJob <- CH.liftIO $ readChan c
        case nextJob of
          WakeupSignal f -> do
-           let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture f) sleepingOnFut
+           let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
            maybe (return ()) (\ woken -> CH.liftIO (writeList2Chan c woken)) maybeWoken -- put the woken back to the enabled queue
            loop c pid sleepingOnFut'' sleepingOnAttr counter
          RunJob obj fut coroutine -> do
@@ -184,11 +199,11 @@ main_is mainABS outsideRemoteTable = do
                                    else do
                                      -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                      -- because it adds an extra iteration
-                                     let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFuture fut) sleepingOnFut
+                                     let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
                                      -- put the woken back to the enabled queue
                                      maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
                                      return sleepingOnFut'
-                              TopRef -> CH.liftIO $ do
+                              MainFutureRef -> CH.liftIO $ do
                                          if (distributed conf || keepAlive conf)
                                            then return sleepingOnFut
                                            -- exit early otherwise
@@ -199,7 +214,7 @@ main_is mainABS outsideRemoteTable = do
                        CH.liftIO $ writeChan c (RunJob obj fut cont) 
                        return sleepingOnFut
                 Left (Yield (F f) cont) -> do
-                       return (M.insertWith (++) (AnyFuture f) [RunJob obj fut cont] sleepingOnFut)
+                       return (M.insertWith (++) (AnyFut f) [RunJob obj fut cont] sleepingOnFut)
                 Left (Yield (T o@(ObjectRef _ oid _) fields) cont) -> do
                        let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [RunJob obj fut cont] m) sleepingOnAttr fields
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}

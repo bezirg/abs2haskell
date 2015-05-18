@@ -21,7 +21,7 @@ module Lang.ABS.Compiler.Include
      Prelude.undefined,
      Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
      -- * For reading the runtime configuration "AConf" by "Prim"itive statements : this + thisCOG
-     RWS.ask, RWS.get, RWS.put,
+     RWS.ask, RWS.get, RWS.put, thisCOG, readThis,
      -- * Applicative style and monad utilities
      Control.Monad.when, Control.Monad.Coroutine.mapMonad, Control.Monad.join,
      -- * Exceptions
@@ -32,7 +32,7 @@ module Lang.ABS.Compiler.Include
      -- * For creating objects (by the runtime)
      newIORef, readIORef, writeIORef, modifyIORef', 
 
-     -- * For creating local variable (by the ABS user)
+     -- * For creating local variable (by the ABS user). It is the same as the above IORef-operations, but lifted for operating in the ABS-monad.
      newRef, readRef, writeRef, IORef,  -- export also the type for type-checking
 
      empty_fut,
@@ -62,7 +62,6 @@ import qualified Control.Monad.Catch
 import qualified Control.Exception.Base (PatternMatchFail (..), throw)
 import Control.Applicative
 import Lang.ABS.Runtime.Base
-import Lang.ABS.Runtime.Prim (thisCOG)
 import Control.Distributed.Process.Node (initRemoteTable)
 
 -- util function, used in code generation
@@ -84,19 +83,34 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
                 Nothing -> res
 
 
-newRef :: MonadIO m => m a -> m (IORef a)
+newRef :: (Root_ o) => ABS o a -> ABS o (IORef a)
 newRef v = do
   res <- v
   liftIO $ newIORef res
 
-writeRef :: MonadIO m => IORef a -> m a -> m ()
+writeRef :: (Root_ o) => IORef a -> ABS o a -> ABS o ()
 writeRef r v = do
   res <- v
   liftIO $ writeIORef r res
 
-readRef :: MonadIO m => IORef a -> m a
+readRef :: (Root_ o) => IORef a -> ABS o a
 readRef r = liftIO $ readIORef r
 
 -- for easier code generation
-empty_fut :: (Object__ o) => ABS o (Fut a)
+empty_fut :: (Root_ o) => ABS o (Fut a)
 empty_fut = FutureRef <$> liftIO newEmptyMVar <*> thisCOG <*> pure (-10 :: Int)
+
+
+-- | A way to read the current executing COG inside an ABS process 
+thisCOG :: (Root_ o) => ABS o COG
+thisCOG = do
+  t <- aCOG <$> lift RWS.ask
+  return t
+
+
+-- | A way to de-reference an object-ref from the heap and read its attributes
+--
+-- _NOTE_: assumes the compiler is correct and __only__ passes the _this_ last formal-parameter of the method
+readThis :: (Root_ o) => Obj o -> ABS o o
+readThis (ObjectRef ioref _ _) = liftIO $ readIORef ioref
+readThis NullRef = error "Compile Error: this should not happen. Inform the developers"

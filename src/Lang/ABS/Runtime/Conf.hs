@@ -1,3 +1,4 @@
+-- | Possible options passed to The ABS-Haskell runtime-system
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
 module Lang.ABS.Runtime.Conf
@@ -14,9 +15,9 @@ conf :: Conf
 conf = unsafePerformIO (cmdArgs confOpt)
 
 data Conf = Conf {
-      keepAlive :: Bool
-    , distributed :: Bool
-    , traceExceptions :: Bool
+      keepAlive :: Bool -- ^ If enabled, the ABS-program will keep running even after the end of the main-block process
+    , distributed :: Bool -- ^ Extends the runtime with distributed support, necessary when communicating between remote ABS programs. Entails certain added costs compared to the default parallel-only runtime. Implies --keep-alive.
+    , traceExceptions :: Bool -- ^ The COGs consume any uncaught exceptions in their processes. This option prints to the stdout a message of the uncaught exception when it happens. Used mostly for debugging
     } deriving (Show, Eq, Data, Typeable)
 
 confOpt :: Conf

@@ -36,7 +36,7 @@ tPureExpWrap pexp cls = do
       return $ if null thisFields
                then texp  --  rhs  
                else HS.Paren $ HS.InfixApp 
-                      (HS.Var $ HS.UnQual $ HS.Ident "readThis")
+                      (HS.App (HS.Var $ identI "readThis") (HS.Var $ HS.UnQual $ HS.Ident "this"))
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol ">>=")
                       (HS.Lambda HS.noLoc [(HS.PRec (HS.UnQual $ HS.Ident cls) $ -- introduce bindings
                                             map (\ arg -> HS.PFieldPat (HS.UnQual $ HS.Ident (headToLower cls ++ '_' : arg)) 
@@ -67,7 +67,7 @@ tEffExpWrap eexp cls = do
                then texp
                else -- readObject this >>= \ Class1 { record bindings   } ->
                    HS.Paren $ HS.InfixApp 
-                   (HS.Var $ HS.UnQual $ HS.Ident "readThis")
+                   (HS.App (HS.Var $ identI "readThis") (HS.Var $ HS.UnQual $ HS.Ident "this"))
                    (HS.QVarOp $ HS.UnQual $ HS.Symbol ">>=")
                    (HS.Lambda HS.noLoc [(HS.PRec (HS.UnQual $ HS.Ident cls) $ -- introduce bindings
                                          map (\ arg -> HS.PFieldPat (HS.UnQual $ HS.Ident (headToLower cls ++ '_' : arg)) 
@@ -629,10 +629,10 @@ interf = do
   return i
 
 
+-- | Wrap a given type _t_ to Root_ o => ABS o t
 wrapTypeToABSMonad :: HS.Type -> HS.Type
-wrapTypeToABSMonad t = (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS"))
-                                        (HS.TyVar $ HS.Ident "_o"))
-                                    t)
+wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (HS.UnQual $ HS.Ident "Root_") [HS.TyVar $ HS.Ident "o"]] 
+                       (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
 
 visible_cscope :: ExprLiftedM ScopeTable
 visible_cscope = do

@@ -1,3 +1,4 @@
+-- | All the types and datastructures used in the ABS-Haskell runtime
 {-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables #-}
 
 module Lang.ABS.Runtime.Base where
@@ -19,13 +20,18 @@ import Control.Distributed.Process.Serializable
              ( fingerprint, Serializable, encodeFingerprint, decodeFingerprint )
 import Data.Map ( Map, fromList, lookup )
 
--- its object value/memory a triple:
---1) a mutable state
---2) a unique-per-COG ascending counter being the object' identity inside the cog
---3) the thread identifier of its COG
--- Together 2 and 3 makes any object uniquely identified inside the same machine.
-data ObjectRef a = ObjectRef (IORef a) Int CH.ProcessId
-                 | NullRef
+-- * Objects and Futures
+
+-- | A reference to any live object (a datatype record of its fields).
+-- The reference is the following triple:
+--
+-- 1. a heap reference ("IORef") to the mutable state of the object (the record of its fields)
+-- 2. a unique-per-COG ascending counter being the object' identity inside the cog
+-- 3. the thread identifier of its COG
+--
+-- Together 2 and 3 makes any object uniquely identified accross the network.
+data Obj a = ObjectRef (IORef a) Int CH.ProcessId -- ^ an actualy object reference
+           | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
                  deriving Eq --, Typeable)
 
 -- instance Binary (ObjectRef a) where
@@ -41,95 +47,147 @@ data ObjectRef a = ObjectRef (IORef a) Int CH.ProcessId
 --             pid <- get
 --             return (ObjectRef undefined i pid)
 
--- a future reference is a triple:
--- 1) The future value as an MVar. 
---    A call to ABS' get will try to read this MVar, making the COG block until the value is available (written back).
--- 2) The COG of the parent caller, to respond to.
--- 3) A unique-per-COG ascending counter being the future's identity inside the cog
--- Together 2 and 3 makes a future uniquely identified inside the same machine.
-data Fut a = FutureRef (MVar a) COG Int
-           | TopRef            -- a dummy value to reply back to the main block
+-- | A reference to any live future.
+--
+-- The reference has the following structure (a triple):
+-- 1. Potentially the resolved value of the future as an "MVar". 
+-- A call to ABS' get will try to read this MVar, making the COG block until the value is available (written back).
+-- 2. A reference to the COG of its parent caller, to reply the result to.
+-- 3. A unique-per-COG ascending counter being the future's identity inside the cog
+-- Together 2 and 3 makes a future uniquely identified across the network.
+data Fut a = FutureRef (MVar a) COG Int -- ^ a reference to a future (created by await)
+           | MainFutureRef              -- ^ a dummy (internal-only) future-reference where main-method returns to (when finished)
            deriving Typeable
 
+-- | Equality testing between futures
+instance Eq (Fut a) where
+    MainFutureRef == MainFutureRef = True
+    FutureRef _ cog1 id1 == FutureRef _ cog2 id2 = cog1 == cog2 && id1 == id2
+    _ == _ = False
+
+-- | A future can be serialized.
 instance Binary (Fut a) where
     put (FutureRef _ c i) = do
       put (0 :: Word8) >> put c >> put i
-    put TopRef = put (1 :: Word8)
+    put MainFutureRef = put (1 :: Word8)
     get = do
       t <- get :: Get Word8
       case t of
-        1 -> return TopRef
+        1 -> return MainFutureRef
         0 -> do
             c <- get
             i <- get
             return (FutureRef undefined c i)
         _ -> error "binary Fut decoding"
 
--- Subtyping-relation for ABS objects (as multiparam typeclass)
+-- | Subtyping-relation for ABS objects (as a multiparam typeclass)
 class Sub sub sup where
+    -- | The upcasting method from a subtype to a supertype
     up :: sub -> sup
 
-instance Sub AnyObject AnyObject where
+instance Sub Root Root where
     up x = x
 
--- the root Object interface
--- all user-written interfaces implicitly extend this Object__ interface
-class Object__ a where
-    new :: (Object__ o) => a -> ABS o (ObjectRef a)
-    new_local :: a -> (Object__ o) => ABS o (ObjectRef a)
-    __init :: ObjectRef a -> ABS a () 
+-- | The root-interface. (not exposed to the ABS user)
+-- 
+-- All user-written interfaces implicitly extend this "Root_" interface
+--
+-- The root interface requires at-least two "methods" to be implemented: 'new' and 'new_local'
+-- 
+-- Optionally the user can implement two extra "methods": 'init' (which corresponds to the init-block) and 'run'
+--
+-- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
+class Root_ a where
+    new :: (Root_ o) => a -> ABS o (Obj a)
+    new_local :: a -> (Root_ o) => ABS o (Obj a)
+    __init :: Obj a -> ABS a () 
     __init _ = return (())     -- default implementation of init
-    __run :: ObjectRef a -> ABS a () 
+    __run :: Obj a -> ABS a () 
     __run _ = return (())        -- default implementation of run
-    __cog :: (Object__ o) => a -> ABS o COG -- helper function for the generated code, to easily read from any object its COG location
+    __cog :: (Root_ o) => a -> ABS o COG -- helper function for the generated code, to easily read from any object its COG location
 
--- the null class object, 
--- it does not have any constructors
--- it is just for typing
+-- | The root-type of all objects
+--
+-- This is the highest supertype in the subtyping hierarchy.
+-- It is used only for object-equality between different-type objects
+--
+-- It is implemented as an existential-wrapper to hide the real class of the object
+--
+-- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root" interface or class
+data Root = forall o. Root_ o => Root (Obj o)
+
+-- | Equality between any object (any class)
+instance Eq Root where
+    -- it maybe can be used for root type equality if we expose to the ABS language the AnyObject interface type
+    Root (ObjectRef _ id1 tid1) == Root (ObjectRef _ id2 tid2) = tid1 == tid2 && id1 == id2
+
+-- | (internal) an alias for code-geration for object equality
+__eqRoot :: Root -> Root -> Bool
+__eqRoot = (==)
+
+-- | The null class (datatype)
+--
+-- It does not have any constructors, thus no value (no fields).
+-- It is used only for _typing_ the 'null' object and the the this-context of the main-block-method.
 data Null
 
--- null error-implements the Root interface (and by code-generation all user-written interfaces)
-instance Object__ Null where
+-- | The null-class error-implements the Root interface (and by code-generation all user-written interfaces)
+instance Root_ Null where
     new = error "cannot instantiated null"
     new_local = error "cannot instantiated null"
     __cog = error "null is not related to a COG"
 
 
----- ABS monad related (object state world) -----------
--------------------------------------------------------
 
--- ABS pure-code operates in the haskell pure-world
+
+-- * ABS monad related (object state world)
+
+-- ** The ABS monad
+
+-- | ABS pure-code operates in the haskell pure-world,
 -- whereas ABS effectful-code operates inside this ABS monad-stack
+--
+-- | This "ABS" monad-stack is a pile of sub-monads:
+--
+-- 1. coroutine
+-- 2. a reader configuration "AConf" that holds references to this-object and this-cog
+-- 3. the state of the current COG "AState" to modify the COG-state-internals
+-- 4. the Process monad (for remotely communicating messages between actors and doing other IO operations) 
 type ABS o = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState CH.Process)
 
--- every ABS monad (computation) holds a reader AConf and a state AState
+-- | Every ABS monad (computation) holds a reader AConf and a state AState
 data AConf o = AConf {
-      aThis :: (Object__ o) => ObjectRef o, -- this object
-      aCOG  :: COG                         -- this cog
+      aThis :: (Root_ o) => Obj o -- ^ this object
+    , aCOG  :: COG               -- ^ this cog
     }
 data AState = AState {
-      aCounter :: Int,           -- generate (unique-per-COG) ascending counters
-      aSleepingO :: ObjectMap,
-      aSleepingF :: FutureMap
+      aCounter :: Int           -- ^ generate (unique-per-COG) ascending counters
+    , aSleepingO :: ObjectMap   -- ^ suspended-processes currently sleeping for some object-field
+    , aSleepingF :: FutureMap   -- ^ suspended-processes currently sleeping for some future
     }
 
--- the input to the await
--- can await on multiple items
+-- | The yield result of the a currently-executing coroutine after calling 'suspend' or 'await'
+--
+-- The running process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
+data AwaitOn = S -- suspend is called
+             | forall f. Serializable f => F (Fut f) -- await on future
+             | forall o. Root_ o => T (Obj o) [Int] -- await on object's fields
+
+
+-- | The single parameter to an await statement;
+-- a recursive-datatype that can await on multiple items
 data AwaitGuard o = forall b. (Serializable b) => FutureGuard (Fut b)
                   | ThisGuard [Int] (ABS o Bool)
                   | AwaitGuard o :&: AwaitGuard o
 
--- the yield result of the coroutine after calling suspend/await
--- the process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
-data AwaitOn = S -- suspend is called
-             | forall f. Serializable f => F (Fut f) -- await on future
-             | forall o. Object__ o => T (ObjectRef o) [Int] -- await on object's fields
 
 
---- COG related -----
----------------------
 
--- a COG is identified by its jobqueue+processid
+
+
+-- * COG related
+
+-- | a COG is identified by its jobqueue+processid
 newtype COG = COG { fromCOG :: (Chan Job, CH.ProcessId)}
 
 instance Eq COG where
@@ -141,12 +199,12 @@ instance Binary COG where
       pid <- get
       return (COG (undefined, pid))
 
--- Incoming jobs to the COG thread
-data Job = forall o a . (Serializable a, Object__ o) => RunJob (ObjectRef o) (Fut a) (ABS o a)
+-- | Incoming jobs to the COG thread
+data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS o a)
          | forall f . Serializable f => WakeupSignal (Fut f)
 
 
--- create this stub table
+-- | create this stub table
 stable :: Map Fingerprint SomeGet
 stable = fromList
     [ (mkSMapEntry (undefined :: Fut Bool))
@@ -159,49 +217,61 @@ data SomeGet = forall a. Serializable a => SomeGet (Get (Fut a))
 mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet)
 mkSMapEntry a = (fingerprint a,SomeGet (get :: Get (Fut a)))
 
-instance Binary AnyFuture where
-  put (AnyFuture a) = put (encodeFingerprint$ fingerprint a) >> put a
+-- | any-futures can be serialized
+instance Binary AnyFut where
+  put (AnyFut a) = put (encodeFingerprint$ fingerprint a) >> put a
   get = do
       fp<-get
       case Data.Map.lookup (decodeFingerprint fp) stable of
-        Just (SomeGet someget) -> fmap (AnyFuture) someget
-        Nothing -> error "Binary AnyFuture: fingerprint unknown"
+        Just (SomeGet someget) -> fmap (AnyFut) someget
+        Nothing -> error "Binary AnyFut: fingerprint unknown"
 
--- the two tables of every COG
+-- ** COG-held datastructures
 
-type FutureMap = M.Map AnyFuture [Job] -- future => jobs
+-- | A mapping of object-fields to list of disabled processes.
+--
+-- It represents sleeping procesess that wait on some object-field to be modified. e.g. await this.x > this.y +1
+--
+-- The COG will strictly not re-schedule this processes until the object-field is modified.
+type ObjectMap = M.Map (Int, Int) [Job] 
 
-type ObjectMap = M.Map (Int, Int) [Job] -- object-id.field => jobs
+-- | A mapping of futures to list of disabled processes.
+--
+-- It represents sleeping procesess that wait on some futures to become resolved. e.g. await f?
+--
+-- The COG will strictly not re-schedule this processes until the future-key is resolved.
+type FutureMap = M.Map AnyFut [Job]
 
--- Existential wrappers to have different futures and objects inside the same map 
-data AnyFuture = forall a. Serializable a => AnyFuture (Fut a)
+-- | (internal-only) An existential-wrapper of futures to remove their contained type
+--
+-- Only internally-used as the key of the "FutureMap"
+data AnyFut = forall a. Serializable a => AnyFut (Fut a)
                deriving Typeable
-data AnyObject = forall o. Object__ o => AnyObject (ObjectRef o)
 
--- ordering futures inside the cog table
-instance Eq AnyFuture where
-    AnyFuture (FutureRef _ cid1 id1) == AnyFuture (FutureRef _ cid2 id2) = id1 == id2 && cid1 == cid2
+-- | Necessary instance for Map: Equality between "AnyFut"s
+instance Eq AnyFut where
+    AnyFut (FutureRef _ cid1 id1) == AnyFut (FutureRef _ cid2 id2) = id1 == id2 && cid1 == cid2
     _ == _ = error "this should not happen: equality on topref"
 
-instance Ord AnyFuture where
-    compare (AnyFuture (FutureRef _ (COG (_, tid1)) id1)) (AnyFuture (FutureRef _ (COG (_, tid2)) id2)) = compare (tid1,id1) (tid2,id2)
+-- | Necessary instance for Map: Ordering between "AnyFut"s to use them as keys in the "FutureMap"
+instance Ord AnyFut where
+    compare (AnyFut (FutureRef _ (COG (_, tid1)) id1)) (AnyFut (FutureRef _ (COG (_, tid2)) id2)) = compare (tid1,id1) (tid2,id2)
     compare _ _ = error "this should not happen: ordering on topref"
 
--- ordering objects inside the cog table
--- it maybe can be used for root type equality if we expose to the ABS language the AnyObject interface type
-instance Eq AnyObject where
-    AnyObject (ObjectRef _ id1 tid1) == AnyObject (ObjectRef _ id2 tid2) = tid1 == tid2 && id1 == id2
-
--- code generation alias for object-reference equality
-__eqAnyObject :: AnyObject -> AnyObject -> Bool
-__eqAnyObject = (==)
 
 
--- builtin exceptions
+
+
+
+
+-- * Builtin Exception-constructors for ABS
 data BlockedAwaitException = BlockedAwaitException
     deriving (Eq, Show, Typeable)
-
 instance Control.Monad.Catch.Exception BlockedAwaitException
+
+-- Instances to lift exceptions for the "Process" monad
+
+
 
 instance MonadThrow CH.Process where
     throwM = CH.liftIO . throwIO

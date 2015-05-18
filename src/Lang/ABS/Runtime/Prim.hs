@@ -1,7 +1,12 @@
+-- | The ABS-language primitives/statements implemented as a Haskell-embedded DSL (eDSL)
 module Lang.ABS.Runtime.Prim
-    (thisCOG, readThis, skip, suspend, await, while, get, ifthenM, ifthenelseM,
-     throw, catches, finally, Exception,
-     run_sync, run_async        -- the run wrappers for any object
+    (
+     -- * Basic ABS primitives
+     skip, suspend, await, while, get, ifthenM, ifthenelseM,
+     -- * The run built-in method
+     run_sync, run_async,
+     -- * The failure model
+     throw, catches, finally, Exception
     )
  where
 
@@ -20,23 +25,13 @@ import Control.Monad.Coroutine.SuspensionFunctors (yield)
 import qualified Control.Monad.Catch
 import qualified Control.Exception (fromException, evaluate)
 
-thisCOG :: (Object__ o) => ABS o COG
-thisCOG = do
-  t <- liftM aCOG $ lift RWS.ask
-  return t
-
-readThis :: (Object__ o) => ABS o o
-readThis = do
-  ObjectRef ioref _ _ <- liftM aThis $ lift RWS.ask
-  liftIO $ readIORef ioref
-
-skip :: (Object__ o) => ABS o ()
+skip :: (Root_ o) => ABS o ()
 skip = return (())
 
 suspend :: ABS o ()
 suspend = yield S
 
-await ::  (Object__ o) => AwaitGuard o -> ABS o () 
+await ::  (Root_ o) => AwaitGuard o -> ABS o () 
 await (FutureGuard f@(FutureRef mvar _ _ ))  = do
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
@@ -57,12 +52,12 @@ await (left :&: rest) = do
   await left
   await rest
 
-while :: (Object__ o) => ABS o Bool -> ABS o a -> ABS o ()
+while :: (Root_ o) => ABS o Bool -> ABS o a -> ABS o ()
 while predAction loopAction = do
   res <- predAction
   when res (loopAction >> while predAction loopAction)
 
-get :: (Object__ o) => Fut f -> ABS o f
+get :: (Root_ o) => Fut f -> ABS o f
 get (FutureRef mvar _ _) = liftIO $ Control.Exception.evaluate =<< readMVar mvar 
 -- forces the reading of the future-box to whnf, so when the future-box is opened (through get) then the remote future exception will be raised
 
@@ -92,11 +87,11 @@ instance (Functor s, Control.Monad.Catch.MonadMask m) => Control.Monad.Catch.Mon
       where q u b = Coroutine $ u (resume b)
 
 -- aliases for easier exporting
-throw :: (Object__ o, Control.Monad.Catch.Exception e) => ABS o e -> ABS o a
+throw :: (Root_ o, Control.Monad.Catch.Exception e) => ABS o e -> ABS o a
 throw e = e >>= Control.Monad.Catch.throwM
 
 -- | Catches different sorts of exceptions. See "Control.Exception"'s 'ControlException.catches'
-catches :: (Object__ o)  => ABS o a -> [Control.Monad.Catch.Handler (ABS o) (Maybe a)] -> ABS o a
+catches :: (Root_ o)  => ABS o a -> [Control.Monad.Catch.Handler (ABS o) (Maybe a)] -> ABS o a
 catches a hs = a `Control.Monad.Catch.catch` handler
   where
     handler e = foldr probe (Control.Monad.Catch.throwM e) hs
@@ -107,22 +102,24 @@ catches a hs = a `Control.Monad.Catch.catch` handler
                                                                               (Control.Exception.fromException e)
 
 
-finally :: (Object__ o) => ABS o a -> ABS o b -> ABS o a
+finally :: (Root_ o) => ABS o a -> ABS o b -> ABS o a
 finally = Control.Monad.Catch.finally
 
 type Exception = Control.Monad.Catch.SomeException
 
 
-run_sync (AnyObject __obj@(ObjectRef __ioref _ _))
-  = do __hereCOG <- thisCOG
+-- | Sync call to run
+run_sync (Root __obj@(ObjectRef __ioref _ _))
+  = do __hereCOG <- liftM aCOG $ lift RWS.ask
        __obj1 <- liftIO (readIORef __ioref)
        otherCOG <- __cog __obj1
        when (not (__hereCOG == otherCOG))
          (error "Sync Call on a different COG detected")
        mapMonad (RWS.withRWST (\ r s -> ((\ aconf -> aconf{aThis = __obj}) r, s))) (__run __obj)
-run_sync (AnyObject NullRef) = error "sync call to null"
+run_sync (Root NullRef) = error "sync call to null"
 
-run_async (AnyObject __obj@(ObjectRef __ioref _ _))
+-- | Async call to run
+run_async (Root __obj@(ObjectRef __ioref _ _))
   = do __obj1 <- liftIO (readIORef __ioref)
        COG (__chan, _) <- __cog __obj1
        __mvar <- liftIO newEmptyMVar
@@ -132,4 +129,4 @@ run_async (AnyObject __obj@(ObjectRef __ioref _ _))
        let __f = FutureRef __mvar __cog __counter
        liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
        return __f
-run_async (AnyObject NullRef) = error "async call to null"
+run_async (Root NullRef) = error "async call to null"

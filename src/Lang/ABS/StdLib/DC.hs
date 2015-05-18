@@ -26,23 +26,23 @@ import Control.Concurrent.MVar (newMVar)
 -- | The deployment component ("IDC_") interface extends the "Object__" root-interface. Thus, deployment components are objects.
 --
 -- All DC classes must implement two methods: 'shutdown' and 'getLoad'.
-class (Object__ a) => IDC_ a where
+class (Root_ a) => IDC_ a where
          
-        shutdown :: ObjectRef a -> ABS a Unit
+        shutdown :: Obj a -> ABS a Unit
          
-        getLoad :: ObjectRef a -> ABS a (Triple Rat Rat Rat)
+        getLoad :: Obj a -> ABS a (Triple Rat Rat Rat)
  
 -- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
-data IDC = forall a . (IDC_ a) => IDC (ObjectRef a)
+data IDC = forall a . (IDC_ a) => IDC (Obj a)
  
 instance Sub IDC IDC where
         up x = x
  
-instance Sub (ObjectRef Null) IDC where
+instance Sub (Obj Null) IDC where
         up = IDC
  
-instance Sub IDC AnyObject where
-        up (IDC a) = AnyObject a
+instance Sub IDC Root where
+        up (IDC a) = Root a
  
 instance IDC_ Null where
         shutdown
@@ -74,9 +74,9 @@ shutdown_sync ((IDC __obj@(ObjectRef __ioref _ _)))
 shutdown_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
 shutdown_async ((IDC __obj@(ObjectRef __ioref _ _)))
   = do __obj1 <- I__.readRef __ioref
-       COG (__chan, _) <- thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
+       COG (__chan, _) <- I__.thisCOG -- __cog __obj1  -- REMOVED: it does not matter where it is executed
        __mvar <- I__.liftIO I__.newEmptyMVar
-       __hereCOG <- thisCOG
+       __hereCOG <- I__.thisCOG
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
        I__.lift (I__.put (astate{aCounter = __counter + 1}))
        let __f = FutureRef __mvar __hereCOG __counter

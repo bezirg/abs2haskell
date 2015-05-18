@@ -33,13 +33,13 @@ import Network.Transport.TCP (encodeEndPointAddress)
  
 -- * Internals
 
-data NebulaDC = NebulaDC{nebulaDC_loc :: (Object__ o) => ABS o COG,
+data NebulaDC = NebulaDC{nebulaDC_loc :: (Root_ o) => ABS o COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
                          nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
 __nebulaDC cpu memory
   = NebulaDC{nebulaDC_cpu = cpu, nebulaDC_memory = memory}
  
-instance Object__ NebulaDC where
+instance Root_ NebulaDC where
         new __cont
           = do __chan <- I__.liftIO I__.newChan
                __new_tid <- I__.lift (I__.lift (spawnCOG __chan))
@@ -53,13 +53,13 @@ instance Object__ NebulaDC where
                __ioref <- I__.liftIO (I__.newIORef __c)
                let __obj = ObjectRef __ioref 0 __new_tid
                do __mvar <- I__.liftIO I__.newEmptyMVar
-                  __hereCOG <- thisCOG
+                  __hereCOG <- I__.thisCOG
                   astate@(AState{aCounter = __counter}) <- I__.lift I__.get
                   I__.lift (I__.put (astate{aCounter = __counter + 1}))
                   let __f = FutureRef __mvar __hereCOG __counter
                   I__.liftIO (I__.writeChan __chan (RunJob __obj __f (__init __obj)))
                do __mvar <- I__.liftIO I__.newEmptyMVar
-                  __hereCOG <- thisCOG
+                  __hereCOG <- I__.thisCOG
                   astate@(AState{aCounter = __counter}) <- I__.lift I__.get
                   I__.lift (I__.put (astate{aCounter = __counter + 1}))
                   let __f = FutureRef __mvar __hereCOG __counter
@@ -92,7 +92,7 @@ instance Object__ NebulaDC where
         --__init this = return ()
         -- ADDED: init block
         __init this = do
-          NebulaDC { nebulaDC_cpu = newCpu, nebulaDC_memory = newMem } <- readThis
+          NebulaDC { nebulaDC_cpu = newCpu, nebulaDC_memory = newMem } <- I__.readThis this
           let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           I__.when (not success) (I__.error "Allocating VM failed")
@@ -163,10 +163,10 @@ set_nebulaDC_vmId v
          maybeWoken
        I__.lift (I__.put astate{aSleepingO = om'})
  
-instance Sub (ObjectRef NebulaDC) AnyObject where
-        up = AnyObject
+instance Sub (Obj NebulaDC) Root where
+        up = Root
  
-instance Sub (ObjectRef NebulaDC) IDC where
+instance Sub (Obj NebulaDC) IDC where
         up = IDC
  
 -- REMOVED the stub
@@ -180,11 +180,11 @@ instance Sub (ObjectRef NebulaDC) IDC where
 -- ADDED FROM HERE ON:
 instance IDC_ NebulaDC where
         shutdown this = do
-                   NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
+                   NebulaDC { nebulaDC_vmId = thisVmId } <- I__.readThis this
                    (True, _, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_action "cancel" thisVmId))
                    return ()
         getLoad this = do 
-                   NebulaDC { nebulaDC_vmId = thisVmId } <- readThis
+                   NebulaDC { nebulaDC_vmId = thisVmId } <- I__.readThis this
                    -- only works when called on this dc (thisDC)
                    -- otherwise raises a not-implemented-yet error
                    -- if (thisVmId == myVmId)

@@ -26,4 +26,5 @@ class Class1(Int p1, Int p2, Int p3) implements Interf1 {
     await f2?;
     Int res2 = f2.get;
     println(toString(res2 == 9));
+    println(toString(f1 != f2));
 }
