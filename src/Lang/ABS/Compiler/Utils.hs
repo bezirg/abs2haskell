@@ -1,16 +1,20 @@
+-- | Transcompiler utility functions
 {-# LANGUAGE ImplicitParams #-}
 module Lang.ABS.Compiler.Utils
-    (joinQualTypeIds
+    (
+    -- * Transcompiler logic utils
+    funScope, isInterface
+    -- * Haskell code-generation utilities
+    ,joinQualTypeIds
     ,joinTTypeIds
     ,identI
     ,symbolI
-    ,headToLower
+    ,headToLower, typOfConstrType
+    -- * AST Queries/collecting
     ,collectVars
     ,collectPatVars
     ,collectAssigns
-    ,isInterface
-    ,typOfConstrType
-    ,funScope
+    -- * (Trans)compiler feedback
     ,errorPos, warnPos, showPos
     ) where
 
@@ -20,13 +24,20 @@ import qualified Language.Haskell.Exts.Syntax as HS
 
 import Data.List (intersperse)
 import Data.Char (toLower)
-import qualified Data.Map as M (member, unions, (\\))
-import Control.Monad.Trans.Reader (ask, runReader)
+import qualified Data.Map as M (member, unions)
 import Control.Monad.Trans.State (get)
 import Control.Monad.Trans.Class (lift)
 import Debug.Trace (trace)
 
--- generate haskell code - helper functions
+isInterface :: (?moduleTable :: ModuleTable) => ABS.Type -> Bool
+isInterface (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen iid])) =  iid `M.member` (M.unions (map methods ?moduleTable))
+isInterface _ = False
+
+-- | Unions all the "deepened" pile of scopes, to create the current scope
+funScope :: StmtM ScopeTable
+funScope = do
+  scopes <- lift get
+  return $ M.unions scopes
 
 joinQualTypeIds :: [ABS.QTypeSegment] -> String
 joinQualTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.QTypeSegmen (ABS.UIdent (_,str))) -> str) qtids
@@ -48,7 +59,12 @@ headToLower :: String -> String
 headToLower (x:xs) = toLower x : xs
 
 
+typOfConstrType :: ABS.ConstrType -> ABS.Type
+typOfConstrType (ABS.EmptyConstrType typ) = typ
+typOfConstrType (ABS.RecordConstrType typ _) = typ
+
 -- | Querying an expression AST
+--
 -- collects pure variables and class attributes
 -- TODO: use syb
 collectVars                              :: ABS.PureExp -- ^ the exp to scan
@@ -81,12 +97,17 @@ collectVars (ABS.EVar ident@(ABS.LIdent (_,var))) ccs = if ident `M.member` ccs 
                                                         else []
 collectVars _ _ = []
 
--- | collects all vars from a case pattern
+-- | Querying an case-pattern AST
+--
+-- Collects all bind names from a case pattern
 collectPatVars :: ABS.Pattern -> [ABS.LIdent]
 collectPatVars (ABS.PIdent i) = [i]
 collectPatVars (ABS.PParamConstr _ ps) = concatMap collectPatVars ps
 collectPatVars _ = []
 
+-- | Querying a statement AST
+--
+-- Collects all LHS local-variable names from a statement
 collectAssigns :: ABS.Stm -> ScopeTable -> [String]
 collectAssigns (ABS.SBlock stmts) fscope = concatMap ((flip collectAssigns) fscope) stmts
 collectAssigns (ABS.SWhile _ stmt) fscope = collectAssigns stmt fscope
@@ -101,24 +122,6 @@ collectAssigns (ABS.SAss ident@(ABS.LIdent (_,var)) _) fscope = if ident `M.memb
 collectAssigns (ABS.SDec _ (ABS.LIdent (_,var))) _ = [var]
 collectAssigns _ _ = []
 
-typOfConstrType :: ABS.ConstrType -> ABS.Type
-typOfConstrType (ABS.EmptyConstrType typ) = typ
-typOfConstrType (ABS.RecordConstrType typ _) = typ
-
-
--- state queries
-
-isInterface :: (?moduleTable :: ModuleTable) => ABS.Type -> Bool
-isInterface (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen iid])) =  iid `M.member` (M.unions (map methods ?moduleTable))
-isInterface _ = False
-
--- helpers
-
-funScope :: StmtM ScopeTable
-funScope = do
-  scopes <- lift get
-  return $ M.unions scopes
-
 errorPos :: (Int, Int) -> String -> a
 errorPos pos msg = error ("[error #" ++ showPos pos ++ "]" ++  msg)
 
@@ -127,3 +130,5 @@ warnPos  pos msg = trace ("[warning #" ++ showPos pos ++ "]" ++  msg)
 
 showPos :: (Int, Int) -> String
 showPos (row,col) = show row ++ ":" ++ show col
+
+

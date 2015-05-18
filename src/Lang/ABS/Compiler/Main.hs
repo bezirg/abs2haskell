@@ -18,6 +18,7 @@ import qualified Data.Map as M
 import System.Console.CmdArgs (cmdArgs)
 import Control.Monad (when, liftM)
 
+-- | The a2h transcompiler main entrypoint
 main :: IO ()
 main = do
   conf <- cmdArgs confOpt
@@ -78,7 +79,9 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
       collectMethods = map (\ (ABS.MethSig _ ident _) -> ident)
 
 
--- parse whole ABS src directories (TODO: to recurse more deep than just 1 level)
+-- | parse whole ABS src directories
+--
+-- TODO: to recurse more deep than just 1 level
 absParseFileOrDir :: (?conf :: Conf)  => FilePath -> IO [(FilePath, ABS.Program)]
 absParseFileOrDir fileOrDir = do
   isdir <- doesDirectoryExist fileOrDir
@@ -102,6 +105,7 @@ absParseFileOrDir fileOrDir = do
           return (absFilePath, res)
         BNFC.Bad _errorString -> error "Error in parsing" -- TODO: move to exceptions
 
+-- | pretty-print a Haskell-AST to a file ".hs"
 ppHaskellFile :: (?conf::Conf) => FilePath -> HS.Module -> IO ()
 ppHaskellFile fp m@(HS.Module _ (HS.ModuleName s) _ _ _ _ _) = do
   let haskellFilePath = if s == "Main"

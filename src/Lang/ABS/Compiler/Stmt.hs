@@ -1,3 +1,4 @@
+-- | Functions for translating ABS statements (inside an ABS method) to Haskell code
 module Lang.ABS.Compiler.Stmt 
     (tBlockWithReturn
     ,tInitBlockWithReturn
@@ -12,22 +13,20 @@ import Control.Monad.Trans.State (evalState, withState, put, get, modify)
 import Control.Monad.Trans.Reader (runReaderT, mapReaderT, ask)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (ap)
-
 import Lang.ABS.Compiler.ExprLifted
 import Lang.ABS.Compiler.Expr (tPattern, tType)
-
 import qualified Data.Map as M
 
--- | method block or main block
--- can return
+-- | Translating a method block or main block that can return
 tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
                                                                     (clsScope, mthScope, interfName, cls, False))
                                                         scopes
 
--- init block
--- can always return (with: return Unit)
+-- | Translating an init block
+--
+-- can always return (with: return Unit),
 -- can not run await and/or sync calls
 tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
@@ -35,10 +34,10 @@ tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (
                                                                     (clsScope, mthScope, interfName, cls, True))
                                                         scopes
 
--- | block pushes a new scope
+-- | Translating any block . This functions pushes a new scope to the 'StmtM' scopes-stack-state.
 tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM HS.Exp
-tBlock [] _canReturn = return $ eReturnUnit
-tBlock stmts canReturn = do
+tBlock stmts canReturn | null stmts = return $ eReturnUnit
+                       | otherwise = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
   lift $ modify tail     -- remove the added scope level, after executing
   return $ HS.Do $ ts  ++
@@ -53,7 +52,13 @@ tBlock stmts canReturn = do
                           ABS.SWhile _ _ -> [HS.Qualifier eReturnUnit]
                           _ -> []
                        )
+      where
+        eReturnUnit :: HS.Exp
+        eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
+                             (HS.Con $ HS.Special $ HS.UnitCon)) -- return ()
 
+
+-- | Translating a bunch of ABS statements
 tStmts :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM [HS.Stmt]
 tStmts (ABS.SReturn e:[]) True = tStmt (ABS.SExp e)
 tStmts (ABS.SReturn _:_) _ = error "Return must be the last statement"
@@ -63,6 +68,7 @@ tStmts (stmt:rest) canReturn = do
     r <- tStmts rest canReturn
     return (s++r) -- can return multiple HS.Stmt
 
+-- | Translating a single ABS-statement
 tStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Stm -> StmtM [HS.Stmt]
 tStmt (ABS.SExp pexp) = do
   texp <- case pexp of  -- TODO: have to force to WHNF
@@ -256,7 +262,7 @@ liftInterf' ident@(ABS.LIdent (p,var)) exp =  do
       Just _ -> errorPos p $ var ++ " not of interface type"
 
 
--- this scope is the oo-scope: it does not allow re-declaration
+-- | this scope is the oo-scope: it does not allow re-declaration
 -- pure-scope is done with lambdas, so it allows re-declaration
 addToScope :: ABS.LIdent -> ABS.Type -> StmtM ()
 addToScope var@(ABS.LIdent (p,pid)) typ = do
@@ -265,9 +271,5 @@ addToScope var@(ABS.LIdent (p,pid)) typ = do
     then errorPos p $ pid ++ " already defined in an outer scope"
     else lift $ put $ M.insertWith (const $ const $ errorPos p $ pid ++ " already defined in this scope") var typ topscope  : restscopes
 
-
-eReturnUnit :: HS.Exp
-eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
-                     (HS.Con $ HS.Special $ HS.UnitCon)) -- return ()
 
 

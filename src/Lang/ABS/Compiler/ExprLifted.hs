@@ -1,3 +1,4 @@
+-- | Functions for translating _pure_ and _effectful_ expressions inside a method block
 module Lang.ABS.Compiler.ExprLifted
     (tPureExpStmt
     ,tEffExpStmt
@@ -17,7 +18,8 @@ import qualified Data.Map as M
 import Data.Foldable (foldlM, find)
 import Control.Monad (liftM)
 
--- tPureExpStmt is a pure expression in the statement world
+-- | Translates a pure expression in the statement world
+--
 -- it does 3 things:
 -- 1) if a sub-expression reads this fields it *wraps* the whole expression in readThis (by tPureExpWrap)
 -- 2) if a sub-expression is pure it lifts it with return/pure (by tPureExp')
@@ -27,6 +29,7 @@ tPureExpStmt pexp = do
   (_,_,_,cls, _) <- ask
   runExpr (tPureExpWrap pexp cls)
 
+-- | Wrapping a pure-expression with field de-referencing
 tPureExpWrap pexp cls = do
       vcscope <- visible_cscope
       let thisFields = collectVars pexp vcscope
@@ -43,10 +46,19 @@ tPureExpWrap pexp cls = do
                                                          (HS.PVar $ HS.Ident $ "__" ++ arg) )  (nub thisFields))
                                           ] texp)
 
+-- | Translates an effectful expression in the statement world
 tEffExpStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.EffExp -> StmtM HS.Exp
 tEffExpStmt eexp = do
   (_,_,_,cls, _) <- ask
   runExpr (tEffExpWrap eexp cls)
+
+
+-- | Lifting an 'ExprLiftedM' monad to a 'StmtM' monad
+runExpr :: ExprLiftedM a -> StmtM a
+runExpr e = do
+  fscope <- funScope
+  (cscope,mscope,interf,_,isInit) <- ask
+  return $ runReader e (fscope,cscope,mscope,interf,isInit)
 
 
 -- | tEffExpWrap is a wrapper arround tEffExp' that adds a single read to the object pointer to collect the necessary fields
@@ -75,7 +87,7 @@ tEffExpWrap eexp cls = do
                     texp)
 
 
--- this is the "statement-lifted" version of tPureExp
+-- | This is the "statement-lifted" version of 'tPureExp'
 tPureExp' :: (?moduleTable::ModuleTable,
              ?moduleName::ABS.QType)=>
             ABS.PureExp 
@@ -522,12 +534,13 @@ tPureExp' (ABS.ELit lit) _ = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pur
                                     ABS.LNull -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
                                     ABS.LThisDC -> HS.Var $ HS.UnQual $ HS.Ident "thisDC"
 
--- translate this.field
--- this is a trick for sync_call and async_call 
+-- | Translates the this.field on a RHS
+--
+-- This is a trick for sync_call and async_call 
 tPureExp' (ABS.EThis (ABS.LIdent (_,ident))) _ = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") 
                                             (HS.Var $ HS.UnQual $ HS.Ident ("__" ++ ident))
 
--- this is the "statement-lifted" version of tEffExp
+-- | This is the "statement-lifted" version of 'tEffExp'
 tEffExp' :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.EffExp -> ExprLiftedM HS.Exp
 tEffExp' (ABS.New (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
 tEffExp' (ABS.New _ _) = error "Not valid class name"
@@ -582,6 +595,7 @@ tSyncOrAsync syncOrAsync pexp method args = do
       return $ HS.Paren $ HS.App (HS.Var (identI "join")) tapp
 
 
+-- | Translates the parameter (guard) of an await statement
 tAwaitGuard :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Guard -> String -> ExprLiftedM HS.Exp
 -- NOTE: both VarGuard and FieldGuard contain futures, but "this.f?" is distinguished as FieldGuard to take into account Cosimo's consideration
 -- awaitguard: f?
@@ -623,25 +637,25 @@ tAwaitGuard (ABS.AndGuard gl gr) cls = do
                                        tright
 
 
+
+
+-- | Wraps a given type t to Root_ o => ABS o t
+wrapTypeToABSMonad :: HS.Type -> HS.Type
+wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (HS.UnQual $ HS.Ident "Root_") [HS.TyVar $ HS.Ident "o"]] 
+                       (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
+
+-- * Utils
+
+-- | Util function to read the current interface
 interf :: ExprLiftedM String
 interf = do 
   (_,_,_,i,_) <- ask
   return i
 
-
--- | Wrap a given type _t_ to Root_ o => ABS o t
-wrapTypeToABSMonad :: HS.Type -> HS.Type
-wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (HS.UnQual $ HS.Ident "Root_") [HS.TyVar $ HS.Ident "o"]] 
-                       (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
-
+-- | Util function to fetch the visible class-scope
 visible_cscope :: ExprLiftedM ScopeTable
 visible_cscope = do
  (fscope, cscope, _, _,_) <- ask
  return $ cscope M.\\ fscope
 
 
-runExpr :: ExprLiftedM a -> StmtM a
-runExpr e = do
-  fscope <- funScope
-  (cscope,mscope,interf,_,isInit) <- ask
-  return $ runReader e (fscope,cscope,mscope,interf,isInit)

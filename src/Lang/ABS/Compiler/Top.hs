@@ -16,6 +16,7 @@ import Control.Monad (liftM)
 import Control.Monad.Trans.Reader (runReader)
 
 -- | Takes the name of the ABS source file and its parsed AST
+--
 -- Returns  a list of haskell ASTs, because 1 ABS program AST may correspond to more than 1 haskell module files/asts
 tProg :: (?moduleTable::ModuleTable) => ABS.Program -> [HS.Module]
 tProg (ABS.Prog moduls) = map tModul moduls

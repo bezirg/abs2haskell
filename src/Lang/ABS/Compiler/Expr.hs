@@ -1,3 +1,4 @@
+-- | Functions to translate pure-expressions (inside def functions)
 module Lang.ABS.Compiler.Expr
     (tType
     ,tTypeOrTyVar
@@ -17,6 +18,7 @@ import Control.Monad.Trans.Reader (ask, local, runReader)
 import qualified Data.Map as M
 import Data.Foldable (foldlM)
 
+-- | Translating the body of a pure function
 tBody :: (?moduleTable::ModuleTable) => ABS.FunBody -> [ABS.UIdent] -> [ABS.Param] -> HS.Exp
 tBody ABS.BuiltinFunBody _tyvars _params = HS.Var $ identI "undefined" -- builtin turned to undefined
 tBody (ABS.NormalFunBody pexp) tyvars params = runReader (tPureExp pexp tyvars) 
@@ -24,6 +26,7 @@ tBody (ABS.NormalFunBody pexp) tyvars params = runReader (tPureExp pexp tyvars)
                 ,error "no class context") -- no class scope
         
 
+-- | Translating a pure expression
 tPureExp :: (?moduleTable::ModuleTable) =>
             ABS.PureExp 
           -> [ABS.UIdent] -- ^ TypeVarsInScope
@@ -35,7 +38,7 @@ tPureExp (ABS.If predE thenE elseE) tyvars = do
   telse <- tPureExp elseE tyvars
   return $ HS.If tpred tthen telse
 
--- | translate it into a lambda exp
+-- translate it into a lambda exp
 tPureExp (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
   tin <- local (\ (fscope, interf) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
                                             interf)) $ 
@@ -359,6 +362,7 @@ tPureExp (ABS.ELit lit) _ = return $ case lit of
 
 tPureExp (ABS.EThis (ABS.LIdent (p, _))) _ = return $ errorPos p "Cannot compile object accesses in mathematically pure expressions"
 
+-- | Translating a pattern of an ABS case-branch in pure case-pattern-matching
 tPattern :: ABS.Pattern -> HS.Pat
 tPattern (ABS.PIdent (ABS.LIdent (_,pid))) = HS.PVar $ HS.Ident $ pid
 tPattern (ABS.PSinglConstr (ABS.UIdent (_,"Nil"))) = HS.PList []
@@ -382,7 +386,7 @@ tPattern (ABS.PLit lit) = HS.PLit $ case lit of
                                          _ -> error "this or null are not allowed in pattern syntax"
 
 
--- | translate an ABS Type or a TypeVar to HS type
+-- | Translating an ABS type or an ABS type-variable to a Haskell type
 tTypeOrTyVar :: [ABS.UIdent] -> ABS.Type -> HS.Type
 tTypeOrTyVar tyvars (ABS.TSimple (ABS.QTyp qtids))  = 
        let joinedTid = joinQualTypeIds qtids    
@@ -392,15 +396,16 @@ tTypeOrTyVar tyvars (ABS.TSimple (ABS.QTyp qtids))  =
                           then HS.UnQual $ HS.Ident joinedTid -- unqual
                           else HS.Qual (HS.ModuleName (joinQualTypeIds (init qtids))) -- qual
                                    (HS.Ident $ (\ (ABS.QTypeSegmen (ABS.UIdent (_,tid))) -> tid) (last qtids))
-
 tTypeOrTyVar tyvars (ABS.TGen qtyp tyargs) = foldl (\ tyacc tynext -> HS.TyApp tyacc (tTypeOrTyVar tyvars tynext)) (tType (ABS.TSimple qtyp)) tyargs
 
--- | shorthand for only translate ABS Types (no typevars) to HS types 
+-- | Shorthand for only translate ABS Types (no type-variables) to haskell types 
 tType :: ABS.Type -> HS.Type
 tType t = tTypeOrTyVar [] t     -- no type variables in scope
 
--- unify two interfaces, to their *Common interface*
--- will return Nothing if the interfaces are not unifiable
+-- | unify two interfaces, to their _common super-interface_
+--
+-- Will return Nothing if the interfaces are not unifiable.
+-- Used during object-equality
 joinSub :: (?moduleTable::ModuleTable) => ABS.Type -> ABS.Type -> (Maybe ABS.Type)
 joinSub t1 t2 | t1 == t2 = Just t1 -- same interface subtyping
 joinSub t1@(ABS.TSimple interf1) t2@(ABS.TSimple interf2) | otherwise = 
