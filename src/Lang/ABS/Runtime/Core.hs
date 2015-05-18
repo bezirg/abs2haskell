@@ -41,7 +41,7 @@ import Control.Monad (when)
 -- that accompanies the COG thread and acts as the mediator from the outside-world to the local world.
 --
 -- It listens in a remote queue (mailbox) and forwards any messages to the COG's local queue ("Chan")
-fwd_cog :: Chan Job              -- ^ the local Chan queue
+fwd_cog :: Chan Job              -- ^ the _local-only_ channel (queue) of the COG process
         -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog c = do
   AnyFut j <- CH.expect :: CH.Process AnyFut
@@ -49,7 +49,7 @@ fwd_cog c = do
   CH.liftIO $ writeChan c (WakeupSignal j)
 
 -- | Each COG is a thread or a process
-spawnCOG :: Chan Job            -- ^ the caller is responsible to create a communication-queue. The caller is responsible for creating an object and _schedule_ its init process by sending a message to this channel
+spawnCOG :: Chan Job            -- ^ the caller is responsible to create a communication-queue. The caller is responsible for later creating the 1st object and _schedule_ its init process by sending a message to this channel
          -> CH.Process CH.ProcessId -- ^ it returns the created COG-thread ProcessId. This is used to update the location of the 1st created object
 spawnCOG c = do
   if (distributed conf)     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)

@@ -24,7 +24,7 @@ import Data.List (words)
 import Prelude (Double(..), (++), elem, fmap)
 import Text.Read (read)
 import Prelude (toRational)
-import System.Environment (getEnvironment, getArgs)
+import System.Environment (getEnvironment, getArgs, getProgName)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.List (lookup)
 import Data.Maybe (fromMaybe)
@@ -93,7 +93,8 @@ instance Root_ NebulaDC where
         -- ADDED: init block
         __init this = do
           NebulaDC { nebulaDC_cpu = newCpu, nebulaDC_memory = newMem } <- I__.readThis this
-          let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession
+          myProgName <- I__.liftIO getProgName
+          let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession myProgName
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           I__.when (not success) (I__.error "Allocating VM failed")
           set_nebulaDC_vmId vmId

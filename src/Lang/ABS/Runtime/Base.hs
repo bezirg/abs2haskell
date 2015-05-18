@@ -27,10 +27,10 @@ import Data.Map ( Map, fromList, lookup )
 --
 -- 1. a heap reference ("IORef") to the mutable state of the object (the record of its fields)
 -- 2. a unique-per-COG ascending counter being the object' identity inside the cog
--- 3. the thread identifier of its COG
+-- 3. a process-identifier for that thread. If the runtime is distributed, then it's the cog-forwarder. Else, parallel-only, so it is the COG itself.
 --
 -- Together 2 and 3 makes any object uniquely identified accross the network.
-data Obj a = ObjectRef (IORef a) Int CH.ProcessId -- ^ an actualy object reference
+data Obj a = ObjectRef (IORef a) Int CH.ProcessId -- ^ an actual object reference
            | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
                  deriving Eq --, Typeable)
 
