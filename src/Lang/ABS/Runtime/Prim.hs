@@ -2,16 +2,18 @@
 module Lang.ABS.Runtime.Prim
     (
      -- * Basic ABS primitives
-     skip, suspend, await, while, get, ifthenM, ifthenelseM,
+     skip, suspend, await, while, get, ifthenM, ifthenelseM, null
      -- * The run built-in method
-     run_sync, run_async,
+    ,run_sync, run_async
      -- * The failure model
-     throw, catches, finally, Exception
+    ,throw, catches, finally, Exception, assert
     )
  where
 
 import Lang.ABS.Runtime.Base
 
+import Prelude hiding (null)
+import qualified Data.List (null)
 import Control.Monad (liftM, when)
 import Data.IORef (readIORef)
 import Control.Monad.IO.Class (liftIO)
@@ -23,7 +25,7 @@ import Control.Concurrent.MVar (isEmptyMVar, readMVar)
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
 import qualified Control.Monad.Catch
-import qualified Control.Exception (fromException, evaluate)
+import qualified Control.Exception (fromException, evaluate, AssertionFailed (..))
 
 skip :: (Root_ o) => ABS o ()
 skip = return (())
@@ -40,7 +42,7 @@ await (FutureGuard f@(FutureRef mvar _ _ ))  = do
 await g@(ThisGuard is tg) = do
   check <- tg
   if not check
-    then if null is             -- no field-checks, so this will block indefinitely
+    then if Data.List.null is             -- no field-checks, so this will block indefinitely
          then throw (return BlockedAwaitException)
          else do
            AConf obj _ <- lift $ RWS.ask
@@ -107,6 +109,11 @@ finally = Control.Monad.Catch.finally
 
 type Exception = Control.Monad.Catch.SomeException
 
+-- | The ABS assertions. 
+assert :: (Root_ o) => ABS o Prelude.Bool -> ABS o ()
+assert act = act Prelude.>>= \ pred -> when (Prelude.not pred) 
+             (throw $ return $ Control.Exception.AssertionFailed "Assertion Failed")
+
 
 -- | Sync call to run
 run_sync (Root __obj@(ObjectRef __ioref _ _))
@@ -130,3 +137,10 @@ run_async (Root __obj@(ObjectRef __ioref _ _))
        liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
        return __f
 run_async (Root NullRef) = error "async call to null"
+
+
+-- | The reference to a null object
+--
+-- The class of a null object is "Null".
+null :: Obj Null
+null = NullRef

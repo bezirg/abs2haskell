@@ -25,8 +25,6 @@ module Lang.ABS.StdLib.Prelude
      S.Set, set, emptySet, S.size, contains, S.union, S.intersection, S.difference, insertElement, remove, take,
      -- * Printing to Strings and to standard-output
      toString, intToString, substr, strlen, println, readln,
-     -- * other
-     assert, null,
      -- * Lifting ABS pure code to ABS object layer
 
      -- | Haskell is pure by default. These are necessary functions for lifting pure ABS expressions (of the functional core) to the ABS' object layer (monadic statements).
@@ -56,7 +54,6 @@ import qualified Data.Array.Unboxed as UArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
 import Control.Monad.IO.Class (liftIO)
-import qualified Control.Exception (assert)
 
 -- | ABS Number are either 'Int'egers or 'Rat'ionals
 class (Prelude.Num a) => Number a where
@@ -242,15 +239,3 @@ substr str d len = Prelude.take len (Prelude.drop d str)
 strlen :: Prelude.String -> Int
 strlen = Prelude.length
 
--------- OTHER--------------
-----------------------------
-
--- | The ABS assertions. To disable assertions pass to the Haskell runtime system options: _+RTS -fignore-asserts_
-assert :: (Root_ o) => ABS o Bool -> ABS o ()
-assert act = act Prelude.>>= \ b -> Control.Exception.assert b (Prelude.return ())
-
--- | The reference to a null object
---
--- The class of a null object is "Null".
-null :: Obj Null
-null = NullRef

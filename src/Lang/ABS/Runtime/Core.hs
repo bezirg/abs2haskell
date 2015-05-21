@@ -166,7 +166,7 @@ main_is mainABS outsideRemoteTable = do
   -- LOCAL-ONLY (DEFAULT) (multicore) (1 COG Process)
     else do
       let myIp = "127.0.0.1" -- a placeholder for identifying the local node. No outside connection will be created.
-      Right trans <- createTransport myIp "8889" defaultTCPParameters
+      Right trans <- createTransport myIp "9000" defaultTCPParameters
       myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
       c <- newChan               -- in-memory channel
