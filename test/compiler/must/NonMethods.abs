@@ -1,0 +1,27 @@
+module NonMethods;
+
+interface I {
+  Unit m();
+}
+
+class C implements I {
+   Unit m() {
+     Int res = this.h1();
+     println(toString(res == 3));
+   }
+   Int h1() {
+     Fut<Int> f1 = this ! h2();
+     await f1?;
+     Int res1 = f1.get;
+     return res1;
+   }
+   Int h2() {
+     return 3;
+   }
+}
+
+{
+ I o = new C();
+ Fut<Unit> f = o ! m();
+ Unit res = f.get;
+}
