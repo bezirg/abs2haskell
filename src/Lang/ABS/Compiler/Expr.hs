@@ -345,7 +345,7 @@ tPureExp (ABS.EVar var@(ABS.LIdent (p,pid))) _tyvars = do
         -- if it of an int type, upcast it
       Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.UIdent (_,"Int"))]))) -> HS.App (HS.Var $ identI "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident pid)
       Just t -> HS.Paren $ (if isInterface t
-                           then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
+                           then HS.App (HS.Var $ identI "up") -- upcasting if it is of a class type
                            else id) 
                (HS.Var $ HS.UnQual $ HS.Ident pid)
 
@@ -356,8 +356,8 @@ tPureExp (ABS.EQualVar (ABS.TTyp tsegs) (ABS.LIdent (_,pid))) _tyvars = -- todo:
 tPureExp (ABS.ELit lit) _ = return $ case lit of
                                     ABS.LStr str ->  HS.Lit $ HS.String str
                                     ABS.LInt i ->  HS.Lit $ HS.Int i
-                                    ABS.LThis -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "this")
-                                    ABS.LNull -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
+                                    ABS.LThis -> HS.App (HS.Var $ identI "up") (HS.Var $ HS.UnQual $ HS.Ident "this")
+                                    ABS.LNull -> HS.App (HS.Var $ identI "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
                                     ABS.LThisDC -> HS.Var $ HS.UnQual $ HS.Ident "thisDC"
 
 tPureExp (ABS.EThis (ABS.LIdent (p, _))) _ = return $ errorPos p "Cannot compile object accesses in mathematically pure expressions"

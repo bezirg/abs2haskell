@@ -12,7 +12,9 @@
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
 module Lang.ABS.StdLib.NebulaDC where
-import Lang.ABS.Runtime
+import qualified Lang.ABS.Runtime.Base as I__
+import qualified Lang.ABS.Runtime.Core as I__
+import Lang.ABS.Runtime.Prim
 import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.StdLib
 import OpenNebula hiding (main)
@@ -33,37 +35,37 @@ import Network.Transport.TCP (encodeEndPointAddress)
  
 -- * Internals
 
-data NebulaDC = NebulaDC{nebulaDC_loc :: (Root_ o) => ABS o COG,
+data NebulaDC = NebulaDC{nebulaDC_loc :: (I__.Root_ o) => I__.ABS o I__.COG,
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
                          nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
 __nebulaDC cpu memory
   = NebulaDC{nebulaDC_cpu = cpu, nebulaDC_memory = memory}
  
-instance Root_ NebulaDC where
+instance I__.Root_ NebulaDC where
         new __cont
           = do __chan <- I__.liftIO I__.newChan
-               __new_tid <- I__.lift (I__.lift (spawnCOG __chan))
+               __new_tid <- I__.lift (I__.lift (I__.spawnCOG __chan))
                let load = 0
                let vmId = (-1)
                let nodeId = Nothing
                let __c
                      = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
                               nebulaDC_nodeId = nodeId,
-                              nebulaDC_loc = return (COG (__chan, __new_tid))}
+                              nebulaDC_loc = return (I__.COG (__chan, __new_tid))}
                __ioref <- I__.liftIO (I__.newIORef __c)
-               let __obj = ObjectRef __ioref 0 __new_tid
+               let __obj = I__.ObjectRef __ioref 0 __new_tid
                do __mvar <- I__.liftIO I__.newEmptyMVar
                   __hereCOG <- I__.thisCOG
-                  astate@(AState{aCounter = __counter}) <- I__.lift I__.get
-                  I__.lift (I__.put (astate{aCounter = __counter + 1}))
-                  let __f = FutureRef __mvar __hereCOG __counter
-                  I__.liftIO (I__.writeChan __chan (RunJob __obj __f (__init __obj)))
+                  __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
+                  I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
+                  let __f = I__.FutureRef __mvar __hereCOG __counter
+                  I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__init __obj)))
                do __mvar <- I__.liftIO I__.newEmptyMVar
                   __hereCOG <- I__.thisCOG
-                  astate@(AState{aCounter = __counter}) <- I__.lift I__.get
-                  I__.lift (I__.put (astate{aCounter = __counter + 1}))
-                  let __f = FutureRef __mvar __hereCOG __counter
-                  I__.liftIO (I__.writeChan __chan (RunJob __obj __f (__run __obj)))
+                  __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
+                  I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
+                  let __f = I__.FutureRef __mvar __hereCOG __counter
+                  I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__run __obj)))
                return __obj
         new_local __cont
           = 
@@ -99,75 +101,75 @@ instance Root_ NebulaDC where
           I__.when (not success) (I__.error "Allocating VM failed")
           set_nebulaDC_vmId vmId
 
-set_nebulaDC_cpu :: Int -> ABS NebulaDC ()
+set_nebulaDC_cpu :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_cpu v
-  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       astate@(AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
        I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
-       I__.lift (I__.put astate{aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om'})
  
-set_nebulaDC_load :: Int -> ABS NebulaDC ()
+set_nebulaDC_load :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_load v
-  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       astate@(AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 1) om
        I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
-       I__.lift (I__.put astate{aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om'})
  
-set_nebulaDC_memory :: Int -> ABS NebulaDC ()
+set_nebulaDC_memory :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_memory v
-  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       astate@(AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 2) om
        I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
-       I__.lift (I__.put astate{aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om'})
  
-set_nebulaDC_nodeId :: Maybe NodeId -> ABS NebulaDC ()
+set_nebulaDC_nodeId :: Maybe NodeId -> I__.ABS NebulaDC ()
 set_nebulaDC_nodeId v
-  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       astate@(AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 3) om
        I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
-       I__.lift (I__.put astate{aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om'})
  
-set_nebulaDC_vmId :: Int -> ABS NebulaDC ()
+set_nebulaDC_vmId :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_vmId v
-  = do (AConf (ObjectRef ioref oid _) (COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       astate@(AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om _) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 4) om
        I__.maybe (return ())
          (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
          maybeWoken
-       I__.lift (I__.put astate{aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om'})
  
-instance Sub (Obj NebulaDC) Root where
-        up = Root
+instance I__.Sub (I__.Obj NebulaDC) I__.Root where
+        up = I__.Root
  
-instance Sub (Obj NebulaDC) IDC where
+instance I__.Sub (I__.Obj NebulaDC) IDC where
         up = IDC
  
 -- REMOVED the stub
@@ -219,7 +221,7 @@ myVmIP = if "--distributed" `Prelude.elem` myArgs
          else "127.0.0.1"
 
 {-# NOINLINE thisDC #-}
-thisDC = IDC (ObjectRef (unsafePerformIO (I__.newIORef (
+thisDC = IDC (I__.ObjectRef (unsafePerformIO (I__.newIORef (
                                                         NebulaDC{nebulaDC_loc = I__.undefined,
                                                                  nebulaDC_cpu = -1, -- TODO
                                                                  nebulaDC_memory = -1, -- TODO

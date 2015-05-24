@@ -505,7 +505,7 @@ tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
                   Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.UIdent (_,"Int"))]))) -> 
                       HS.App (HS.Var $ identI "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ pid)
                   Just t -> (if isInterface t
-                            then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
+                            then HS.App (HS.Var $ identI "up") -- upcasting if it is of a class type
                             else id)
                            (HS.Var $ HS.UnQual $ HS.Ident $ pid)
                   Nothing ->
@@ -514,7 +514,7 @@ tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
                         Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.UIdent (_,"Int"))]))) -> 
                             HS.App (HS.Var $ identI "fromIntegral") (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
                         Just t -> (if isInterface t
-                                  then HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") -- upcasting if it is of a class type
+                                  then HS.App (HS.Var $ identI "up") -- upcasting if it is of a class type
                                   else id)
                                  (HS.Var $ HS.UnQual $ HS.Ident $ "__" ++ pid)
                         Nothing -> HS.Var $ HS.UnQual $ HS.Ident pid -- error $ pid ++ " not in scope" -- TODO: this should be turned into warning
@@ -523,15 +523,15 @@ tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
                                                                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") 
                                                                                   (HS.App (HS.Var $ identI "readRef") (HS.Var $ HS.UnQual $ HS.Ident pid))
       Just t -> HS.Paren $ (if isInterface t
-                           then HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")  -- upcasting if it is of a class type
+                           then HS.InfixApp (HS.Var $ identI "up") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")  -- upcasting if it is of a class type
                            else id) 
                (HS.App (HS.Var $ identI "readRef") (HS.Var $ HS.UnQual $ HS.Ident pid))
 
 tPureExp' (ABS.ELit lit) _ = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ case lit of
                                     ABS.LStr str ->  HS.Lit $ HS.String str
                                     ABS.LInt i ->  HS.Lit $ HS.Int i
-                                    ABS.LThis -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "this")
-                                    ABS.LNull -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
+                                    ABS.LThis -> HS.App (HS.Var $ identI "up") (HS.Var $ HS.UnQual $ HS.Ident "this")
+                                    ABS.LNull -> HS.App (HS.Var $ identI "up") (HS.Var $ HS.UnQual $ HS.Ident "null")
                                     ABS.LThisDC -> HS.Var $ HS.UnQual $ HS.Ident "thisDC"
 
 -- | Translates the this.field on a RHS
@@ -574,7 +574,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
                       then HS.UnQual
                       else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
                    (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids))))))) args -- wrap with the class-constructor function
-  return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident newOrNewLocal) 
+  return $ HS.Paren $ HS.InfixApp (HS.Var $ identI newOrNewLocal) 
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
              targs
 
@@ -606,7 +606,7 @@ tAwaitGuard (ABS.VarGuard ident) _cls = do
    else do
     texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
     return $ HS.Paren $ HS.InfixApp
-             (HS.Con $ HS.UnQual $ HS.Ident "FutureGuard")
+             (HS.Con $ identI "FutureGuard")
              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
              texp
                                              
@@ -623,7 +623,7 @@ tAwaitGuard (ABS.ExpGuard pexp) cls = do
   let awaitFields = collectVars pexp vcscope
   texp <- tPureExpWrap pexp cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
-         HS.App (HS.App (HS.Con $ HS.UnQual $ HS.Ident "ThisGuard") 
+         HS.App (HS.App (HS.Con $ identI "ThisGuard") 
                    (HS.List (map (HS.Lit . HS.Int . toInteger) (findIndices ((\ (ABS.LIdent (_,field)) -> field `elem` awaitFields)) (M.keys cscope)))))
          texp
 
@@ -641,8 +641,8 @@ tAwaitGuard (ABS.AndGuard gl gr) cls = do
 
 -- | Wraps a given type t to Root_ o => ABS o t
 wrapTypeToABSMonad :: HS.Type -> HS.Type
-wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (HS.UnQual $ HS.Ident "Root_") [HS.TyVar $ HS.Ident "o"]] 
-                       (HS.TyApp (HS.TyApp (HS.TyCon (HS.UnQual $ HS.Ident "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
+wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (identI "Root_") [HS.TyVar $ HS.Ident "o"]] 
+                       (HS.TyApp (HS.TyApp (HS.TyCon (identI "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
 
 -- * Utils
 

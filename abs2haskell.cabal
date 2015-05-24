@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.4.6
+version:               0.4.8
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -50,7 +50,12 @@ library
                      -- a DC implementation, connecting to OpenNebula
                      NebulaDC,
                      -- the ABS-Haskell runtime system
-                     Lang.ABS.Runtime,
+                     -- declarations of data structures used in the Runtime
+                     Lang.ABS.Runtime.Base,
+                     -- the logic of the main thread and each COG thread of the ABS-Runtime
+                     Lang.ABS.Runtime.Core,
+                     -- runtime building-blocks reflecting the primitives of the ABS language (its keywords/statements)
+                     Lang.ABS.Runtime.Prim,
                      -- compiler generates Haskell-code that depends on this wrapper module of helper functions 
                      -- to make generated code short and readable
                      Lang.ABS.Compiler.Include
@@ -59,12 +64,6 @@ library
                      Lang.ABS.StdLib.Prelude,                    
                      Lang.ABS.StdLib.DC,
                      Lang.ABS.StdLib.NebulaDC,
-                     -- runtime building-blocks reflecting the primitives of the ABS language (its keywords/statements)
-                     Lang.ABS.Runtime.Prim,
-                     -- declarations of data structures used in the Runtime
-                     Lang.ABS.Runtime.Base, 
-                     -- the logic of the main thread and each COG thread of the ABS-Runtime
-                     Lang.ABS.Runtime.Core,
                      -- the ABS-RTS-options
                      Lang.ABS.Runtime.Conf
   extensions:         LambdaCase,
