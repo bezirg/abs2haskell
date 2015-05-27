@@ -32,7 +32,7 @@ transProgram x = case x of
 
 transModule :: Module -> Result
 transModule x = case x of
-  Modul qtype exports imports decls maybeblock  -> failure x
+  Modul qtype exports imports annotdecls maybeblock  -> failure x
 
 
 transExport :: Export -> Result
@@ -92,8 +92,8 @@ transDecl x = case x of
   DataParDecl uident uidents constridents  -> failure x
   FunDecl type' lident params funbody  -> failure x
   FunParDecl type' lident uidents params funbody  -> failure x
-  InterfDecl uident methsignats  -> failure x
-  ExtendsDecl uident qtypes methsignats  -> failure x
+  InterfDecl uident annotmethsignats  -> failure x
+  ExtendsDecl uident qtypes annotmethsignats  -> failure x
   ClassDecl uident classbodys1 maybeblock2 classbodys3  -> failure x
   ClassParamDecl uident params classbodys1 maybeblock2 classbodys3  -> failure x
   ClassImplements uident qtypes classbodys1 maybeblock2 classbodys3  -> failure x
@@ -132,12 +132,12 @@ transClassBody x = case x of
 
 transBlock :: Block -> Result
 transBlock x = case x of
-  Bloc stms  -> failure x
+  Bloc annotstms  -> failure x
 
 
 transMaybeBlock :: MaybeBlock -> Result
 transMaybeBlock x = case x of
-  JustBlock block  -> failure x
+  JustBlock annots block  -> failure x
   NoBlock  -> failure x
 
 
@@ -149,32 +149,32 @@ transParam x = case x of
 transStm :: Stm -> Result
 transStm x = case x of
   SExp exp  -> failure x
-  SBlock stms  -> failure x
-  SWhile pureexp stm  -> failure x
+  SBlock annotstms  -> failure x
+  SWhile pureexp annotstm  -> failure x
   SReturn exp  -> failure x
   SAss lident exp  -> failure x
   SFieldAss lident exp  -> failure x
   SDec type' lident  -> failure x
   SDecAss type' lident exp  -> failure x
-  SIf pureexp stm  -> failure x
-  SIfElse pureexp stm1 stm2  -> failure x
+  SIf pureexp annotstm  -> failure x
+  SIfElse pureexp annotstm1 annotstm2  -> failure x
   SSuspend  -> failure x
   SSkip  -> failure x
   SAssert pureexp  -> failure x
   SAwait guard  -> failure x
   SThrow pureexp  -> failure x
-  STryCatchFinally stm catchbranchs maybefinally  -> failure x
+  STryCatchFinally annotstm catchbranchs maybefinally  -> failure x
   SPrint pureexp  -> failure x
 
 
 transCatchBranch :: CatchBranch -> Result
 transCatchBranch x = case x of
-  CatchBranc pattern stm  -> failure x
+  CatchBranc pattern annotstm  -> failure x
 
 
 transMaybeFinally :: MaybeFinally -> Result
 transMaybeFinally x = case x of
-  JustFinally stm  -> failure x
+  JustFinally annotstm  -> failure x
   NoFinally  -> failure x
 
 
@@ -259,19 +259,30 @@ transEffExp x = case x of
   Spawns pureexp type' pureexps  -> failure x
 
 
-transAnn :: Ann -> Result
-transAnn x = case x of
-  SimpleAnn pureexp  -> failure x
+transAnnot :: Annot -> Result
+transAnnot x = case x of
+  Ann annot_  -> failure x
 
 
-transAnnDecl :: AnnDecl -> Result
-transAnnDecl x = case x of
-  AnnDec anns decl  -> failure x
+transAnnot_ :: Annot_ -> Result
+transAnnot_ x = case x of
+  AnnWithType type' pureexp  -> failure x
+  AnnNoType pureexp  -> failure x
 
 
-transAnnType :: AnnType -> Result
-transAnnType x = case x of
-  AnnTyp anns type'  -> failure x
+transAnnotStm :: AnnotStm -> Result
+transAnnotStm x = case x of
+  AnnStm annots stm  -> failure x
+
+
+transAnnotDecl :: AnnotDecl -> Result
+transAnnotDecl x = case x of
+  AnnDec annots decl  -> failure x
+
+
+transAnnotMethSignat :: AnnotMethSignat -> Result
+transAnnotMethSignat x = case x of
+  AnnMethSig annots methsignat  -> failure x
 
 
 

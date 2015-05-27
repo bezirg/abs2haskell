@@ -32,7 +32,7 @@ data Program =
   deriving (Eq,Ord,Show,Read)
 
 data Module =
-   Modul QType [Export] [Import] [Decl] MaybeBlock
+   Modul QType [Export] [Import] [AnnotDecl] MaybeBlock
   deriving (Eq,Ord,Show,Read)
 
 data Export =
@@ -83,8 +83,8 @@ data Decl =
  | DataParDecl UIdent [UIdent] [ConstrIdent]
  | FunDecl Type LIdent [Param] FunBody
  | FunParDecl Type LIdent [UIdent] [Param] FunBody
- | InterfDecl UIdent [MethSignat]
- | ExtendsDecl UIdent [QType] [MethSignat]
+ | InterfDecl UIdent [AnnotMethSignat]
+ | ExtendsDecl UIdent [QType] [AnnotMethSignat]
  | ClassDecl UIdent [ClassBody] MaybeBlock [ClassBody]
  | ClassParamDecl UIdent [Param] [ClassBody] MaybeBlock [ClassBody]
  | ClassImplements UIdent [QType] [ClassBody] MaybeBlock [ClassBody]
@@ -117,11 +117,11 @@ data ClassBody =
   deriving (Eq,Ord,Show,Read)
 
 data Block =
-   Bloc [Stm]
+   Bloc [AnnotStm]
   deriving (Eq,Ord,Show,Read)
 
 data MaybeBlock =
-   JustBlock Block
+   JustBlock [Annot] Block
  | NoBlock
   deriving (Eq,Ord,Show,Read)
 
@@ -131,30 +131,30 @@ data Param =
 
 data Stm =
    SExp Exp
- | SBlock [Stm]
- | SWhile PureExp Stm
+ | SBlock [AnnotStm]
+ | SWhile PureExp AnnotStm
  | SReturn Exp
  | SAss LIdent Exp
  | SFieldAss LIdent Exp
  | SDec Type LIdent
  | SDecAss Type LIdent Exp
- | SIf PureExp Stm
- | SIfElse PureExp Stm Stm
+ | SIf PureExp AnnotStm
+ | SIfElse PureExp AnnotStm AnnotStm
  | SSuspend
  | SSkip
  | SAssert PureExp
  | SAwait Guard
  | SThrow PureExp
- | STryCatchFinally Stm [CatchBranch] MaybeFinally
+ | STryCatchFinally AnnotStm [CatchBranch] MaybeFinally
  | SPrint PureExp
   deriving (Eq,Ord,Show,Read)
 
 data CatchBranch =
-   CatchBranc Pattern Stm
+   CatchBranc Pattern AnnotStm
   deriving (Eq,Ord,Show,Read)
 
 data MaybeFinally =
-   JustFinally Stm
+   JustFinally AnnotStm
  | NoFinally
   deriving (Eq,Ord,Show,Read)
 
@@ -232,15 +232,24 @@ data EffExp =
  | Spawns PureExp Type [PureExp]
   deriving (Eq,Ord,Show,Read)
 
-data Ann =
-   SimpleAnn PureExp
+data Annot =
+   Ann Annot_
   deriving (Eq,Ord,Show,Read)
 
-data AnnDecl =
-   AnnDec [Ann] Decl
+data Annot_ =
+   AnnWithType Type PureExp
+ | AnnNoType PureExp
   deriving (Eq,Ord,Show,Read)
 
-data AnnType =
-   AnnTyp [Ann] Type
+data AnnotStm =
+   AnnStm [Annot] Stm
+  deriving (Eq,Ord,Show,Read)
+
+data AnnotDecl =
+   AnnDec [Annot] Decl
+  deriving (Eq,Ord,Show,Read)
+
+data AnnotMethSignat =
+   AnnMethSig [Annot] MethSignat
   deriving (Eq,Ord,Show,Read)
 

@@ -13,7 +13,6 @@ module Lang.ABS.Compiler.Utils
     -- * AST Queries/collecting
     ,collectVars
     ,collectPatVars
-    ,collectAssigns
     -- * (Trans)compiler feedback
     ,errorPos, warnPos, showPos
     ) where
@@ -107,20 +106,6 @@ collectPatVars _ = []
 
 -- | Querying a statement AST
 --
--- Collects all LHS local-variable names from a statement
-collectAssigns :: ABS.Stm -> ScopeTable -> [String]
-collectAssigns (ABS.SBlock stmts) fscope = concatMap ((flip collectAssigns) fscope) stmts
-collectAssigns (ABS.SWhile _ stmt) fscope = collectAssigns stmt fscope
-collectAssigns (ABS.SIf _ stmt) fscope = collectAssigns stmt fscope
-collectAssigns (ABS.SIfElse _ stmt1 stmt2) fscope = collectAssigns stmt1 fscope ++ collectAssigns stmt2 fscope
--- old changed variables
-collectAssigns (ABS.SAss ident@(ABS.LIdent (_,var)) _) fscope = if ident `M.member` fscope
-                                                                then [var]
-                                                                else []
--- and newly introduced variables
--- ignore fieldass, since they are iorefs
-collectAssigns (ABS.SDec _ (ABS.LIdent (_,var))) _ = [var]
-collectAssigns _ _ = []
 
 errorPos :: (Int, Int) -> String -> a
 errorPos pos msg = error ("[error #" ++ showPos pos ++ "]" ++  msg)

@@ -18,7 +18,7 @@ import Lang.ABS.Compiler.Expr (tPattern, tType)
 import qualified Data.Map as M
 
 -- | Translating a method block or main block that can return
-tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
                                                                     (clsScope, mthScope, interfName, cls, False))
@@ -28,14 +28,14 @@ tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runR
 --
 -- can always return (with: return Unit),
 -- can not run await and/or sync calls
-tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
+tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
 tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
                                                                     (tBlock stmts True)
                                                                     (clsScope, mthScope, interfName, cls, True))
                                                         scopes
 
 -- | Translating any block . This functions pushes a new scope to the 'StmtM' scopes-stack-state.
-tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM HS.Exp
+tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM HS.Exp
 tBlock stmts canReturn | null stmts = return $ eReturnUnit
                        | otherwise = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
@@ -43,7 +43,7 @@ tBlock stmts canReturn | null stmts = return $ eReturnUnit
   return $ HS.Do $ ts  ++
                          -- if the last stmt is a dec or assignment, then add a return (R ())
                          -- 
-                       (case last stmts of
+                       (case (\ (ABS.AnnStm _ s) -> s) $ last stmts of
                           ABS.SDec _ _ -> [HS.Qualifier eReturnUnit]
                           ABS.SAss _ _ -> [HS.Qualifier eReturnUnit]
                           ABS.SExp _ ->  [HS.Qualifier eReturnUnit] -- although an expression has a value, we throw it away, since it must explicitly be returned
@@ -59,11 +59,11 @@ tBlock stmts canReturn | null stmts = return $ eReturnUnit
 
 
 -- | Translating a bunch of ABS statements
-tStmts :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.Stm] -> Bool -> StmtM [HS.Stmt]
-tStmts (ABS.SReturn e:[]) True = tStmt (ABS.SExp e)
-tStmts (ABS.SReturn _:_) _ = error "Return must be the last statement"
+tStmts :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM [HS.Stmt]
+tStmts ((ABS.AnnStm _ (ABS.SReturn e)):[]) True = tStmt (ABS.SExp e)
+tStmts (ABS.AnnStm _ (ABS.SReturn _):_) _ = error "Return must be the last statement"
 tStmts [] _canReturn = return $ []
-tStmts (stmt:rest) canReturn = do
+tStmts (ABS.AnnStm _ stmt:rest) canReturn = do
     s <- tStmt stmt
     r <- tStmts rest canReturn
     return (s++r) -- can return multiple HS.Stmt
@@ -132,7 +132,7 @@ tStmt (ABS.SPrint pexp) = do
 tStmt (ABS.SWhile pexp stm) = do
   texp <- tPureExpStmt pexp
   tblock <- tBlock (case stm of
-                     ABS.SBlock stmts ->  stmts 
+                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
                      stmt -> [stmt]) False
   return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while") texp) tblock]              
 

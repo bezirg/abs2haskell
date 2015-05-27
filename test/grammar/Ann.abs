@@ -1,0 +1,18 @@
+module Ann;
+
+[A: x] [B:z]
+interface I {
+  [Atomic] [Mplo:3] Unit m();
+  [Mpli] Unit m2();
+}
+
+[A:z]
+class C implements I {
+    Unit m() {
+        [Mpli] Int x = 0;
+        [A:Mplo] [mpli] o ! m();
+        o.m();
+        return 3;
+    }
+}
+

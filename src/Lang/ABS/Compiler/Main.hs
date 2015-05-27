@@ -52,7 +52,7 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
                     ABS.LIdent ((-1,-1),"getLoad")]) decls,
    exceptions = foldl (\ acc decl -> 
                            case decl of
-                             ABS.ExceptionDecl cident -> (case cident of
+                             (ABS.AnnDec _ (ABS.ExceptionDecl cident)) -> (case cident of
                                                            ABS.SinglConstrIdent tid -> tid
                                                            ABS.ParamConstrIdent tid _ -> tid) : acc
                              _ -> acc) [] decls,
@@ -64,19 +64,19 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
    exports = undefined -- TODO
                                                 }
     where 
-      insertInterfs :: M.Map ABS.UIdent [ABS.QType] -> ABS.Decl -> M.Map ABS.UIdent [ABS.QType]
-      insertInterfs acc (ABS.InterfDecl tident@(ABS.UIdent (p,_)) _msigs) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
-      insertInterfs acc (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) extends _msigs) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident extends acc
+      insertInterfs :: M.Map ABS.UIdent [ABS.QType] -> ABS.AnnotDecl -> M.Map ABS.UIdent [ABS.QType]
+      insertInterfs acc (ABS.AnnDec _ (ABS.InterfDecl tident@(ABS.UIdent (p,_)) _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
+      insertInterfs acc (ABS.AnnDec _ (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) extends _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident extends acc
       insertInterfs acc _ = acc
 
-      insertMethods :: M.Map ABS.UIdent [ABS.LIdent] -> ABS.Decl -> M.Map ABS.UIdent [ABS.LIdent]
-      insertMethods acc (ABS.InterfDecl tident msigs) = insertMethods acc (ABS.ExtendsDecl tident [] msigs)  -- normalization
-      insertMethods acc (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) _extends msigs) = 
+      insertMethods :: M.Map ABS.UIdent [ABS.LIdent] -> ABS.AnnotDecl -> M.Map ABS.UIdent [ABS.LIdent]
+      insertMethods acc (ABS.AnnDec a (ABS.InterfDecl tident msigs)) = insertMethods acc (ABS.AnnDec a (ABS.ExtendsDecl tident [] msigs))  -- normalization
+      insertMethods acc (ABS.AnnDec _ (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) _extends msigs)) = 
           {- TODO it could generate a compilation error because of duplicate method declaration -}
           M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident (collectMethods msigs) acc
       insertMethods acc _ = acc
-      collectMethods :: [ABS.MethSignat] -> [ABS.LIdent]
-      collectMethods = map (\ (ABS.MethSig _ ident _) -> ident)
+      collectMethods :: [ABS.AnnotMethSignat] -> [ABS.LIdent]
+      collectMethods = map (\ (ABS.AnnMethSig _ (ABS.MethSig _ ident _)) -> ident)
 
 
 -- | parse whole ABS src directories

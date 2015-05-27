@@ -53,7 +53,7 @@ The symbols used in ABS are the following:
   | || | && | == | !=
   | <= | >= | + | -
   | / | % | ~ | [
-  | ] | ! |  | 
+  | ] | ! | : | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -71,7 +71,7 @@ All other symbols are terminals.
   | //Program// | -> | //[Module]// 
   | //[Module]// | -> | **eps**
   |  |  **|**  | //Module// //[Module]// 
-  | //Module// | -> | ``module`` //QType// ``;`` //[Export]// //[Import]// //[Decl]// //MaybeBlock// 
+  | //Module// | -> | ``module`` //QType// ``;`` //[Export]// //[Import]// //[AnnotDecl]// //MaybeBlock// 
   | //Export// | -> | ``export`` //[AnyIdent]// 
   |  |  **|**  | ``export`` //[AnyIdent]// ``from`` //QType// 
   |  |  **|**  | ``export`` ``*`` 
@@ -100,8 +100,6 @@ All other symbols are terminals.
   | //TTypeSegment// | -> | //UIdent// 
   | //[TTypeSegment]// | -> | //TTypeSegment// ``.`` 
   |  |  **|**  | //TTypeSegment// ``.`` //[TTypeSegment]// 
-  | //[Decl]// | -> | **eps**
-  |  |  **|**  | //Decl// //[Decl]// 
   | //Decl// | -> | ``type`` //UIdent// ``=`` //Type// ``;`` 
   |  |  **|**  | ``type`` //UIdent// ``<`` //[UIdent]// ``>`` ``=`` //Type// ``;`` 
   |  |  **|**  | ``exception`` //ConstrIdent// ``;`` 
@@ -109,8 +107,8 @@ All other symbols are terminals.
   |  |  **|**  | ``data`` //UIdent// ``<`` //[UIdent]// ``>`` ``=`` //[ConstrIdent]// ``;`` 
   |  |  **|**  | ``def`` //Type// //LIdent// ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
   |  |  **|**  | ``def`` //Type// //LIdent// ``<`` //[UIdent]// ``>`` ``(`` //[Param]// ``)`` ``=`` //FunBody// ``;`` 
-  |  |  **|**  | ``interface`` //UIdent// ``{`` //[MethSignat]// ``}`` 
-  |  |  **|**  | ``interface`` //UIdent// ``extends`` //[QType]// ``{`` //[MethSignat]// ``}`` 
+  |  |  **|**  | ``interface`` //UIdent// ``{`` //[AnnotMethSignat]// ``}`` 
+  |  |  **|**  | ``interface`` //UIdent// ``extends`` //[QType]// ``{`` //[AnnotMethSignat]// ``}`` 
   |  |  **|**  | ``class`` //UIdent// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
   |  |  **|**  | ``class`` //UIdent// ``(`` //[Param]// ``)`` ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
   |  |  **|**  | ``class`` //UIdent// ``implements`` //[QType]// ``{`` //[ClassBody]// //MaybeBlock// //[ClassBody]// ``}`` 
@@ -129,43 +127,39 @@ All other symbols are terminals.
   | //FunBody// | -> | ``builtin`` 
   |  |  **|**  | //PureExp// 
   | //MethSignat// | -> | //Type// //LIdent// ``(`` //[Param]// ``)`` 
-  | //[MethSignat]// | -> | **eps**
-  |  |  **|**  | //MethSignat// ``;`` //[MethSignat]// 
   | //ClassBody// | -> | //Type// //LIdent// ``;`` 
   |  |  **|**  | //Type// //LIdent// ``=`` //PureExp// ``;`` 
   |  |  **|**  | //Type// //LIdent// ``(`` //[Param]// ``)`` //Block// 
   | //[ClassBody]// | -> | **eps**
   |  |  **|**  | //ClassBody// //[ClassBody]// 
-  | //Block// | -> | ``{`` //[Stm]// ``}`` 
-  | //MaybeBlock// | -> | //Block// 
+  | //Block// | -> | ``{`` //[AnnotStm]// ``}`` 
+  | //MaybeBlock// | -> | //[Annot]// //Block// 
   |  |  **|**  | **eps**
   | //[Param]// | -> | **eps**
   |  |  **|**  | //Param// 
   |  |  **|**  | //Param// ``,`` //[Param]// 
   | //Param// | -> | //Type// //LIdent// 
-  | //[Stm]// | -> | **eps**
-  |  |  **|**  | //Stm// //[Stm]// 
   | //Stm// | -> | //Exp// ``;`` 
-  |  |  **|**  | ``{`` //[Stm]// ``}`` 
-  |  |  **|**  | ``while`` ``(`` //PureExp// ``)`` //Stm// 
+  |  |  **|**  | ``{`` //[AnnotStm]// ``}`` 
+  |  |  **|**  | ``while`` ``(`` //PureExp// ``)`` //AnnotStm// 
   |  |  **|**  | ``return`` //Exp// ``;`` 
   |  |  **|**  | //LIdent// ``=`` //Exp// ``;`` 
   |  |  **|**  | ``this`` ``.`` //LIdent// ``=`` //Exp// ``;`` 
   |  |  **|**  | //Type// //LIdent// ``;`` 
   |  |  **|**  | //Type// //LIdent// ``=`` //Exp// ``;`` 
-  |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //Stm// 
-  |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //Stm// ``else`` //Stm// 
+  |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //AnnotStm// 
+  |  |  **|**  | ``if`` ``(`` //PureExp// ``)`` //AnnotStm// ``else`` //AnnotStm// 
   |  |  **|**  | ``suspend`` ``;`` 
   |  |  **|**  | ``skip`` ``;`` 
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
   |  |  **|**  | ``await`` //Guard// ``;`` 
   |  |  **|**  | ``throw`` //PureExp// ``;`` 
-  |  |  **|**  | ``try`` //Stm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
+  |  |  **|**  | ``try`` //AnnotStm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
   |  |  **|**  | ``println`` //PureExp// ``;`` 
-  | //CatchBranch// | -> | //Pattern// ``=>`` //Stm// 
+  | //CatchBranch// | -> | //Pattern// ``=>`` //AnnotStm// 
   | //[CatchBranch]// | -> | **eps**
   |  |  **|**  | //CatchBranch// //[CatchBranch]// 
-  | //MaybeFinally// | -> | ``finally`` //Stm// 
+  | //MaybeFinally// | -> | ``finally`` //AnnotStm// 
   |  |  **|**  | **eps**
   | //Guard// | -> | //LIdent// ``?`` 
   |  |  **|**  | ``this`` ``.`` //LIdent// ``?`` 
@@ -236,15 +230,19 @@ All other symbols are terminals.
   |  |  **|**  | ``this`` ``!`` //LIdent// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` ``get`` 
   |  |  **|**  | //PureExp// ``spawns`` //Type// ``(`` //[PureExp]// ``)`` 
-  | //Ann// | -> | ``[`` //PureExp// ``]`` 
-  | //[Ann]// | -> | **eps**
-  |  |  **|**  | //Ann// //[Ann]// 
-  | //AnnDecl// | -> | //[Ann]// //Decl// 
-  | //[AnnDecl]// | -> | **eps**
-  |  |  **|**  | //AnnDecl// //[AnnDecl]// 
-  | //AnnType// | -> | //[Ann]// //Type// 
-  | //[AnnType]// | -> | **eps**
-  |  |  **|**  | //AnnType// 
-  |  |  **|**  | //AnnType// ``,`` //[AnnType]// 
+  | //Annot// | -> | ``[`` //Annot_// ``]`` 
+  | //[Annot]// | -> | **eps**
+  |  |  **|**  | //Annot// //[Annot]// 
+  | //Annot_// | -> | //Type// ``:`` //PureExp// 
+  |  |  **|**  | //PureExp// 
+  | //AnnotStm// | -> | //[Annot]// //Stm// 
+  | //[AnnotStm]// | -> | **eps**
+  |  |  **|**  | //AnnotStm// //[AnnotStm]// 
+  | //AnnotDecl// | -> | //[Annot]// //Decl// 
+  | //[AnnotDecl]// | -> | **eps**
+  |  |  **|**  | //AnnotDecl// //[AnnotDecl]// 
+  | //AnnotMethSignat// | -> | //[Annot]// //MethSignat// 
+  | //[AnnotMethSignat]// | -> | **eps**
+  |  |  **|**  | //AnnotMethSignat// ``;`` //[AnnotMethSignat]// 
 
 

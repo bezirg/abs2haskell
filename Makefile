@@ -37,7 +37,7 @@ dist/build/testGrammar/testGrammar: abs-frontend/src/ABS.cf
 	cd dist/build/buildGrammar/Lang/ABS/Compiler/BNFC/; rm -rf *.o *.hi *.x *.y *.bak TestABS.hs  # cleanup
 # move the generated haskell files to this src/
 	cp -r dist/build/buildGrammar/Lang/ABS/Compiler/BNFC src/Lang/ABS/Compiler 
-
+	@echo "Note to developers: change src/Lang/ABS/Compiler/BNFC/AbsABS.hs for the Eq,Ord instances of LIdent UIdent"
 clean:
 	-rm -rf dist/
 	-rm -f src/ParABS.y src/LexABS.x src/TestABS.* src/*.bak # cleanup bnfc intermediate code

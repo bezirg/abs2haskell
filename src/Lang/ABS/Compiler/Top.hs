@@ -36,7 +36,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                      ] 
                      Nothing 
                      (Just $ (case maybeMain of
-                                ABS.JustBlock _ -> ((HS.EVar $ HS.UnQual $ HS.Ident "main") :)
+                                ABS.JustBlock _ _ -> ((HS.EVar $ HS.UnQual $ HS.Ident "main") :)
                                 ABS.NoBlock -> id) $ concatMap (tExport mname) exports)
                      -- IMPORT HEADER for the generated haskell module
                      ([HS.ImportDecl {HS.importLoc = HS.noLoc, 
@@ -118,7 +118,7 @@ tImport' m (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ (ModuleInfo
 -- only if the module has a main block and is declared as main source file in the conf
 tMain :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.MaybeBlock -> [HS.Decl]
 tMain ABS.NoBlock = []
-tMain (ABS.JustBlock (ABS.Bloc block)) = 
+tMain (ABS.JustBlock _ (ABS.Bloc block)) = 
        -- main can only return with: return Unit;
        HS.PatBind HS.noLoc (HS.PVar (HS.Ident "mainABS")) Nothing (HS.UnGuardedRhs $ tBlockWithReturn block
                                                                       ("Top") -- class-name
@@ -134,8 +134,8 @@ tMain (ABS.JustBlock (ABS.Bloc block)) =
                                                                             (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
                                                                       (HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
 
-tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.Decl] -> [HS.Decl]
-tDecls = concatMap tDecl
+tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotDecl] -> [HS.Decl]
+tDecls = concatMap (\ (ABS.AnnDec _ d) -> tDecl d)
 
 -- can return more than 1 decl, because of creating accessors for records
 -- or putting type signatures
@@ -278,7 +278,7 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
        : generateSub tname (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")]) -- root class
        -- null class is an instance of any interface
        : HS.InstDecl HS.noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ identI "Null"] 
-             (map (\ (ABS.MethSig _ (ABS.LIdent (_,mid)) _) -> HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mid) [] Nothing 
+             (map (\ (ABS.AnnMethSig _ (ABS.MethSig _ (ABS.LIdent (_,mid)) _)) -> HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mid) [] Nothing 
                                                                                (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "this should not happen. report the program to the compiler developers"))) (HS.BDecls [])]) ms)
        -- generate the equality smart function
        -- __eqI :: I -> I -> Bool
@@ -308,7 +308,7 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
 
 
 
-       ++ (concatMap (\ (ABS.MethSig _ (ABS.LIdent (_,mid)) pars) -> let 
+       ++ (concatMap (\ (ABS.AnnMethSig _ (ABS.MethSig _ (ABS.LIdent (_,mid)) pars)) -> let 
                           parspvars = map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar $ HS.Ident pid) pars
                           parsvars = map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.Var $ HS.UnQual $ HS.Ident pid) pars
                      in
@@ -324,8 +324,8 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                       ]
        ) ms)
     where
-    tMethSig :: String -> ABS.MethSignat -> HS.ClassDecl
-    tMethSig ityp (ABS.MethSig tReturn (ABS.LIdent (_,mname)) pars)  = HS.ClsDecl $
+    tMethSig :: String -> ABS.AnnotMethSignat -> HS.ClassDecl
+    tMethSig ityp (ABS.AnnMethSig _ann (ABS.MethSig tReturn (ABS.LIdent (_,mname)) pars))  = HS.ClsDecl $
        HS.TypeSig HS.noLoc [HS.Ident mname] $
              HS.TyFun 
               (HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))
@@ -415,7 +415,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
                                                                                               ABS.MethClassBody _ _ _ _ ->  (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
-                                                                                                                         ABS.JustBlock _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
+                                                                                                                         ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                                                              )) 
                                                                        -- class1_loc = (return (__chan, __new_tid))
                                                                        [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_loc")
@@ -468,7 +468,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
 
                                                                                               ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
-                                                                                                                         ABS.JustBlock _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
+                                                                                                                         ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                                                              )) 
                                                                        -- class1_loc = __thisCOG)
                                                                        [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_loc")
@@ -513,7 +513,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                -- the init method (optional)
                -- normalize to a method decl with name __init
                (case maybeBlock of
-                  ABS.JustBlock b -> [tInitDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos,"__init")) [] b]
+                  ABS.JustBlock _ b -> [tInitDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos,"__init")) [] b]
                   ABS.NoBlock -> []
                ) 
                ++
@@ -581,7 +581,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
          -- all methods declared (interface methods and non-methods)
          mdecls = case maybeBlock of
                     ABS.NoBlock ->  ldecls
-                    ABS.JustBlock _ -> rdecls
+                    ABS.JustBlock _ _ -> rdecls
 
          nonMethods = (filter (\case
                                ABS.MethClassBody _ (ABS.LIdent (_, mname)) _ _ -> mname /= "run"
@@ -647,7 +647,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                            _ -> errorPos p "A field must be initialised if it is not of a reference type"
                                                 ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                ABS.NoBlock -> acc
-                                                                               ABS.JustBlock _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
+                                                                               ABS.JustBlock _ _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
                                )) [] ldecls
 
          -- treat it as a special instance method, since it disallows await and synchronous calls
