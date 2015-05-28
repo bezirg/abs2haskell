@@ -263,10 +263,10 @@ happyIn44 x = Happy_GHC_Exts.unsafeCoerce# x
 happyOut44 :: (HappyAbsSyn ) -> (MaybeFinally)
 happyOut44 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut44 #-}
-happyIn45 :: (Guard) -> (HappyAbsSyn )
+happyIn45 :: (AwaitGuard) -> (HappyAbsSyn )
 happyIn45 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn45 #-}
-happyOut45 :: (HappyAbsSyn ) -> (Guard)
+happyOut45 :: (HappyAbsSyn ) -> (AwaitGuard)
 happyOut45 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut45 #-}
 happyIn46 :: (Exp) -> (HappyAbsSyn )
@@ -1642,7 +1642,7 @@ happyReduction_102 happy_x_2
 	happy_x_1
 	 =  case happyOut7 happy_x_1 of { happy_var_1 -> 
 	happyIn45
-		 (VarGuard happy_var_1
+		 (FutGuard happy_var_1
 	)}
 
 happyReduce_103 = happyReduce 4# 41# happyReduction_103
@@ -1653,7 +1653,7 @@ happyReduction_103 (happy_x_4 `HappyStk`
 	happyRest)
 	 = case happyOut7 happy_x_3 of { happy_var_3 -> 
 	happyIn45
-		 (FieldGuard happy_var_3
+		 (FutFieldGuard happy_var_3
 	) `HappyStk` happyRest}
 
 happyReduce_104 = happySpecReduce_1  41# happyReduction_104

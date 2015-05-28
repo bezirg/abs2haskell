@@ -143,7 +143,7 @@ data Stm =
  | SSuspend
  | SSkip
  | SAssert PureExp
- | SAwait Guard
+ | SAwait AwaitGuard
  | SThrow PureExp
  | STryCatchFinally AnnotStm [CatchBranch] MaybeFinally
  | SPrint PureExp
@@ -158,11 +158,11 @@ data MaybeFinally =
  | NoFinally
   deriving (Eq,Ord,Show,Read)
 
-data Guard =
-   VarGuard LIdent
- | FieldGuard LIdent
+data AwaitGuard =
+   FutGuard LIdent
+ | FutFieldGuard LIdent
  | ExpGuard PureExp
- | AndGuard Guard Guard
+ | AndGuard AwaitGuard AwaitGuard
   deriving (Eq,Ord,Show,Read)
 
 data Exp =

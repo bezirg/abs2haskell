@@ -1,0 +1,18 @@
+module UninitializedFieldFuture;
+
+interface I {
+  Unit m();
+
+}
+
+class C implements I {
+  Fut<Unit> f;
+  Unit m() {
+     await f?; // also breaks with await this.f?
+  }
+}
+
+{
+ I o = new local C();
+ o.m();
+}

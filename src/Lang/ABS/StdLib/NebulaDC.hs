@@ -105,66 +105,66 @@ set_nebulaDC_cpu :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_cpu v
   = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       __astate@(I__.AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
-       I__.maybe (return ())
-         (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
+       fm' <- I__.maybe (return fm)
+         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
          maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 set_nebulaDC_load :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_load v
   = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       __astate@(I__.AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 1) om
-       I__.maybe (return ())
-         (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
+       fm' <- I__.maybe (return fm)
+         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
          maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 set_nebulaDC_memory :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_memory v
   = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       __astate@(I__.AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 2) om
-       I__.maybe (return ())
-         (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
+       fm' <- I__.maybe (return fm)
+         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
          maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 set_nebulaDC_nodeId :: Maybe NodeId -> I__.ABS NebulaDC ()
 set_nebulaDC_nodeId v
   = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       __astate@(I__.AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 3) om
-       I__.maybe (return ())
-         (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
+       fm' <- I__.maybe (return fm)
+         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
          maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 set_nebulaDC_vmId :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_vmId v
   = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
-       __astate@(I__.AState _ om _) <- I__.lift I__.get
+       __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
        let (maybeWoken, om')
              = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 4) om
-       I__.maybe (return ())
-         (\ woken -> I__.liftIO (I__.writeList2Chan thisChan woken))
+       fm' <- I__.maybe (return fm)
+         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
          maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om'})
+       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 instance I__.Sub (I__.Obj NebulaDC) I__.Root where
         up = I__.Root

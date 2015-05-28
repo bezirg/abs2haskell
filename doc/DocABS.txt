@@ -152,7 +152,7 @@ All other symbols are terminals.
   |  |  **|**  | ``suspend`` ``;`` 
   |  |  **|**  | ``skip`` ``;`` 
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
-  |  |  **|**  | ``await`` //Guard// ``;`` 
+  |  |  **|**  | ``await`` //AwaitGuard// ``;`` 
   |  |  **|**  | ``throw`` //PureExp// ``;`` 
   |  |  **|**  | ``try`` //AnnotStm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
   |  |  **|**  | ``println`` //PureExp// ``;`` 
@@ -161,10 +161,10 @@ All other symbols are terminals.
   |  |  **|**  | //CatchBranch// //[CatchBranch]// 
   | //MaybeFinally// | -> | ``finally`` //AnnotStm// 
   |  |  **|**  | **eps**
-  | //Guard// | -> | //LIdent// ``?`` 
+  | //AwaitGuard// | -> | //LIdent// ``?`` 
   |  |  **|**  | ``this`` ``.`` //LIdent// ``?`` 
   |  |  **|**  | //PureExp// 
-  |  |  **|**  | //Guard// ``&`` //Guard// 
+  |  |  **|**  | //AwaitGuard// ``&`` //AwaitGuard// 
   | //Exp// | -> | //PureExp// 
   |  |  **|**  | //EffExp// 
   | //[PureExp]// | -> | **eps**

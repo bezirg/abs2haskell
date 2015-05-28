@@ -8,15 +8,16 @@
 module Lang.ABS.Runtime.Core 
     (spawnCOG
     ,main_is
+    ,updateWoken
     ) where
 
 import Lang.ABS.Runtime.Base
 import Lang.ABS.Runtime.Conf
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
-import Data.List (foldl', find)
-import qualified Data.Map.Strict as M (empty, insertWith, updateLookupWithKey)
+import Data.List (foldl', find, splitAt)
+import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
-import Control.Concurrent.Chan (newChan, readChan, writeChan, writeList2Chan, Chan)
+import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
 import qualified Control.Monad.Trans.RWS as RWS (runRWST, modify)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
@@ -32,8 +33,7 @@ import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
-import Control.Monad (when)
-
+import Control.Monad (when, foldM, liftM)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -79,8 +79,9 @@ spawnCOG c = do
           -- wake signals are transmitted (implicitly) from a COG to another COG to wakeup some of the latter's sleeping process
           WakeupSignal f -> do
              let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
-             maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken -- put the woken back to the enabled queue
-             loop pid sleepingOnFut'' sleepingOnAttr counter
+             -- put the woken back to the enabled queue
+             sleepingOnAttr' <- maybe (return sleepingOnAttr) (CH.liftIO . updateWoken c sleepingOnAttr) maybeWoken
+             loop pid sleepingOnFut'' sleepingOnAttr' counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
           RunJob obj fut@(FutureRef mvar (COG (fcog, ftid)) _) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
@@ -102,19 +103,33 @@ spawnCOG c = do
                                 -- because it adds an extra iteration
                                 let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
                                 -- put the woken back to the enabled queue
-                                maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
+                                maybe (return ()) (\ woken -> do
+                                                   sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
+                                                   RWS.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                 return sleepingOnFut'
                     -- the process deliberately suspended (by calling suspend)
                     Left (Yield S cont) -> do
                            CH.liftIO $ writeChan c (RunJob obj fut cont) -- reschedule its continuation at the end of the job-queue
                            return sleepingOnFut
-                    -- the process deliberately decided to await on a future to finish (by calling await f?;)
-                    Left (Yield (F f) cont) -> do
-                           return (M.insertWith (++) (AnyFut f) [RunJob obj fut cont] sleepingOnFut) -- update sleepingf-table
+                    -- the process deliberately decided to await on a *LOCAL* future to finish (by calling await f?;)
+                    Left (Yield (FL f) cont) -> do
+                           return (M.insertWith (++) (AnyFut f) [(RunJob obj fut cont, Nothing)] sleepingOnFut) -- update sleepingf-table
+                    -- the process deliberately decided to await on a *FIELD* future to finish (by calling await f?;)
+                    Left (Yield (FF f fid) cont) -> do
+                       -- updating both suspended tables
+                       let ObjectRef _ oid _ = obj
+                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
+                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
+
+                       
+                       let lengthOnFut = maybe 0 length mFutEntry
+                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just (AnyFut f,lengthOnFut))] sleepingOnAttr
+                       RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                       return sleepingOnFut' -- update sleepingf-table                          
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
-                    Left (Yield (T o@(ObjectRef _ oid _)  fields) cont) -> do
+                    Left (Yield (A o@(ObjectRef _ oid _)  fields) cont) -> do
                            -- update sleepingo-table
-                           let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [RunJob obj fut cont] m) sleepingOnAttr fields
+                           let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
                            RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                            return sleepingOnFut
                                                     ) (AConf {aThis = obj, 
@@ -180,8 +195,8 @@ main_is mainABS outsideRemoteTable = do
        case nextJob of
          WakeupSignal f -> do
            let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
-           maybe (return ()) (\ woken -> CH.liftIO (writeList2Chan c woken)) maybeWoken -- put the woken back to the enabled queue
-           loop c pid sleepingOnFut'' sleepingOnAttr counter
+           sleepingOnAttr' <- maybe (return sleepingOnAttr) (CH.liftIO . updateWoken c sleepingOnAttr) maybeWoken -- put the woken back to the enabled queue
+           loop c pid sleepingOnFut'' sleepingOnAttr' counter
          RunJob obj fut coroutine -> do
            (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               p <- resume coroutine `catchAll` (\ someEx -> do
@@ -201,7 +216,9 @@ main_is mainABS outsideRemoteTable = do
                                      -- because it adds an extra iteration
                                      let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
                                      -- put the woken back to the enabled queue
-                                     maybe (return ()) (\ woken -> CH.liftIO $ writeList2Chan c woken) maybeWoken
+                                     maybe (return ()) (\ woken -> do
+                                                         sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
+                                                         RWS.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                      return sleepingOnFut'
                               MainFutureRef -> CH.liftIO $ do
                                          if (distributed conf || keepAlive conf)
@@ -213,10 +230,21 @@ main_is mainABS outsideRemoteTable = do
                 Left (Yield S cont) -> do
                        CH.liftIO $ writeChan c (RunJob obj fut cont) 
                        return sleepingOnFut
-                Left (Yield (F f) cont) -> do
-                       return (M.insertWith (++) (AnyFut f) [RunJob obj fut cont] sleepingOnFut)
-                Left (Yield (T o@(ObjectRef _ oid _) fields) cont) -> do
-                       let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [RunJob obj fut cont] m) sleepingOnAttr fields
+                Left (Yield (FL f) cont) -> do
+                       return (M.insertWith (++) (AnyFut f) [(RunJob obj fut cont, Nothing)] sleepingOnFut)
+                Left (Yield (FF f fid) cont) -> do
+                       -- updating both suspended tables
+                       let ObjectRef _ oid _ = obj
+                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
+                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
+
+                       
+                       let lengthOnFut = maybe 0 length mFutEntry
+                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just (AnyFut f,lengthOnFut))] sleepingOnAttr
+                       RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                       return sleepingOnFut' -- update sleepingf-table                          
+                Left (Yield (A o@(ObjectRef _ oid _) fields) cont) -> do
+                       let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut
                                               ) (AConf {aThis = obj, 
@@ -224,3 +252,21 @@ main_is mainABS outsideRemoteTable = do
                                                        }) (AState {aCounter = counter,
                                                                    aSleepingO = sleepingOnAttr})
            loop c pid sleepingOnFut'' sleepingOnAttr'' counter''
+
+
+
+updateWoken :: Ord k => Chan a -> M.Map k [a1] -> [(a, Maybe (k, Int))] -> IO (M.Map k [a1])
+updateWoken ch m ls = liftM fst $ foldM (\ (m, alreadyDeleted) (j, mo) -> do
+                                                   writeChan ch j
+                                                   return $ case mo of
+                                                              Nothing -> (m, alreadyDeleted)
+                                                              Just (k,i) -> (M.update (\ l -> if length l == 1
+                                                                                                  then Nothing
+                                                                                                  else Just $ l `deleteIndex` (i-alreadyDeleted)) 
+                                                                                  k m
+                                                                                 , alreadyDeleted+1)
+                                                ) (m,0) ls
+                              where
+                                deleteIndex :: [a] -> Int -> [a]
+                                deleteIndex l i = let (left,right) = Data.List.splitAt (i-1) l
+                                                  in left ++ tail right

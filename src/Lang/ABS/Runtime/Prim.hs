@@ -33,20 +33,27 @@ skip = return (())
 suspend :: ABS o ()
 suspend = yield S
 
-await ::  (Root_ o) => AwaitGuard o -> ABS o () 
-await (FutureGuard f@(FutureRef mvar _ _ ))  = do
+await ::  (Root_ o) => AwaitGuardCompiled o -> ABS o () 
+await (FutureLocalGuard f@(FutureRef mvar _ _ ))  = do
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
-    yield (F f)
+    yield (FL f)
 
-await g@(ThisGuard is tg) = do
+await g@(FutureFieldGuard i tg)  = do
+  f@(FutureRef mvar _ _) <- tg
+  empty <- liftIO $ isEmptyMVar mvar
+  when empty $ do
+    yield (FF f i)
+    await g
+
+await g@(AttrsGuard is tg) = do
   check <- tg
   if not check
     then if Data.List.null is             -- no field-checks, so this will block indefinitely
          then throw (return BlockedAwaitException)
          else do
            AConf obj _ <- lift $ RWS.ask
-           yield (T obj is)
+           yield (A obj is)
            await g
     else return ()                 -- check succeeded, continue
 

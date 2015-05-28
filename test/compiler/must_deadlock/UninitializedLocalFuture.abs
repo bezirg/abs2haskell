@@ -1,0 +1,18 @@
+module UninitializedLocalFuture;
+
+interface I {
+  Unit m();
+
+}
+
+class C implements I {
+  Unit m() {
+     Fut<Unit> f;
+     await f?;
+  }
+}
+
+{
+ I o = new local C();
+ o.m();
+}

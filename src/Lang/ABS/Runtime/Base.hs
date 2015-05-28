@@ -170,15 +170,17 @@ data AState = AState {
 --
 -- The running process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
 data AwaitOn = S -- suspend is called
-             | forall f. Serializable f => F (Fut f) -- await on future
-             | forall o. Root_ o => T (Obj o) [Int] -- await on object's fields
+             | forall f. Serializable f => FL (Fut f) -- await on a local future
+             | forall f. Serializable f => FF (Fut f) Int -- await on field future
+             | forall o. Root_ o => A (Obj o) [Int] -- await on object's fields
 
 
 -- | The single parameter to an await statement;
 -- a recursive-datatype that can await on multiple items
-data AwaitGuard o = forall b. (Serializable b) => FutureGuard (Fut b)
-                  | ThisGuard [Int] (ABS o Bool)
-                  | AwaitGuard o :&: AwaitGuard o
+data AwaitGuardCompiled o = forall b. (Serializable b) => FutureLocalGuard (Fut b)
+                          | forall b. (Serializable b) => FutureFieldGuard Int (ABS o (Fut b))
+                          | AttrsGuard [Int] (ABS o Bool)
+                          | AwaitGuardCompiled o :&: AwaitGuardCompiled o
 
 
 
@@ -233,14 +235,16 @@ instance Binary AnyFut where
 -- It represents sleeping procesess that wait on some object-field to be modified. e.g. await this.x > this.y +1
 --
 -- The COG will strictly not re-schedule this processes until the object-field is modified.
-type ObjectMap = M.Map (Int, Int) [Job] 
+-- 
+-- A mapping of (object-id,field-id) to list of suspended jobs
+type ObjectMap = M.Map (Int, Int) [(Job, Maybe (AnyFut, Int))] 
 
 -- | A mapping of futures to list of disabled processes.
 --
 -- It represents sleeping procesess that wait on some futures to become resolved. e.g. await f?
 --
 -- The COG will strictly not re-schedule this processes until the future-key is resolved.
-type FutureMap = M.Map AnyFut [Job]
+type FutureMap = M.Map AnyFut [(Job, Maybe ((Int, Int), Int))]
 
 -- | (internal-only) An existential-wrapper of futures to remove their contained type
 --

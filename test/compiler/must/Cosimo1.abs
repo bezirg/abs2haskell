@@ -1,0 +1,29 @@
+module Cosimo1;
+
+interface I {
+   Unit m1();
+   Unit m2();
+   Unit m3();
+}
+
+class C implements I {
+  Fut<Unit> f;
+  Unit m1() {
+      await f?;
+  }
+  Unit m2() {
+      f = this ! m3();
+  }
+  Unit m3() {
+
+  }
+}
+
+
+{
+ I o = new C();
+ Fut<Unit> f1 = o ! m1();
+ o ! m2();
+ await f1?;
+ println(toString(True));
+}

@@ -15,7 +15,7 @@ module Lang.ABS.Compiler.Include
      Control.Monad.Trans.Class.lift, Control.Monad.IO.Class.liftIO,
 
      -- * For sending actor messages (making asynchronous calls)
-     Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.writeList2Chan, Control.Concurrent.newEmptyMVar,
+     Control.Concurrent.newChan, Control.Concurrent.writeChan, Control.Concurrent.newEmptyMVar,
      Data.Map.Strict.updateLookupWithKey,
      -- * mostly used as stub for uninitialized data
      Prelude.undefined,
@@ -114,3 +114,6 @@ thisCOG = do
 readThis :: (Root_ o) => Obj o -> ABS o o
 readThis (ObjectRef ioref _ _) = liftIO $ readIORef ioref
 readThis NullRef = error "Compile Error: this should not happen. Inform the developers"
+
+
+

@@ -547,17 +547,17 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                      -- (AConf (ObjectRef ioref oid _) (COG (thisChan, _) _)) <- lift $ RWS.ask
                                      HS.Generator HS.noLoc (HS.PParen (HS.PApp (identI "AConf") [HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "ioref"),HS.PVar (HS.Ident "oid"), HS.PWildCard]), HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "thisChan"), HS.PWildCard]]])) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask")))
                                      -- astate@(AState _ om) <- lift $ RWS.get
-                                    ,HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PApp (identI "AState") [HS.PWildCard,HS.PVar (HS.Ident "om"), HS.PWildCard]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
+                                    ,HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PApp (identI "AState") [HS.PWildCard,HS.PVar (HS.Ident "om"), HS.PVar (HS.Ident "fm")]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
                                      -- lift $ lift $ modifyIORef' ioref (\ c -> c {class1_p1 = v})      -- update the field value
                                     ,HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "modifyIORef'")) (HS.Var (HS.UnQual (HS.Ident "ioref")))) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "c")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "c"))) [HS.FieldUpdate (HS.UnQual (HS.Ident $ headToLower clsName ++ "_" ++ i )) (HS.Var (HS.UnQual (HS.Ident "v")))])))))
                                      -- let (maybeWoken, om') = M.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
                                      ,HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PTuple HS.Boxed [HS.PVar (HS.Ident "maybeWoken"),HS.PVar (HS.Ident "om'")]) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Var (identI "updateLookupWithKey")) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "k"),HS.PVar (HS.Ident "v")] (HS.Con (HS.UnQual (HS.Ident "Nothing")))))) (HS.Tuple HS.Boxed [HS.Var (HS.UnQual (HS.Ident "oid")),HS.Lit (HS.Int fieldNumber)])) (HS.Var (HS.UnQual (HS.Ident "om"))))) (HS.BDecls [])])
 
-                                     -- maybe (return ()) (\ woken -> lift $ lift $ writeList2Chan thisChan woken) maybeWoken
-                                     ,HS.Qualifier (HS.App (HS.App (HS.App (HS.Var (identI "maybe")) (HS.Paren (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Con (HS.Special HS.UnitCon))))) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "woken")] (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "writeList2Chan")) (HS.Var (HS.UnQual (HS.Ident "thisChan")))) (HS.Var (HS.UnQual (HS.Ident "woken")))))))) (HS.Var (HS.UnQual (HS.Ident "maybeWoken"))))
+                                     -- fm' <- maybe (return fm) (\ woken -> lift $ lift $ writeList2Chan thisChan woken) maybeWoken
+                                     ,HS.Generator HS.noLoc (HS.PVar (HS.Ident "fm'")) (HS.App (HS.App (HS.App (HS.Var (identI "maybe")) (HS.Paren (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "fm")))))) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "woken")] (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.App (HS.Var (identI "updateWoken")) (HS.Var (HS.UnQual (HS.Ident "thisChan")))) (HS.Var (HS.UnQual (HS.Ident "fm")))) (HS.Var (HS.UnQual (HS.Ident "woken")))))))) (HS.Var (HS.UnQual (HS.Ident "maybeWoken"))))
 
-                                     -- lift $ RWS.put $ astate {aSleepingO = om'}
-                                     ,HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.App (HS.Var (identI "put")) (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aSleepingO") (HS.Var (HS.UnQual (HS.Ident "om'")))])))
+                                     -- lift $ RWS.put $ astate {aSleepingO = om', aSleepingF = fm'}
+                                     ,HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.App (HS.Var (identI "put")) (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aSleepingO") (HS.Var (HS.UnQual (HS.Ident "om'"))), HS.FieldUpdate (identI "aSleepingF") (HS.Var (HS.UnQual $ HS.Ident "fm'"))])))
                                     ]
                                    )
                                    (HS.BDecls [])]])

@@ -161,7 +161,7 @@ transStm x = case x of
   SSuspend  -> failure x
   SSkip  -> failure x
   SAssert pureexp  -> failure x
-  SAwait guard  -> failure x
+  SAwait awaitguard  -> failure x
   SThrow pureexp  -> failure x
   STryCatchFinally annotstm catchbranchs maybefinally  -> failure x
   SPrint pureexp  -> failure x
@@ -178,12 +178,12 @@ transMaybeFinally x = case x of
   NoFinally  -> failure x
 
 
-transGuard :: Guard -> Result
-transGuard x = case x of
-  VarGuard lident  -> failure x
-  FieldGuard lident  -> failure x
+transAwaitGuard :: AwaitGuard -> Result
+transAwaitGuard x = case x of
+  FutGuard lident  -> failure x
+  FutFieldGuard lident  -> failure x
   ExpGuard pureexp  -> failure x
-  AndGuard guard1 guard2  -> failure x
+  AndGuard awaitguard1 awaitguard2  -> failure x
 
 
 transExp :: Exp -> Result

@@ -596,22 +596,28 @@ tSyncOrAsync syncOrAsync pexp method args = do
 
 
 -- | Translates the parameter (guard) of an await statement
-tAwaitGuard :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Guard -> String -> ExprLiftedM HS.Exp
+tAwaitGuard :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.AwaitGuard -> String -> ExprLiftedM HS.Exp
 -- NOTE: both VarGuard and FieldGuard contain futures, but "this.f?" is distinguished as FieldGuard to take into account Cosimo's consideration
 -- awaitguard: f?
-tAwaitGuard (ABS.VarGuard ident) _cls = do
+tAwaitGuard (ABS.FutGuard ident) _cls = do
   vcscope <- visible_cscope
   if ident `M.member` vcscope   -- if it is statically scoped to a field (pointing implicitly to a field) then rewrite it to a field
-   then tAwaitGuard (ABS.FieldGuard ident) _cls
+   then tAwaitGuard (ABS.FutFieldGuard ident) _cls
    else do
     texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
     return $ HS.Paren $ HS.InfixApp
-             (HS.Con $ identI "FutureGuard")
+             (HS.Con $ identI "FutureLocalGuard")
              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
              texp
                                              
 -- fieldguard: this.f?
-tAwaitGuard (ABS.FieldGuard (ABS.LIdent ident)) cls = error "Not implemented yet, take Cosimo's consideration into account"
+tAwaitGuard (ABS.FutFieldGuard ident) cls =do
+  (_,cscope,_,_,_) <- ask
+  texp <- tPureExpWrap (ABS.EVar ident) cls
+  return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
+             HS.App (HS.App (HS.Con $ identI "FutureFieldGuard")
+                            (HS.Lit $ HS.Int $ toInteger $ maybe (error "field not in scope") id $ M.lookupIndex ident cscope))
+             texp
 
 
 -- guards with expressions: fields and/or local variables
@@ -623,7 +629,7 @@ tAwaitGuard (ABS.ExpGuard pexp) cls = do
   let awaitFields = collectVars pexp vcscope
   texp <- tPureExpWrap pexp cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
-         HS.App (HS.App (HS.Con $ identI "ThisGuard") 
+         HS.App (HS.App (HS.Con $ identI "AttrsGuard") 
                    (HS.List (map (HS.Lit . HS.Int . toInteger) (findIndices ((\ (ABS.LIdent (_,field)) -> field `elem` awaitFields)) (M.keys cscope)))))
          texp
 

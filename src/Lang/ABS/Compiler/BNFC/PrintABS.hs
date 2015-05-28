@@ -271,7 +271,7 @@ instance Print Stm where
    SSuspend  -> prPrec i 0 (concatD [doc (showString "suspend") , doc (showString ";")])
    SSkip  -> prPrec i 0 (concatD [doc (showString "skip") , doc (showString ";")])
    SAssert pureexp -> prPrec i 0 (concatD [doc (showString "assert") , prt 0 pureexp , doc (showString ";")])
-   SAwait guard -> prPrec i 0 (concatD [doc (showString "await") , prt 0 guard , doc (showString ";")])
+   SAwait awaitguard -> prPrec i 0 (concatD [doc (showString "await") , prt 0 awaitguard , doc (showString ";")])
    SThrow pureexp -> prPrec i 0 (concatD [doc (showString "throw") , prt 0 pureexp , doc (showString ";")])
    STryCatchFinally annotstm catchbranchs maybefinally -> prPrec i 0 (concatD [doc (showString "try") , prt 0 annotstm , doc (showString "catch") , doc (showString "{") , prt 0 catchbranchs , doc (showString "}") , prt 0 maybefinally])
    SPrint pureexp -> prPrec i 0 (concatD [doc (showString "println") , prt 0 pureexp , doc (showString ";")])
@@ -291,12 +291,12 @@ instance Print MaybeFinally where
    NoFinally  -> prPrec i 0 (concatD [])
 
 
-instance Print Guard where
+instance Print AwaitGuard where
   prt i e = case e of
-   VarGuard lident -> prPrec i 0 (concatD [prt 0 lident , doc (showString "?")])
-   FieldGuard lident -> prPrec i 0 (concatD [doc (showString "this") , doc (showString ".") , prt 0 lident , doc (showString "?")])
+   FutGuard lident -> prPrec i 0 (concatD [prt 0 lident , doc (showString "?")])
+   FutFieldGuard lident -> prPrec i 0 (concatD [doc (showString "this") , doc (showString ".") , prt 0 lident , doc (showString "?")])
    ExpGuard pureexp -> prPrec i 0 (concatD [prt 0 pureexp])
-   AndGuard guard0 guard -> prPrec i 0 (concatD [prt 0 guard0 , doc (showString "&") , prt 0 guard])
+   AndGuard awaitguard0 awaitguard -> prPrec i 0 (concatD [prt 0 awaitguard0 , doc (showString "&") , prt 0 awaitguard])
 
 
 instance Print Exp where

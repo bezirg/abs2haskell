@@ -1,0 +1,27 @@
+module Cosimo4;
+
+interface I {
+    Int m1();
+    Int m2();
+}
+
+
+class C implements I {
+  Fut<Int> f;
+  Int m1() {
+      f = this ! m2();
+      await f?;
+      Int res = f.get;
+      return res;
+  }
+  Int m2() {
+      return 4;
+  }
+}
+
+{
+ I o = new C();
+ Fut<Int> f = o ! m1();
+ Int res = f.get;
+ println(toString(res == 4));
+}
