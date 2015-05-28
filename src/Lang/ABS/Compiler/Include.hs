@@ -33,7 +33,7 @@ module Lang.ABS.Compiler.Include
      newIORef, readIORef, writeIORef, modifyIORef', 
 
      -- * For creating local variable (by the ABS user). It is the same as the above IORef-operations, but lifted for operating in the ABS-monad.
-     newRef, readRef, writeRef, IORef,  -- export also the type for type-checking
+     newRef, readRef, writeRef, IORef,  -- this should remain in MonadIO monad for polymorphic (IO-fimported) code generation
 
      empty_fut,
      initRemoteTable,
@@ -83,17 +83,17 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
                 Nothing -> res
 
 
-newRef :: (Root_ o) => ABS o a -> ABS o (IORef a)
+newRef :: MonadIO m => m a -> m (IORef a)
 newRef v = do
   res <- v
   liftIO $ newIORef res
 
-writeRef :: (Root_ o) => IORef a -> ABS o a -> ABS o ()
+writeRef :: MonadIO m => IORef a -> m a -> m ()
 writeRef r v = do
   res <- v
   liftIO $ writeIORef r res
 
-readRef :: (Root_ o) => IORef a -> ABS o a
+readRef :: MonadIO m => IORef a -> m a
 readRef r = liftIO $ readIORef r
 
 -- for easier code generation
