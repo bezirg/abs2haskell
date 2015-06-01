@@ -1,0 +1,20 @@
+module BlockedAwait2;
+
+interface I {
+    Unit m();
+}
+
+class C implements I {
+    Int x = 0;
+    Unit m() {
+        await (x==2);           // will block on this.x
+        println(toString(True));
+    }
+}
+
+
+{
+    I o = new local C();
+    o.m();
+    println(toString(True));
+}

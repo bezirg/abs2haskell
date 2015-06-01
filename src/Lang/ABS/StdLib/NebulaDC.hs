@@ -60,12 +60,6 @@ instance I__.Root_ NebulaDC where
                   I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
                   let __f = I__.FutureRef __mvar __hereCOG __counter
                   I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__init __obj)))
-               do __mvar <- I__.liftIO I__.newEmptyMVar
-                  __hereCOG <- I__.thisCOG
-                  __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
-                  I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
-                  let __f = I__.FutureRef __mvar __hereCOG __counter
-                  I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__run __obj)))
                return __obj
         new_local __cont
           = 

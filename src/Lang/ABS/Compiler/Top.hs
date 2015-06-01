@@ -11,7 +11,7 @@ import qualified Language.Haskell.Exts.Syntax as HS
 import qualified Language.Haskell.Exts.SrcLoc as HS (noLoc)
 import qualified Data.Map as M
 import Data.List ((\\), mapAccumL, nub, find)
-import Data.Maybe (mapMaybe, isNothing, fromJust)
+import Data.Maybe
 import Control.Monad (liftM)
 import Control.Monad.Trans.Reader (runReader)
 
@@ -252,7 +252,7 @@ tDecl (ABS.DataParDecl (ABS.UIdent (_,tid)) tyvars constrs) = let
               ) constrs
                                                                                                                                                                                                                                                                                                                                   )
 
-    -- empty interface extends automatically from Object
+    -- empty interface extends automatically from Root superinterface
 tDecl (ABS.InterfDecl tid@(ABS.UIdent (p,_)) ms) = tDecl (ABS.ExtendsDecl tid [ABS.QTyp $ [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")]]  ms) 
 
 tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl 
@@ -325,8 +325,10 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
        ) ms)
     where
     tMethSig :: String -> ABS.AnnotMethSignat -> HS.ClassDecl
-    tMethSig ityp (ABS.AnnMethSig _ann (ABS.MethSig tReturn (ABS.LIdent (_,mname)) pars))  = HS.ClsDecl $
-       HS.TypeSig HS.noLoc [HS.Ident mname] $
+    tMethSig ityp (ABS.AnnMethSig _ann (ABS.MethSig tReturn (ABS.LIdent (mpos,mname)) pars))  = 
+        if mname == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null pars))
+        then errorPos mpos "run should have zero parameters and return type Unit"
+        else HS.ClsDecl $ HS.TypeSig HS.noLoc [HS.Ident mname] $
              HS.TyFun 
               (HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))
                ((foldr  -- function application is right-associative
@@ -386,7 +388,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
        -- HS.InstDecl HS.noLoc [] (identI "Show") [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
        --       [HS.InsDecl (HS.FunBind  [HS.Match HS.noLoc (HS.Ident "show") [HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Lit $ HS.String clsName) (HS.BDecls [])])]
        :
-       -- the Object instance
+       -- the Root instance
        HS.InstDecl HS.noLoc [{- empty context for now, may need to fix later -}] 
               (identI "Root_") -- interface name
               [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
@@ -437,14 +439,18 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                   ) (HS.BDecls [])]
                                         -- init_async __obj
                                         , HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))])
-
-                                        -- run_async __obj
-                                        , HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (HS.Var (identI "__run")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))])
-
+                                        ]
+                                        ++
+                                        -- run_async __obj iff there is a run method implemented by this class
+                                        (if isJust mRun
+                                         then (HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "run") (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))]) :)
+                                         else id)
                                         -- return $ __obj
-                                        , HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__obj")
+                                        [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
 
-                                        ])) (HS.BDecls [])])
+                                        )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
+                                                                          then tNonMethDecl "Root" run
+                                                                          else []) mRun))])
 
                :
                -- the new local method
@@ -495,14 +501,18 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
 
                                          -- __init_sync __obj
                                          , HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var (identI "withReaderT")) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "__aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__aconf"))) [HS.FieldUpdate (identI "aThis") (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))
-
-                                         -- __run_sync __obj
-                                         , HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var $ identI "withReaderT") (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "__aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__aconf"))) [HS.FieldUpdate (identI "aThis") (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (HS.App (HS.Var (identI "__run")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))
-                                        
+                                         ]
+                                         ++
+                                         -- __run_sync __obj iff there is a run method implemented by this class
+                                        (if isJust mRun
+                                         then (HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var $ identI "withReaderT") (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "__aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__aconf"))) [HS.FieldUpdate (identI "aThis") (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "run") (HS.Var (HS.UnQual (HS.Ident "__obj")))))) :)
+                                         else id)                           
                                          -- return $ __obj
-                                         , HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
-                                                            (HS.Var $ HS.UnQual $ HS.Ident "__obj")
-                                         ])) (HS.BDecls [])])
+                                         [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
+                                                            (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
+                                         )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
+                                                                          then tNonMethDecl "Root" run
+                                                                          else []) mRun))])
                                         
                :
                -- the __cog method
@@ -516,18 +526,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                   ABS.JustBlock _ b -> [tInitDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos,"__init")) [] b]
                   ABS.NoBlock -> []
                ) 
-               ++
-               if isNothing $ find (\case ABS.MethClassBody _ (ABS.LIdent (_, "run")) _ _ -> True
-                                          _ -> False) (concat (M.elems scanInterfs))
-               then             -- that means there is no interface-declared run method
-                   (case find (\case 
-                               (ABS.MethClassBody _ (ABS.LIdent (_,"run")) [] _) -> True
-                               _ -> False) mdecls of
-                      Just (ABS.MethClassBody (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Unit"))])) _ [] b) -> 
-                          -- then it's the special RUN method
-                          [tMethDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos, "__run")) [] b]
-                      _ -> [])
-               else []
               )
        :
 
@@ -578,35 +576,38 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
            )
                  (M.toList scanInterfs)
        where
+         mRun = find (\case 
+                      ABS.MethClassBody _ (ABS.LIdent (_, "run")) _ _ -> True
+                      _  -> False
+                     ) mdecls
+
          -- all methods declared (interface methods and non-methods)
          mdecls = case maybeBlock of
                     ABS.NoBlock ->  ldecls
                     ABS.JustBlock _ _ -> rdecls
 
-         nonMethods = (filter (\case
-                               ABS.MethClassBody _ (ABS.LIdent (_, mname)) _ _ -> mname /= "run"
-                               _ -> False) mdecls) \\ (concat (M.elems scanInterfs))
+         nonMethods = filter (\case ABS.MethClassBody _ _ _ _ -> True
+                                    _ -> False) $ mdecls \\ (concat (M.elems scanInterfs))
 
          -- treat it as a simple method 
-         tNonMethDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = 
-             -- the underline non-method implementation
-             HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams) -- does not take this as param
+         tNonMethDecl interfName (ABS.MethClassBody tReturn (ABS.LIdent (mpos,mident)) mparams (ABS.Bloc block)) = 
+             if mident == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null mparams))
+             then errorPos mpos "run should have zero parameters and return type Unit"
+             else  -- the underline non-method implementation
+                 HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) ((map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams) ++ [HS.PVar $ HS.Ident "this"])
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
                                              (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
                                                        M.insertWith (const $ const $ errorPos p $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName)  (HS.BDecls [])]
              -- the sync wrapper
-           : HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mident ++ "_sync") (HS.PParen (HS.PParen (HS.PApp (identI "Root") [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])) : map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams )
-
-                                    Nothing (HS.UnGuardedRhs (foldl (\ acc (ABS.Par _ (ABS.LIdent (_,pident))) -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident pident)) (HS.Var $ HS.UnQual $ HS.Ident mident) mparams))  (HS.BDecls [])]
+           : HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mident ++ "_sync") (HS.PApp (identI "Root") [(HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))] : map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams)
+                                    Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PRec (identI "AConf") [HS.PFieldPat (identI "aThis") (HS.PVar (HS.Ident "__obj"))]) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask"))),
+                                                                     (HS.Qualifier $ HS.App (foldl (\ acc (ABS.Par _ (ABS.LIdent (_,pident))) -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident pident)) (HS.Var $ HS.UnQual $ HS.Ident mident) mparams) (HS.Var $ HS.UnQual $ HS.Ident "__obj"))]))  (HS.BDecls [])]
              -- the async wrapper
-           : [HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mident ++ "_async") (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams 
-                                                                                ++ [HS.PParen (HS.PParen (HS.PApp (identI "Root") [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))]))])
-                                    Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PRec (identI "AConf") [HS.PFieldPat (identI "aCOG") (HS.PAsPat (HS.Ident "__cog") (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "__chan"),HS.PWildCard]])),HS.PFieldPat (identI "aThis") (HS.PVar (HS.Ident "__obj"))]) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask"))),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar"))  (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__cog")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (foldl (\ acc (ABS.Par _ (ABS.LIdent (_, pident))) -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident pident)) (HS.Var $ HS.UnQual $ HS.Ident mident) mparams))))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])]]
+           : [HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mident ++ "_async") (HS.PApp (identI "Root") [(HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))] : map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams)
+                                    Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PRec (identI "AConf") [HS.PFieldPat (identI "aCOG") (HS.PAsPat (HS.Ident "__cog") (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "__chan"),HS.PWildCard]])),HS.PFieldPat (identI "aThis") (HS.PVar (HS.Ident "__obj"))]) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask"))),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar"))  (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__cog")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (foldl (\ acc (ABS.Par _ (ABS.LIdent (_, pident))) -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident pident)) (HS.Var $ HS.UnQual $ HS.Ident mident) mparams) (HS.Var $ HS.UnQual $ HS.Ident "__obj")))))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])]]
 
-         tNonMethDecl _ _ = error "non method declaration error"
-
-
+         tNonMethDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
 
          allFields :: ScopeTable -- order matters, because the fields are indexed
          allFields = M.fromList $ map (\ (ABS.Par t i) -> (i,t)) params ++ mapMaybe (\case

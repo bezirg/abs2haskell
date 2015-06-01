@@ -1,0 +1,24 @@
+module CallingHiddenMethod;
+
+interface I {
+    Unit m();
+}
+
+class C implements I {
+    Unit m() {
+        this ! m_();
+    }
+    Unit m_() {
+     
+    }
+}
+
+{
+ I o = new C();
+ o ! m();                       // this is ok
+ o ! m_();                         // this is wrong
+ println(toString(True));
+}
+
+
+  

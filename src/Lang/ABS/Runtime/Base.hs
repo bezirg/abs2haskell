@@ -102,8 +102,6 @@ class Root_ a where
     new_local :: a -> (Root_ o) => ABS o (Obj a)
     __init :: Obj a -> ABS a () 
     __init _ = return (())     -- default implementation of init
-    __run :: Obj a -> ABS a () 
-    __run _ = return (())        -- default implementation of run
     __cog :: (Root_ o) => a -> ABS o COG -- helper function for the generated code, to easily read from any object its COG location
 
 -- | The root-type of all objects

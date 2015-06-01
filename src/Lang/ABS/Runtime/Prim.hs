@@ -4,7 +4,6 @@ module Lang.ABS.Runtime.Prim
      -- * Basic ABS primitives
      skip, suspend, await, while, get, ifthenM, ifthenelseM, null
      -- * The run built-in method
-    ,run_sync, run_async
      -- * The failure model
     ,throw, catches, finally, Exception, assert
     )
@@ -122,28 +121,28 @@ assert act = act Prelude.>>= \ pred -> when (Prelude.not pred)
              (throw $ return $ Control.Exception.AssertionFailed "Assertion Failed")
 
 
--- | Sync call to run
-run_sync (Root __obj@(ObjectRef __ioref _ _))
-  = do __hereCOG <- liftM aCOG $ lift RWS.ask
-       __obj1 <- liftIO (readIORef __ioref)
-       otherCOG <- __cog __obj1
-       when (not (__hereCOG == otherCOG))
-         (error "Sync Call on a different COG detected")
-       mapMonad (RWS.withRWST (\ r s -> ((\ aconf -> aconf{aThis = __obj}) r, s))) (__run __obj)
-run_sync (Root NullRef) = error "sync call to null"
+-- -- | Sync call to run
+-- run_sync (Root __obj@(ObjectRef __ioref _ _))
+--   = do __hereCOG <- liftM aCOG $ lift RWS.ask
+--        __obj1 <- liftIO (readIORef __ioref)
+--        otherCOG <- __cog __obj1
+--        when (not (__hereCOG == otherCOG))
+--          (error "Sync Call on a different COG detected")
+--        mapMonad (RWS.withRWST (\ r s -> ((\ aconf -> aconf{aThis = __obj}) r, s))) (__run __obj)
+-- run_sync (Root NullRef) = error "sync call to null"
 
--- | Async call to run
-run_async (Root __obj@(ObjectRef __ioref _ _))
-  = do __obj1 <- liftIO (readIORef __ioref)
-       COG (__chan, _) <- __cog __obj1
-       __mvar <- liftIO newEmptyMVar
-       AConf{aCOG = __cog} <- lift RWS.ask
-       astate@(AState{aCounter = __counter}) <- lift RWS.get
-       lift (RWS.put (astate{aCounter = __counter + 1}))
-       let __f = FutureRef __mvar __cog __counter
-       liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
-       return __f
-run_async (Root NullRef) = error "async call to null"
+-- -- | Async call to run
+-- run_async (Root __obj@(ObjectRef __ioref _ _))
+--   = do __obj1 <- liftIO (readIORef __ioref)
+--        COG (__chan, _) <- __cog __obj1
+--        __mvar <- liftIO newEmptyMVar
+--        AConf{aCOG = __cog} <- lift RWS.ask
+--        astate@(AState{aCounter = __counter}) <- lift RWS.get
+--        lift (RWS.put (astate{aCounter = __counter + 1}))
+--        let __f = FutureRef __mvar __cog __counter
+--        liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
+--        return __f
+-- run_async (Root NullRef) = error "async call to null"
 
 
 -- | The reference to a null object

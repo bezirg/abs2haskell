@@ -110,13 +110,14 @@ getLoad_async ((IDC __obj@(ObjectRef __ioref _ pid)))
        lnid <- I__.lift (I__.lift getSelfNode)
        let rnid = processNodeId pid
        __hereCOG@(COG (__chan, _)) <- thisCOG -- __cog __obj1 -- REMOVED: it does not matter where it is executed
-       __mvar <- I__.liftIO I__.newEmptyMVar
        astate@(AState{aCounter = __counter}) <- I__.lift I__.get
        I__.lift (I__.put (astate{aCounter = __counter + 1}))
        if rnid == lnid
          then do
+           -- fakely-async call. we turn it to sync, because thisDC object does not live in a COG 
+           res <- I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj})) (getLoad __obj)
+           __mvar <- I__.liftIO (newMVar res)
            let __f = FutureRef __mvar __hereCOG __counter
-           I__.liftIO (I__.writeChan __chan (RunJob __obj __f (getLoad __obj)))
            return __f
          else do
            self <- lift $ lift $ getSelfPid -- this is probably wrong, it has to record the forwarder_pid, not the cog_pid
