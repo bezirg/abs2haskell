@@ -28,6 +28,7 @@ import qualified Control.Distributed.Process as CH
 import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters, socketToEndPoint)
 import Network.Transport (newEndPoint, address)
+import Network.Socket (withSocketsDo)
 import Network.Info -- querying NIC IPs
 import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
@@ -144,7 +145,7 @@ spawnCOG c = do
 main_is :: ABS Null () -- ^ a main-block monadic action (a fully-applied method with a null this-context that returns "Unit")
         -> CH.RemoteTable        -- ^ this is a _remotely-shared_ table of pointers to __remotable__ methods (methods that can be called remotely)
         -> IO ()                  -- ^ returns void. It is the main procedure of a compiled ABS application.
-main_is mainABS outsideRemoteTable = do
+main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
   if (distributed conf)
     then do
