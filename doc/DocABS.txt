@@ -40,7 +40,8 @@ The reserved words used in ABS are the following:
   | ``fimport`` | ``finally`` | ``from`` | ``get``
   | ``if`` | ``implements`` | ``import`` | ``in``
   | ``interface`` | ``let`` | ``local`` | ``module``
-  | ``new`` | ``null`` | ``println`` | ``return``
+  | ``new`` | ``null`` | ``println`` | ``pro_get``
+  | ``pro_give`` | ``pro_isempty`` | ``pro_new`` | ``return``
   | ``skip`` | ``spawns`` | ``suspend`` | ``then``
   | ``this`` | ``thisDC`` | ``throw`` | ``try``
   | ``type`` | ``while`` |  | 
@@ -49,11 +50,11 @@ The symbols used in ABS are the following:
   | , | ; | * | _
   | < | > | . | =
   | ( | ) | | | {
-  | } | => | ? | &
-  | || | && | == | !=
-  | <= | >= | + | -
-  | / | % | ~ | [
-  | ] | ! | : | 
+  | } | => | ? | $
+  | & | || | && | ==
+  | != | <= | >= | +
+  | - | / | % | ~
+  | [ | ] | ! | :
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -154,6 +155,7 @@ All other symbols are terminals.
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
   |  |  **|**  | ``await`` //AwaitGuard// ``;`` 
   |  |  **|**  | ``throw`` //PureExp// ``;`` 
+  |  |  **|**  | //PureExp// ``.`` ``pro_give`` ``(`` //PureExp// ``)`` ``;`` 
   |  |  **|**  | ``try`` //AnnotStm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
   |  |  **|**  | ``println`` //PureExp// ``;`` 
   | //CatchBranch// | -> | //Pattern// ``=>`` //AnnotStm// 
@@ -162,7 +164,9 @@ All other symbols are terminals.
   | //MaybeFinally// | -> | ``finally`` //AnnotStm// 
   |  |  **|**  | **eps**
   | //AwaitGuard// | -> | //LIdent// ``?`` 
+  |  |  **|**  | //LIdent// ``$`` 
   |  |  **|**  | ``this`` ``.`` //LIdent// ``?`` 
+  |  |  **|**  | ``this`` ``.`` //LIdent// ``$`` 
   |  |  **|**  | //PureExp// 
   |  |  **|**  | //AwaitGuard// ``&`` //AwaitGuard// 
   | //Exp// | -> | //PureExp// 
@@ -229,6 +233,9 @@ All other symbols are terminals.
   |  |  **|**  | //PureExp// ``!`` //LIdent// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | ``this`` ``!`` //LIdent// ``(`` //[PureExp]// ``)`` 
   |  |  **|**  | //PureExp// ``.`` ``get`` 
+  |  |  **|**  | //PureExp// ``.`` ``pro_get`` 
+  |  |  **|**  | ``pro_new`` 
+  |  |  **|**  | //PureExp// ``.`` ``pro_isempty`` 
   |  |  **|**  | //PureExp// ``spawns`` //Type// ``(`` //[PureExp]// ``)`` 
   | //Annot// | -> | ``[`` //Annot_// ``]`` 
   | //[Annot]// | -> | **eps**

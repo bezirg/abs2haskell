@@ -35,7 +35,7 @@ module Lang.ABS.Compiler.Include
      -- * For creating local variable (by the ABS user). It is the same as the above IORef-operations, but lifted for operating in the ABS-monad.
      newRef, readRef, writeRef, IORef,  -- this should remain in MonadIO monad for polymorphic (IO-fimported) code generation
 
-     empty_fut,
+     empty_fut, empty_pro,
      initRemoteTable,
      -- * for shortening code
      Prelude.maybe,
@@ -99,6 +99,10 @@ readRef r = liftIO $ readIORef r
 -- for easier code generation
 empty_fut :: (Root_ o) => ABS o (Fut a)
 empty_fut = FutureRef <$> liftIO newEmptyMVar <*> thisCOG <*> pure (-10 :: Int)
+
+-- for easier code generation
+empty_pro :: (Root_ o) => ABS o (Promise a)
+empty_pro = PromiseRef <$> liftIO newEmptyMVar <*> liftIO newEmptyMVar <*> thisCOG <*> pure (-11 :: Int)
 
 
 -- | A way to read the current executing COG inside an ABS process 

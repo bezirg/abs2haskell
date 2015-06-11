@@ -632,6 +632,10 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                            ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))])  _ -> 
                                                                HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_fut")
                                                                                        : acc
+                                                           -- it is an unitialized promise (abs allows this)
+                                                           ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Promise"))])  _ -> 
+                                                               HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_pro")
+                                                                                       : acc
                                                            -- maybe it is a foreign polymorphic datatype, 
                                                            -- so it can be left uninitialized, because its creation may be monadic
                                                            ABS.TGen (ABS.QTyp qsegs) _ -> case find (\case

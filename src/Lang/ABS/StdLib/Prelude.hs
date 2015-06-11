@@ -5,7 +5,7 @@ module Lang.ABS.StdLib.Prelude
      -- * ABS builtin types
 
      -- | All of them synonyms to standard Haskell datastructures.
-     Int, Rat, Prelude.Bool (..) , Unit, List, Lang.ABS.Runtime.Base.Fut, Prelude.String, Array,
+     Int, Rat, Prelude.Bool (..) , Unit, List, Lang.ABS.Runtime.Base.Fut, Lang.ABS.Runtime.Base.Promise, Prelude.String, Array,
      -- * Operations on numbers
      (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%), Prelude.abs, pow, Prelude.truncate,
      -- * Boolean Operations 

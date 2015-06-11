@@ -144,9 +144,11 @@ tStmt (ABS.SDec typ ident@(ABS.LIdent (p,var))) = -- just rewrites it to Interfa
        ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))]) _ -> do
                     addToScope ident typ
                     return [HS.Generator HS.noLoc
-                                  (case typ of
-                                     ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
-                                     ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
+                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
+       ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Promise"))]) _ -> do
+                    addToScope ident typ
+                    return [HS.Generator HS.noLoc
+                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_pro"))]
        _ -> warnPos p (var ++ " is ADT and has to be initialized") (do
                                                                     addToScope ident typ
                                                                     return [HS.Generator HS.noLoc
@@ -204,6 +206,13 @@ tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
                           (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
                           (HS.Paren texp))] -- paren are necessary here
 
+tStmt (ABS.SGive pro val) = do
+  tpro <- tPureExpStmt pro
+  tval <- tPureExpStmt val
+  return [HS.Qualifier $ HS.App (HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "pro_give")
+                                       (HS.Paren tpro))
+                          tval] -- paren are necessary here
+  
 
 tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
   tfin <- case mfinally of

@@ -163,6 +163,7 @@ transStm x = case x of
   SAssert pureexp  -> failure x
   SAwait awaitguard  -> failure x
   SThrow pureexp  -> failure x
+  SGive pureexp1 pureexp2  -> failure x
   STryCatchFinally annotstm catchbranchs maybefinally  -> failure x
   SPrint pureexp  -> failure x
 
@@ -181,7 +182,9 @@ transMaybeFinally x = case x of
 transAwaitGuard :: AwaitGuard -> Result
 transAwaitGuard x = case x of
   FutGuard lident  -> failure x
+  ProGuard lident  -> failure x
   FutFieldGuard lident  -> failure x
+  ProFieldGuard lident  -> failure x
   ExpGuard pureexp  -> failure x
   AndGuard awaitguard1 awaitguard2  -> failure x
 
@@ -256,6 +259,9 @@ transEffExp x = case x of
   AsyncMethCall pureexp lident pureexps  -> failure x
   ThisAsyncMethCall lident pureexps  -> failure x
   Get pureexp  -> failure x
+  ProGet pureexp  -> failure x
+  ProNew  -> failure x
+  ProEmpty pureexp  -> failure x
   Spawns pureexp type' pureexps  -> failure x
 
 

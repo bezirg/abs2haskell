@@ -273,6 +273,7 @@ instance Print Stm where
    SAssert pureexp -> prPrec i 0 (concatD [doc (showString "assert") , prt 0 pureexp , doc (showString ";")])
    SAwait awaitguard -> prPrec i 0 (concatD [doc (showString "await") , prt 0 awaitguard , doc (showString ";")])
    SThrow pureexp -> prPrec i 0 (concatD [doc (showString "throw") , prt 0 pureexp , doc (showString ";")])
+   SGive pureexp0 pureexp -> prPrec i 0 (concatD [prt 0 pureexp0 , doc (showString ".") , doc (showString "pro_give") , doc (showString "(") , prt 0 pureexp , doc (showString ")") , doc (showString ";")])
    STryCatchFinally annotstm catchbranchs maybefinally -> prPrec i 0 (concatD [doc (showString "try") , prt 0 annotstm , doc (showString "catch") , doc (showString "{") , prt 0 catchbranchs , doc (showString "}") , prt 0 maybefinally])
    SPrint pureexp -> prPrec i 0 (concatD [doc (showString "println") , prt 0 pureexp , doc (showString ";")])
 
@@ -294,7 +295,9 @@ instance Print MaybeFinally where
 instance Print AwaitGuard where
   prt i e = case e of
    FutGuard lident -> prPrec i 0 (concatD [prt 0 lident , doc (showString "?")])
+   ProGuard lident -> prPrec i 0 (concatD [prt 0 lident , doc (showString "$")])
    FutFieldGuard lident -> prPrec i 0 (concatD [doc (showString "this") , doc (showString ".") , prt 0 lident , doc (showString "?")])
+   ProFieldGuard lident -> prPrec i 0 (concatD [doc (showString "this") , doc (showString ".") , prt 0 lident , doc (showString "$")])
    ExpGuard pureexp -> prPrec i 0 (concatD [prt 0 pureexp])
    AndGuard awaitguard0 awaitguard -> prPrec i 0 (concatD [prt 0 awaitguard0 , doc (showString "&") , prt 0 awaitguard])
 
@@ -380,6 +383,9 @@ instance Print EffExp where
    AsyncMethCall pureexp lident pureexps -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString "!") , prt 0 lident , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
    ThisAsyncMethCall lident pureexps -> prPrec i 0 (concatD [doc (showString "this") , doc (showString "!") , prt 0 lident , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
    Get pureexp -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString ".") , doc (showString "get")])
+   ProGet pureexp -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString ".") , doc (showString "pro_get")])
+   ProNew  -> prPrec i 0 (concatD [doc (showString "pro_new")])
+   ProEmpty pureexp -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString ".") , doc (showString "pro_isempty")])
    Spawns pureexp type' pureexps -> prPrec i 0 (concatD [prt 0 pureexp , doc (showString "spawns") , prt 0 type' , doc (showString "(") , prt 0 pureexps , doc (showString ")")])
 
 

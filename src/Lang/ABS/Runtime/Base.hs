@@ -7,6 +7,7 @@ import Data.IORef (IORef)
 import Control.Concurrent.MVar (MVar)
 import Control.Concurrent.Chan (Chan)
 import qualified Data.Map.Strict as M (Map)
+import qualified Data.Set as S (Set)
 import qualified Control.Monad.Trans.RWS as RWS (RWST)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield)
@@ -58,6 +59,12 @@ data Obj a = ObjectRef (IORef a) Int CH.ProcessId -- ^ an actual object referenc
 data Fut a = FutureRef (MVar a) COG Int -- ^ a reference to a future (created by await)
            | MainFutureRef              -- ^ a dummy (internal-only) future-reference where main-method returns to (when finished)
            deriving Typeable
+
+-- container, waiting-cogs, creator-cog, counter-id when created
+data Promise a = PromiseRef (MVar a) (MVar (Maybe (S.Set COG))) COG Int 
+
+instance Eq (Promise a) where
+    PromiseRef _ _ c1 i1 == PromiseRef _ _ c2 i2 = c1 == c2 && i1 == i2
 
 -- | Equality testing between futures
 instance Eq (Fut a) where
@@ -177,6 +184,8 @@ data AwaitOn = S -- suspend is called
 -- a recursive-datatype that can await on multiple items
 data AwaitGuardCompiled o = forall b. (Serializable b) => FutureLocalGuard (Fut b)
                           | forall b. (Serializable b) => FutureFieldGuard Int (ABS o (Fut b))
+                          | forall b. (Serializable b) => PromiseLocalGuard (Promise b)
+                          | forall b. (Serializable b) => PromiseFieldGuard Int (ABS o (Promise b))
                           | AttrsGuard [Int] (ABS o Bool)
                           | AwaitGuardCompiled o :&: AwaitGuardCompiled o
 
@@ -198,6 +207,10 @@ instance Binary COG where
     get = do
       pid <- get
       return (COG (undefined, pid))
+
+-- Used for creating (Set COG) for organizing promises listeners.
+instance Ord COG where
+    COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
 data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS o a)
@@ -270,6 +283,11 @@ instance Ord AnyFut where
 data BlockedAwaitException = BlockedAwaitException
     deriving (Eq, Show, Typeable)
 instance Control.Monad.Catch.Exception BlockedAwaitException
+
+-- | Trying to write to an already-resolved promise
+data PromiseRewriteException = PromiseRewriteException
+    deriving (Eq, Show, Typeable)
+instance Control.Monad.Catch.Exception PromiseRewriteException
 
 -- Instances to lift exceptions for the "Process" monad
 

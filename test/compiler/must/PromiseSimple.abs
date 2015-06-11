@@ -1,0 +1,28 @@
+module PromiseSimple;
+
+{
+
+ Promise<Int> p;
+
+ p = pro_new;
+
+ Bool before = p.pro_isempty;
+
+ println(toString(before));
+
+ p.pro_give(3);
+
+ Bool after = p.pro_isempty;
+
+ println(toString(not(after)));
+
+ Promise<Int> p' = p;
+
+ println(toString(p'==p));
+
+ await p$;
+
+ Int x = p.pro_get;
+
+ println(toString(x==3));
+}

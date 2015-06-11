@@ -67,6 +67,9 @@ tEffExpWrap eexp cls = do
       vcscope <- visible_cscope
       let argsExps = case eexp of
                          ABS.Get pexp -> [pexp]
+                         ABS.ProGet pexp -> [pexp]
+                         ABS.ProEmpty pexp -> [pexp]
+                         ABS.ProNew -> []
                          ABS.New _ pexps  -> pexps
                          ABS.NewLocal _ pexps -> pexps
                          ABS.SyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
@@ -560,6 +563,18 @@ tEffExp' (ABS.Get pexp) = do
   texp <- tPureExp' pexp []
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "get") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
+tEffExp' (ABS.ProGet pexp) = do
+  texp <- tPureExp' pexp []
+  return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "pro_get") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
+
+tEffExp' (ABS.ProEmpty pexp) = do
+  texp <- tPureExp' pexp []
+  return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "pro_isempty") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
+
+tEffExp' ABS.ProNew = return $ HS.Paren $ HS.Var $ HS.UnQual $ HS.Ident "pro_new"
+
+
+
 -- | shorthand generator, because new and new local are similar
 tNewOrNewLocal :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tNewOrNewLocal newOrNewLocal qtids args = do 
@@ -609,7 +624,26 @@ tAwaitGuard (ABS.FutGuard ident) _cls = do
              (HS.Con $ identI "FutureLocalGuard")
              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
              texp
-                                             
+
+tAwaitGuard (ABS.ProGuard ident) _cls = do
+  vcscope <- visible_cscope
+  if ident `M.member` vcscope   -- if it is statically scoped to a field (pointing implicitly to a field) then rewrite it to a field
+   then tAwaitGuard (ABS.ProFieldGuard ident) _cls
+   else do
+    texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
+    return $ HS.Paren $ HS.InfixApp
+             (HS.Con $ identI "PromiseLocalGuard")
+             (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+             texp
+
+tAwaitGuard (ABS.ProFieldGuard ident) cls =do
+  (_,cscope,_,_,_) <- ask
+  texp <- tPureExpWrap (ABS.EVar ident) cls
+  return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
+             HS.App (HS.App (HS.Con $ identI "PromiseFieldGuard")
+                            (HS.Lit $ HS.Int $ toInteger $ maybe (error "field not in scope") id $ M.lookupIndex ident cscope))
+             texp
+
 -- fieldguard: this.f?
 tAwaitGuard (ABS.FutFieldGuard ident) cls =do
   (_,cscope,_,_,_) <- ask

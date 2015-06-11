@@ -1,0 +1,12 @@
+module PromiseMultiWrite;
+
+{
+ Promise<Int> p;
+ p = pro_new;
+ p.pro_give(3);
+ p.pro_give(3);
+ println("mplo");
+ await p$;
+ Int x = p.pro_get;
+ println(toString(x==3));
+}
