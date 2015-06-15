@@ -49,7 +49,10 @@ await g@(AttrsGuard is tg) = do
   check <- tg
   if not check
     then if Data.List.null is             -- no field-checks, so this will block indefinitely
-         then throw (return BlockedAwaitException)
+         then do -- like suspend
+           -- throw (return BlockedAwaitException) -- disabled the optimization for now and changed it to busy-waiting
+           yield S
+           await g 
          else do
            AConf obj _ <- lift $ RWS.ask
            yield (A obj is)
