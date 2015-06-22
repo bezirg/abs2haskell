@@ -28,9 +28,8 @@ install:
 script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - make grammar
- - cd test && ./test_grammar.sh
  - cabal configure -v2
- - cabal build
+ - cabal build && cd test && ./test_grammar.sh
 
 notifications:
   email:
