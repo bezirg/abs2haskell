@@ -7,3 +7,4 @@
 [submodule "abs-frontend"]
 	path = abs-frontend
 	url = https://github.com/CrispOSS/abs-frontend.git
+    branch = pro  # for syntax extensions required by PA
