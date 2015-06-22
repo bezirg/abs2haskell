@@ -1,22 +1,24 @@
 name:                  abs2haskell
-version:               0.9.4
+version:               0.9.5
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
 maintainer:            NikolaosBezirgiannis <bezirgia@cwi.nl>
 stability:             provisional
+license:               BSD3
+license-file:          LICENSE
+category:              Concurrency, Distributed Computing
 build-type:            Simple
-cabal-version:         >= 1.10
+cabal-version:         >= 1.8
                       
-Source-repository this
+Source-repository head
   type:     git
   location: git://github.com/bezirg/abs2haskell.git
   branch: cloud
 
 -- this library include the ABS stdlib & runtime, exported and installed as a Haskell package
 library
-  default-language:   Haskell2010
-  build-depends:      base,
+  build-depends:      base >= 4.4 && < 5,
                       -- temporal support for arrays in ABS (PA case study)
                       random,
                       array,
