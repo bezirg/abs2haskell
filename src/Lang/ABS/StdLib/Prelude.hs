@@ -16,7 +16,7 @@ module Lang.ABS.StdLib.Prelude
      Prelude.Maybe (..), fromJust, isJust,
      Prelude.Either (..), left, right, isLeft, isRight,
      -- * Functions for "List" datastructures
-     list, length, isEmpty, nth, concatenate, appendright, without, Prelude.repeat, Prelude.reverse, copy,
+     list, Prelude.tail, Prelude.head, length, isEmpty, nth, concatenate, appendright, without, Prelude.repeat, Prelude.reverse, copy,
      -- * Functions for "Array" datastructures
      listArray, replace, elemAt,
      -- * The ABS Map datatype and its functions

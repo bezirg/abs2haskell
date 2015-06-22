@@ -11,8 +11,8 @@ import qualified Language.Haskell.Exts.Pretty as HS (prettyPrint)
 import qualified Lang.ABS.Compiler.BNFC.ParABS as BNFC (myLexer, pProgram)
 import qualified Lang.ABS.Compiler.BNFC.ErrM as BNFC
 
-import System.FilePath ((</>), replaceExtension, replaceFileName)
-import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
+import System.FilePath ((</>), replaceExtension, splitFileName, takeBaseName)
+import System.Directory
 import Data.List (isSuffixOf)
 import qualified Data.Map as M
 import System.Console.CmdArgs (cmdArgs)
@@ -26,13 +26,17 @@ main = do
    then error "No ABS files to translate are given as input. Try --help"
    else do
      let ?conf = conf
-     isDir <- doesDirectoryExist (outputDir conf)
-     when (not isDir) $ error "Output directory does not exist. Please create it first."
      asts <- liftM concat $ mapM absParseFileOrDir (srcFiles conf)
      let ?moduleTable = concatMap firstPass asts :: ModuleTable -- executes 1st-pass of all modules to collect info
      mapM_ (\ (fp, ast) -> mapM_ (ppHaskellFile fp) (tProg ast)) asts     -- calls the program-translator on each AST and prettyprints its Haskell output
-     -- TODO: do not translate modules that are not dependent in the main module
-
+     -- maybe create the bash script
+     when (createScript ?conf || smp ?conf) $ do
+       let scriptPath = (maybe "." id $ outputDir ?conf) </> "compile_main_module"
+       let default_main = takeBaseName $ last (srcFiles conf)
+       writeFile scriptPath $ "#!/usr/bin/env bash\nif [[ $# -eq 0 ]]; then main=" ++ default_main ++ "; else main=$1; fi\n ghc -w --make -O " ++ (if smp ?conf then "-threaded" else "") ++ " ${main}.hs ${@:2} -main-is $main -o run && echo 'Compiled. Run the program with ./run';"
+       -- make it executable (chmod +x)
+       p <- getPermissions scriptPath
+       setPermissions scriptPath (p {executable = True})
 
 -- | 1st-pass of an ABS file: Given an ABS source file, it collects info about the module
 -- the interfaces hierarchy, the methods, and exceptions declared in the module
@@ -101,16 +105,22 @@ absParseFileOrDir fileOrDir = do
       case parseABS of
         BNFC.Ok res -> do
           -- if --ast option is enabled, print ABSFile.ast, containing the AST haskell datatype
-          when (dumpAST ?conf) $ writeFile (replaceExtension absFilePath ".ast") (show  res)
+          when (dumpAST ?conf) $ do
+                                let (absDirName, absFileName) = splitFileName absFilePath
+                                let astFileName = replaceExtension absFileName ".ast"
+                                let astDirName = maybe absDirName id $ outputDir ?conf
+                                createDirectoryIfMissing True astDirName -- with True, it's like mkdir -p
+                                writeFile (astDirName </> astFileName) (show  res)
           return (absFilePath, res)
         BNFC.Bad _errorString -> error "Error in parsing" -- TODO: move to exceptions
 
 -- | pretty-print a Haskell-AST to a file ".hs"
 ppHaskellFile :: (?conf::Conf) => FilePath -> HS.Module -> IO ()
 ppHaskellFile fp m@(HS.Module _ (HS.ModuleName s) _ _ _ _ _) = do
-  let haskellFilePath = if s == "Main"
-                        then replaceExtension fp "hs" -- it's the main module, use the name of the parent filepath
-                        else replaceFileName fp (map (\ c -> if c == '.' then '/' else c) s  ++ ".hs")
-  writeFile (outputDir ?conf </> haskellFilePath) (HS.prettyPrint m)
+  let (absDirName, _absFileName) = splitFileName fp
+  let haskellFileName = map (\ c -> if c == '.' then '/' else c) s  ++ ".hs"
+  let haskellDirName = maybe absDirName id $ outputDir ?conf
+  createDirectoryIfMissing True haskellDirName -- with True, it's like mkdir -p
+  writeFile (haskellDirName </> haskellFileName) (HS.prettyPrint m)
 
 

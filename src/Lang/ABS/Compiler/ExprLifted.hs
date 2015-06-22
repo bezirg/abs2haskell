@@ -670,7 +670,7 @@ tAwaitGuard (ABS.ExpGuard pexp) cls = do
 tAwaitGuard (ABS.AndGuard gl gr) cls = do
   tleft <- tAwaitGuard gl cls 
   tright <- tAwaitGuard gr cls
-  return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol ":&:")
+  return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ symbolI ":&:")
                                          (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
                                          tleft)
                                        (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
