@@ -11,7 +11,9 @@ install:
   - cabal sandbox init
   - cabal sandbox add-source haxr-browser
   - cabal sandbox add-source opennebula
-  - cabal install --only-dependencies --enable-tests # install also deps for testing
+  - cabal install --only-dependencies
+script:
+  - make grammar && cabal configure && cabal build && cd test && ./test_grammar.sh
 notifications:
   email:
     on_success: always
