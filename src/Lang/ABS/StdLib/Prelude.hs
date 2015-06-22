@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, NoImplicitPrelude #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, NoImplicitPrelude, CPP #-}
 
 module Lang.ABS.StdLib.Prelude 
     (
@@ -49,11 +49,21 @@ import Control.Applicative
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Maybe (fromJust, isJust)
-import Data.Either (isLeft, isRight)
 import qualified Data.Array.Unboxed as UArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
 import Control.Monad.IO.Class (liftIO)
+#if __GLASGOW_HASKELL__ >= 780
+import Data.Either (isLeft, isRight)
+#else
+isLeft :: Prelude.Either a b -> Bool
+isLeft (Prelude.Left  _) = Prelude.True
+isLeft (Prelude.Right _) = Prelude.False
+
+isRight :: Prelude.Either a b -> Bool
+isRight (Prelude.Left  _) = Prelude.False
+isRight (Prelude.Right _) = Prelude.True
+#endif
 
 -- | ABS Number are either 'Int'egers or 'Rat'ionals
 class (Prelude.Num a) => Number a where
