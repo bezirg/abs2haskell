@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               0.9.6
+version:               0.9.7
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -23,8 +23,8 @@ library
                       random,
                       array,
                       transformers<0.4,
-                      -- containers-0.5.2.0 add Set.elemAt, containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
-                      containers>=0.5.2.1,
+                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+                      containers>=0.5.0.0,
                       monad-coroutine>=0.8,
                       -- for lifting exceptions to ABS monad
                       exceptions>=0.6.1,
@@ -110,8 +110,8 @@ executable a2h
                       -- array needed by generated parser
                       array,
                       transformers<0.4,
-                      -- containers-0.5.2.0 add Set.elemAt, containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
-                      containers>=0.5.2.1,
+                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+                      containers>=0.5.0.0,
                       cmdargs,
                       filepath,
                       directory,

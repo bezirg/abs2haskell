@@ -17,7 +17,7 @@ module Lang.ABS.StdLib.Prelude
      Prelude.Either (..), left, right, isLeft, isRight,
      -- * Functions for "List" datastructures
      list, Prelude.tail, Prelude.head, length, isEmpty, nth, concatenate, appendright, without, Prelude.repeat, Prelude.reverse, copy,
-     -- * Functions for "Array" datastructures
+     -- * Functions for boxed "Array" datastructures
      listArray, replace, elemAt,
      -- * The ABS Map datatype and its functions
      M.Map, map, M.empty, put, insert, lookupUnsafe, lookupMaybe, lookupDefault, removeKey, M.keys, values,
@@ -49,7 +49,7 @@ import Control.Applicative
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Maybe (fromJust, isJust)
-import qualified Data.Array.Unboxed as UArray
+import qualified Data.Array.IArray as BArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
 import Control.Monad.IO.Class (liftIO)
@@ -182,7 +182,7 @@ remove = Prelude.flip S.delete
 -- To iterate over a set, take one element and remove it from the set.
 -- Repeat until set is empty.
 take :: Prelude.Ord a => S.Set a -> a
-take = S.elemAt 0
+take = S.findMin
 
 -------- TUPLES-------------
 ----------------------------
@@ -211,13 +211,13 @@ right _ = Prelude.error "not a right-Either"
 ----------------------------
 
 -- | A pure (persistent) array with O(1) random access
-type Array = UArray.UArray
+type Array = BArray.Array
 
-replace :: (UArray.IArray a e, UArray.Ix i) => a i e -> [(i, e)] -> a i e
-replace a cs = a UArray.// cs
+replace :: (BArray.IArray a e, BArray.Ix i) => a i e -> [(i, e)] -> a i e
+replace a cs = a BArray.// cs
 
-elemAt :: (UArray.IArray a e, UArray.Ix i) => (a i e, i) -> e
-elemAt(a, i) = a UArray.! i
+elemAt :: (BArray.IArray a e, BArray.Ix i) => (a i e, i) -> e
+elemAt(a, i) = a BArray.! i
 
 
 -------- STRINGS------------
