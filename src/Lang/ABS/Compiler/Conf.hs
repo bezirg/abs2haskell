@@ -14,7 +14,7 @@ data Conf = Conf {
     , dumpAST :: Bool            -- ^ A flag to dump the parsed AST in a ModuleName.ast file
     , outputDir :: Maybe FilePath      -- ^ In which directory to put all the Haskell translated files (.hs files)
     , createScript :: Bool             -- ^ creates a bash script for easier invoking the ghc Haskell compiler
-    , smp :: Bool                  -- ^ Implies create-script. Enables in the script, the parallel (multicore/SMP) runtime system of Haskell. Otherwise you can enable it manually when later calling the Haskell compiler
+    , smp :: Bool                  -- ^ Enables inside the created script the parallel (multicore/SMP) runtime system of Haskell. Otherwise you can enable it manually when later calling the Haskell compiler. Implies --create-script.
     } deriving (Show, Eq, Data, Typeable)
 
 confOpt :: Conf

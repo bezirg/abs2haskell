@@ -105,7 +105,7 @@ getLoad_sync ((IDC __obj@(ObjectRef __ioref _ _)))
        -- I__.mapMonad (I__.withReaderT (\ aconf -> aconf{aThis = __obj}))
        --   (getLoad __obj)
 getLoad_sync (IDC NullRef) = error "sync method calls of DC objects not allowed"
-getLoad_async ((IDC __obj@(ObjectRef __ioref _ pid)))
+getLoad_async ((IDC __obj@(ObjectRef __ioref (COG (_,pid)) _)))
   = do __obj1 <- I__.readRef __ioref
        lnid <- I__.lift (I__.lift getSelfNode)
        let rnid = processNodeId pid

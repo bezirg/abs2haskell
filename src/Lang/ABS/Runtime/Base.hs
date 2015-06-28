@@ -27,11 +27,12 @@ import Data.Map ( Map, fromList, lookup )
 -- The reference is the following triple:
 --
 -- 1. a heap reference ("IORef") to the mutable state of the object (the record of its fields)
--- 2. a unique-per-COG ascending counter being the object' identity inside the cog
 -- 3. a process-identifier for that thread. If the runtime is distributed, then it's the cog-forwarder. Else, parallel-only, so it is the COG itself.
+-- 2. a unique-per-COG ascending counter being the object' identity inside the cog
+
 --
 -- Together 2 and 3 makes any object uniquely identified accross the network.
-data Obj a = ObjectRef (IORef a) Int CH.ProcessId -- ^ an actual object reference
+data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
            | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
                  deriving Eq --, Typeable)
 
@@ -109,7 +110,6 @@ class Root_ a where
     new_local :: a -> (Root_ o) => ABS o (Obj a)
     __init :: Obj a -> ABS a () 
     __init _ = return (())     -- default implementation of init
-    __cog :: (Root_ o) => a -> ABS o COG -- helper function for the generated code, to easily read from any object its COG location
 
 -- | The root-type of all objects
 --
@@ -140,7 +140,6 @@ data Null
 instance Root_ Null where
     new = error "cannot instantiated null"
     new_local = error "cannot instantiated null"
-    __cog = error "null is not related to a COG"
 
 
 

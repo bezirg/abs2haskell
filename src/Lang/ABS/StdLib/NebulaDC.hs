@@ -35,7 +35,7 @@ import Network.Transport.TCP (encodeEndPointAddress)
  
 -- * Internals
 
-data NebulaDC = NebulaDC{nebulaDC_loc :: (I__.Root_ o) => I__.ABS o I__.COG,
+data NebulaDC = NebulaDC{
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
                          nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
 __nebulaDC cpu memory
@@ -50,10 +50,9 @@ instance I__.Root_ NebulaDC where
                let nodeId = Nothing
                let __c
                      = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
-                              nebulaDC_nodeId = nodeId,
-                              nebulaDC_loc = return (I__.COG (__chan, __new_tid))}
+                              nebulaDC_nodeId = nodeId}
                __ioref <- I__.liftIO (I__.newIORef __c)
-               let __obj = I__.ObjectRef __ioref 0 __new_tid
+               let __obj = I__.ObjectRef __ioref (I__.COG (__chan, __new_tid)) 0
                do __mvar <- I__.liftIO I__.newEmptyMVar
                   __hereCOG <- I__.thisCOG
                   __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
@@ -83,7 +82,6 @@ instance I__.Root_ NebulaDC where
             
             -- ADDED
             I__.error "Local DC objects cannot be created (new local)"
-        __cog = nebulaDC_loc
         -- REMOVED: init block
         --__init this = return ()
         -- ADDED: init block
@@ -97,7 +95,7 @@ instance I__.Root_ NebulaDC where
 
 set_nebulaDC_cpu :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_cpu v
-  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
@@ -110,7 +108,7 @@ set_nebulaDC_cpu v
  
 set_nebulaDC_load :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_load v
-  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
@@ -123,7 +121,7 @@ set_nebulaDC_load v
  
 set_nebulaDC_memory :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_memory v
-  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
@@ -136,7 +134,7 @@ set_nebulaDC_memory v
  
 set_nebulaDC_nodeId :: Maybe NodeId -> I__.ABS NebulaDC ()
 set_nebulaDC_nodeId v
-  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
@@ -149,7 +147,7 @@ set_nebulaDC_nodeId v
  
 set_nebulaDC_vmId :: Int -> I__.ABS NebulaDC ()
 set_nebulaDC_vmId v
-  = do (I__.AConf (I__.ObjectRef ioref oid _) (I__.COG (thisChan, _))) <- I__.lift
+  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
                                                           I__.ask
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
@@ -216,12 +214,12 @@ myVmIP = if "--distributed" `Prelude.elem` myArgs
 
 {-# NOINLINE thisDC #-}
 thisDC = IDC (I__.ObjectRef (unsafePerformIO (I__.newIORef (
-                                                        NebulaDC{nebulaDC_loc = I__.undefined,
+                                                        NebulaDC{
                                                                  nebulaDC_cpu = -1, -- TODO
                                                                  nebulaDC_memory = -1, -- TODO
                                                                  nebulaDC_load = -1, -- it's for sim purposes
                                                                  nebulaDC_nodeId = Nothing, -- TODO
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
-              (-2)                   -- a stub object-id of the DC object
-              (nullProcessId (NodeId (encodeEndPointAddress myVmIP "9000" 0))))         -- no processid (ForwarderCOG ID) associated with the DC object
+              (I__.COG (I__.undefined,(nullProcessId (NodeId (encodeEndPointAddress myVmIP "9000" 0)))))         -- no processid (ForwarderCOG ID) associated with the DC object
+              (-2))                   -- a stub object-id of the DC object

@@ -118,7 +118,7 @@ spawnCOG c = do
                     -- the process deliberately decided to await on a *FIELD* future to finish (by calling await f?;)
                     Left (Yield (FF f fid) cont) -> do
                        -- updating both suspended tables
-                       let ObjectRef _ oid _ = obj
+                       let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
                        let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
 
@@ -128,7 +128,7 @@ spawnCOG c = do
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
-                    Left (Yield (A o@(ObjectRef _ oid _)  fields) cont) -> do
+                    Left (Yield (A o@(ObjectRef _ _ oid)  fields) cont) -> do
                            -- update sleepingo-table
                            let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
                            RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
@@ -235,7 +235,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                        return (M.insertWith (++) (AnyFut f) [(RunJob obj fut cont, Nothing)] sleepingOnFut)
                 Left (Yield (FF f fid) cont) -> do
                        -- updating both suspended tables
-                       let ObjectRef _ oid _ = obj
+                       let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
                        let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
 
@@ -244,7 +244,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                        let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just (AnyFut f,lengthOnFut))] sleepingOnAttr
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
-                Left (Yield (A o@(ObjectRef _ oid _) fields) cont) -> do
+                Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
                        let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut

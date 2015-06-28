@@ -314,11 +314,11 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                      in
                                                                  [
                 -- the sync call for each method: method1_sync
-                HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mid ++ "_sync" ) (HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))])) : parspvars) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "readRef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "otherCOG")) (HS.App (HS.Var (identI "__cog")) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "when") (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "not") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__hereCOG"))) (HS.QVarOp (HS.UnQual (HS.Symbol "=="))) (HS.Var (HS.UnQual (HS.Ident "otherCOG"))))))) (HS.Paren (HS.App (HS.Var $ identI "error") (HS.Lit (HS.String "Sync Call on a different COG detected"))))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var (identI "withReaderT")) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "__aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__aconf"))) [HS.FieldUpdate (identI "aThis") (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars) ))])) (HS.BDecls [])
+                HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mid ++ "_sync" ) (HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PVar (HS.Ident "__otherCOG"), HS.PWildCard]))])) : parspvars) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "when") (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "not") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__hereCOG"))) (HS.QVarOp (HS.UnQual (HS.Symbol "=="))) (HS.Var (HS.UnQual (HS.Ident "__otherCOG"))))))) (HS.Paren (HS.App (HS.Var $ identI "error") (HS.Lit (HS.String "Sync Call on a different COG detected"))))),HS.Qualifier (HS.App (HS.App (HS.Var $ identI "mapMonad") (HS.Paren (HS.App (HS.Var (identI "withReaderT")) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "__aconf")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__aconf"))) [HS.FieldUpdate (identI "aThis") (HS.Var (HS.UnQual (HS.Ident "__obj")))])))))) (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars) ))])) (HS.BDecls [])
                            , HS.Match HS.noLoc (HS.Ident $ mid ++ "_sync") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (identI "NullRef") []]) : replicate (length pars) HS.PWildCard ) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "sync call to null"))) (HS.BDecls [])
                            ]
                 -- the async call for each method: method1_async
-              , HS.FunBind [HS.Match HS.noLoc (HS.Ident $ headToLower mid ++ "_async") ((HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PWildCard, HS.PWildCard]))]))) : parspvars) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "readRef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))),HS.Generator HS.noLoc (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [(HS.PVar (HS.Ident "__chan")), HS.PWildCard]]) (HS.App (HS.Var (identI "__cog")) (HS.Var (HS.UnQual (HS.Ident "__obj1")))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")), HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars) ))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])
+              , HS.FunBind [HS.Match HS.noLoc (HS.Ident $ headToLower mid ++ "_async") ((HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "__chan"), HS.PVar (HS.Ident "_pid")]], HS.PWildCard]))]))) : parspvars) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "readRef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")), HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars) ))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])
                            , HS.Match HS.noLoc (HS.Ident $ mid ++ "_async") (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (identI "NullRef") []]) : (replicate (length pars) HS.PWildCard)) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "async call to null"))) (HS.BDecls [])
                            ]
                       ]
@@ -366,10 +366,7 @@ tDecl (ABS.ClassImplements tident imps fdecls maybeBlock mdecls) = tDecl (ABS.Cl
 tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls maybeBlock rdecls) = -- TODO add check for imps, if a method is not implemented
        -- the record-ADT of the ABS class
         HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident clsName) [] 
-              [HS.QualConDecl HS.noLoc [] [] $ HS.RecDecl (HS.Ident clsName) (([HS.Ident $ headToLower clsName ++ "_loc"],
-                                                                            -- maybe it should be banged for the fields of the class
-                                                                           HS.UnBangedTy (HS.TyForall Nothing [HS.ClassA (identI "Root_") [HS.TyVar (HS.Ident "o")]] (HS.TyApp (HS.TyApp (HS.TyCon (identI "ABS")) (HS.TyVar (HS.Ident "o")))  (HS.TyCon (identI "COG"))))
-                                                                           ): map (\ ((ABS.LIdent (_,i)), t) -> ([HS.Ident $ headToLower clsName ++ "_" ++ i], HS.UnBangedTy (tType t)))  (M.toAscList allFields))]  []
+              [HS.QualConDecl HS.noLoc [] [] $ HS.RecDecl (HS.Ident clsName) (map (\ ((ABS.LIdent (_,i)), t) -> ([HS.Ident $ headToLower clsName ++ "_" ++ i], HS.UnBangedTy (tType t)))  (M.toAscList allFields))]  []
         :
 
         -- the smart constructor
@@ -407,23 +404,24 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                         fieldInits
                                         ++
                                         -- update the passed class ADT
-                                        -- let __c = cont { class1_field1 = __field1, ..., class1_loc = (return (COG (__chan, __new_tid))) }
+                                        -- let __c = cont { class1_field1 = __field1, ... }
                                         [HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__c") Nothing 
-                                                                   (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
-                                                                      (foldr (\  fdecl acc -> (case fdecl of
-                                                                                              ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
+                                                                   (HS.UnGuardedRhs (let init_decls = foldr (\ fdecl acc -> (case fdecl of
+                                                                                             ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
+                                                                                                 HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
+                                                                                             ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-                                                                                              ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-                                                                                              ABS.MethClassBody _ _ _ _ ->  (case maybeBlock of
+
+                                                                                             ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
                                                                                                                          ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
-                                                                             )) 
-                                                                       -- class1_loc = (return (__chan, __new_tid))
-                                                                       [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_loc")
-                                                                          (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.App (HS.Con $ identI "COG")
-                                                                             (HS.Tuple HS.Boxed [(HS.Var $ HS.UnQual $ HS.Ident "__chan"), HS.Var $ HS.UnQual $ HS.Ident "__new_tid"])))]
-                                                                       ldecls)) (HS.BDecls [])]
+                                                                                                                            )) 
+                                                                                                       []
+                                                                                                       ldecls in if null init_decls
+                                                                                                                 then HS.Var $ HS.UnQual $ HS.Ident "__cont"
+                                                                                                                 else HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont") init_decls
+
+                                                                                    )) (HS.BDecls [])]                                         
                                          -- __ioref <- lift $ lift $ newIORef __c
                                         , HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ 
                                                            (HS.App (HS.Var $ identI "liftIO")
@@ -432,10 +430,12 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                         -- let __obj = ObjectRef __ioref 0 __new_tid
                                         , HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__obj") Nothing 
                                                                   (HS.UnGuardedRhs (HS.App (HS.App 
-                                                                                                  (HS.App (HS.Con $ identI "ObjectRef")
+                                                                                            (HS.App (HS.Con $ identI "ObjectRef")
                                                                                                    (HS.Var $ HS.UnQual $ HS.Ident "__ioref"))
-                                                                                            (HS.Lit $ HS.Int 0))
-                                                                                    (HS.Var $ HS.UnQual $ HS.Ident "__new_tid"))
+                                                                                            (HS.App (HS.Con $ identI "COG")
+                                                                                                   (HS.Tuple HS.Boxed [(HS.Var $ HS.UnQual $ HS.Ident "__chan"), HS.Var $ HS.UnQual $ HS.Ident "__new_tid"]))
+                                                                                           ) (HS.Lit $ HS.Int 0)
+                                                                                    )
                                                                   ) (HS.BDecls [])]
                                         -- init_async __obj
                                         , HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__hereCOG")) (HS.Var (identI "thisCOG")),HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__hereCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "RunJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))])
@@ -460,27 +460,26 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                          ++
 
                                          [
-                                         -- __thisCOG@(_, __tid) <- thisCOG
-                                         HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__thisCOG") $ HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PWildCard, HS.PVar $ HS.Ident "__tid"]]) 
-                                               (HS.Var $ identI "thisCOG"),
-                                         -- let __c = cont { class1_field1 = __field1, ..., class1_loc = __thisCOG }
+                                         -- __thisCOG <- thisCOG
+                                         HS.Generator HS.noLoc (HS.PVar (HS.Ident "__thisCOG")) (HS.Var $ identI "thisCOG"),
+                                         -- let __c = cont { class1_field1 = __field1, ...}, #field >=1, haskell does not allow empty record updates
                                          HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__c") Nothing 
-                                                                   (HS.UnGuardedRhs $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont")
-                                                                      (foldr (\ fdecl acc -> (case fdecl of
-                                                                                              ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-                                                                                              ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
+                                                                   (HS.UnGuardedRhs (let init_decls = foldr (\ fdecl acc -> (case fdecl of
+                                                                                             ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
+                                                                                                 HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
+                                                                                             ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
                                                                                                   HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
 
-                                                                                              ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
+                                                                                             ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
                                                                                                                          ABS.NoBlock -> acc
                                                                                                                          ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
-                                                                             )) 
-                                                                       -- class1_loc = __thisCOG)
-                                                                       [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_loc")
-                                                                          (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__thisCOG"))
-                                                                             ]
-                                                                       ldecls)) (HS.BDecls [])]                                          
+                                                                                                                            )) 
+                                                                                                       []
+                                                                                                       ldecls in if null init_decls
+                                                                                                                 then HS.Var $ HS.UnQual $ HS.Ident "__cont"
+                                                                                                                 else HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont") init_decls
+
+                                                                                    )) (HS.BDecls [])]                                          
                                          -- __ioref <- lift $ lift $ newIORef __c
                                         , HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ (HS.App (HS.Var $ identI "liftIO")
                                                                                                                       (HS.App (HS.Var $ identI "newIORef")
@@ -490,13 +489,13 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
 
                                          -- lift $ RWS.put (__astate {aCounter = __counter + 1})
                                          , HS.Qualifier $ HS.App (HS.Var $ identI "lift") $ (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))])))
-                                         -- let __obj = ObjectRef __ioref __counter __tid
+                                         -- let __obj = ObjectRef __ioref __thisCOG __counter
                                          , HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__obj") Nothing 
                                                                   (HS.UnGuardedRhs (HS.App (HS.App 
                                                                                           (HS.App (HS.Con $ identI "ObjectRef")
                                                                                                  (HS.Var $ HS.UnQual $ HS.Ident "__ioref"))
-                                                                                           (HS.Var $ HS.UnQual $ HS.Ident "__counter"))
-                                                                                    (HS.Var $ HS.UnQual $ HS.Ident "__tid"))
+                                                                                           (HS.Var $ HS.UnQual $ HS.Ident "__thisCOG"))
+                                                                                    (HS.Var $ HS.UnQual $ HS.Ident "__counter"))
                                                                                    ) (HS.BDecls [])]
 
                                          -- __init_sync __obj
@@ -514,11 +513,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                           then tNonMethDecl "Root" run
                                                                           else []) mRun))])
                                         
-               :
-               -- the __cog method
-               HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "__cog") [] Nothing
-                                             (HS.UnGuardedRhs $ HS.Var $ HS.UnQual $ HS.Ident $ headToLower clsName ++ "_loc")
-                                             (HS.BDecls [])])
                :
                -- the init method (optional)
                -- normalize to a method decl with name __init
@@ -543,7 +537,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                    (HS.UnGuardedRhs $ HS.Do
                                     [
                                      -- (AConf (ObjectRef ioref oid _) (COG (thisChan, _) _)) <- lift $ RWS.ask
-                                     HS.Generator HS.noLoc (HS.PParen (HS.PApp (identI "AConf") [HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "ioref"),HS.PVar (HS.Ident "oid"), HS.PWildCard]), HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "thisChan"), HS.PWildCard]]])) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask")))
+                                     HS.Generator HS.noLoc (HS.PParen (HS.PApp (identI "AConf") [HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "ioref"),HS.PWildCard, HS.PVar (HS.Ident "oid")]), HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "thisChan"), HS.PWildCard]]])) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "ask")))
                                      -- astate@(AState _ om) <- lift $ RWS.get
                                     ,HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PApp (identI "AState") [HS.PWildCard,HS.PVar (HS.Ident "om"), HS.PVar (HS.Ident "fm")]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
                                      -- lift $ lift $ modifyIORef' ioref (\ c -> c {class1_p1 = v})      -- update the field value
