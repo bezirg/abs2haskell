@@ -35,7 +35,7 @@ import System.IO.Error (tryIOError)
 import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
 import Control.Monad (when, foldM, liftM)
-
+import Control.Distributed.Process.Serializable
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
 -- | (only applied when --distributed). This is a so-called cog-forwarder which is an extra (lightweight) thread
@@ -45,9 +45,10 @@ import Control.Monad (when, foldM, liftM)
 fwd_cog :: Chan Job              -- ^ the _local-only_ channel (queue) of the COG process
         -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog c = do
-  AnyFut j <- CH.expect :: CH.Process AnyFut
-  -- TODO: putMVar to local future
-  CH.liftIO $ writeChan c (WakeupSignal j)
+  return ()
+  -- AnyFut j <- CH.expect :: CH.Process AnyFut
+  -- -- TODO: putMVar to local future
+  -- CH.liftIO $ writeChan c (WakeupSignal j)
 
 -- | Each COG is a thread or a process
 spawnCOG :: Chan Job            -- ^ the caller is responsible to create a communication-queue. The caller is responsible for later creating the 1st object and _schedule_ its init process by sending a message to this channel
@@ -78,13 +79,13 @@ spawnCOG c = do
         nextJob <- CH.liftIO $ readChan c
         case nextJob of
           -- wake signals are transmitted (implicitly) from a COG to another COG to wakeup some of the latter's sleeping process
-          WakeupSignal f -> do
-             let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
+          WakeupSignal v cog i -> do
+             let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepingOnFut
              -- put the woken back to the enabled queue
              sleepingOnAttr' <- maybe (return sleepingOnAttr) (CH.liftIO . updateWoken c sleepingOnAttr) maybeWoken
              loop pid sleepingOnFut'' sleepingOnAttr' counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
-          RunJob obj fut@(FutureRef mvar (COG (fcog, ftid)) _) coroutine -> do
+          RunJob obj fut@(FutureRef mvar cog@(COG (fcog, ftid)) fid) coroutine -> do
              (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
               -- the cog catches any exception and lazily records it into the future-box (mvar)
               p <- resume coroutine `catchAll` (\ someEx -> do
@@ -97,12 +98,12 @@ spawnCOG c = do
                            CH.liftIO $ putMVar mvar fin
                            if ftid /= pid -- remote job finished, wakeup the remote cog
                               then do
-                                CH.liftIO $ writeChan fcog (WakeupSignal fut)
+                                CH.liftIO $ writeChan fcog (WakeupSignal fin cog fid)
                                 return sleepingOnFut
                               else do
                                 -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                 -- because it adds an extra iteration
-                                let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
+                                let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepingOnFut
                                 -- put the woken back to the enabled queue
                                 maybe (return ()) (\ woken -> do
                                                    sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
@@ -113,18 +114,18 @@ spawnCOG c = do
                            CH.liftIO $ writeChan c (RunJob obj fut cont) -- reschedule its continuation at the end of the job-queue
                            return sleepingOnFut
                     -- the process deliberately decided to await on a *LOCAL* future to finish (by calling await f?;)
-                    Left (Yield (FL f) cont) -> do
-                           return (M.insertWith (++) (AnyFut f) [(RunJob obj fut cont, Nothing)] sleepingOnFut) -- update sleepingf-table
+                    Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
+                           return (M.insertWith (++) (cog,i) [(RunJob obj fut cont, Nothing)] sleepingOnFut) -- update sleepingf-table
                     -- the process deliberately decided to await on a *FIELD* future to finish (by calling await f?;)
-                    Left (Yield (FF f fid) cont) -> do
+                    Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
-                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
+                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (cog,i) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
 
                        
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just (AnyFut f,lengthOnFut))] sleepingOnAttr
+                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
@@ -194,8 +195,8 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
      loop c pid sleepingOnFut sleepingOnAttr counter = do
        nextJob <- CH.liftIO $ readChan c
        case nextJob of
-         WakeupSignal f -> do
-           let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut f) sleepingOnFut
+         WakeupSignal v cog i -> do
+           let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepingOnFut
            sleepingOnAttr' <- maybe (return sleepingOnAttr) (CH.liftIO . updateWoken c sleepingOnAttr) maybeWoken -- put the woken back to the enabled queue
            loop c pid sleepingOnFut'' sleepingOnAttr' counter
          RunJob obj fut coroutine -> do
@@ -206,16 +207,16 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                                                  return $ Right $ throw someEx) 
               case p of
                 Right fin -> case fut of
-                              (FutureRef mvar (COG (fcog, ftid)) _) -> do
+                              (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
                                  CH.liftIO $ putMVar mvar fin
                                  if ftid /= pid
                                    then do -- remote job finished, wakeup the remote cog
-                                     CH.liftIO $ writeChan fcog (WakeupSignal fut)
+                                     CH.liftIO $ writeChan fcog (WakeupSignal fin cog fid)
                                      return sleepingOnFut
                                    else do
                                      -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                      -- because it adds an extra iteration
-                                     let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (AnyFut fut) sleepingOnFut
+                                     let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepingOnFut
                                      -- put the woken back to the enabled queue
                                      maybe (return ()) (\ woken -> do
                                                          sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
@@ -231,17 +232,17 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                 Left (Yield S cont) -> do
                        CH.liftIO $ writeChan c (RunJob obj fut cont) 
                        return sleepingOnFut
-                Left (Yield (FL f) cont) -> do
-                       return (M.insertWith (++) (AnyFut f) [(RunJob obj fut cont, Nothing)] sleepingOnFut)
-                Left (Yield (FF f fid) cont) -> do
+                Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
+                       return (M.insertWith (++) (cog,i) [(RunJob obj fut cont, Nothing)] sleepingOnFut)
+                Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
-                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (AnyFut f) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
+                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (cog,i) [(RunJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
 
                        
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just (AnyFut f,lengthOnFut))] sleepingOnAttr
+                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
                        RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
                 Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do

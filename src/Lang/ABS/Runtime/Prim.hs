@@ -101,12 +101,12 @@ while predAction loopAction = do
 
 pro_give :: (Root_ o, Serializable a) => ABS o (Promise a) -> ABS o a -> ABS o ()
 pro_give aP aVal = do
-  p@(PromiseRef valMVar regsMVar _creatorCog _creatorCounter) <- aP
+  (PromiseRef valMVar regsMVar _creatorCog _creatorCounter) <- aP
   val <- aVal
   success <- liftIO $ tryPutMVar valMVar val
   unless success $ Control.Monad.Catch.throwM PromiseRewriteException -- already resolved promise
   Just cogs <- liftIO $ takeMVar regsMVar
-  liftIO $ mapM_ (\ (COG (fcog, _ftid)) -> writeChan fcog (WakeupSignal $ proToFut p)) (S.toList cogs)
+  liftIO $ mapM_ (\ (COG (fcog, _ftid)) -> writeChan fcog (WakeupSignal val _creatorCog _creatorCounter)) (S.toList cogs)
   liftIO $ putMVar regsMVar Nothing
 
 pro_new :: (Root_ o) => ABS o (Promise a)

@@ -20,6 +20,7 @@ import GHC.Fingerprint ( Fingerprint(Fingerprint) )
 import Control.Distributed.Process.Serializable
              ( fingerprint, Serializable, encodeFingerprint, decodeFingerprint )
 import Data.Map ( Map, fromList, lookup )
+import Control.Applicative
 
 -- * Objects and Futures
 
@@ -35,19 +36,6 @@ import Data.Map ( Map, fromList, lookup )
 data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
            | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
                  deriving Eq --, Typeable)
-
--- instance Binary (ObjectRef a) where
---     put (ObjectRef _ i pid) = do
---       put (0 :: Word8) >> put i >> put pid
---     put NullRef = put (1 :: Word8)
---     get = do
---       t <- get :: Get Word8
---       case t of
---         1 -> return NullRef
---         0 -> do
---             i <- get
---             pid <- get
---             return (ObjectRef undefined i pid)
 
 -- | A reference to any live future.
 --
@@ -73,20 +61,6 @@ instance Eq (Fut a) where
     FutureRef _ cog1 id1 == FutureRef _ cog2 id2 = cog1 == cog2 && id1 == id2
     _ == _ = False
 
--- | A future can be serialized.
-instance Binary (Fut a) where
-    put (FutureRef _ c i) = do
-      put (0 :: Word8) >> put c >> put i
-    put MainFutureRef = put (1 :: Word8)
-    get = do
-      t <- get :: Get Word8
-      case t of
-        1 -> return MainFutureRef
-        0 -> do
-            c <- get
-            i <- get
-            return (FutureRef undefined c i)
-        _ -> error "binary Fut decoding"
 
 -- | Subtyping-relation for ABS objects (as a multiparam typeclass)
 class Sub sub sup where
@@ -140,8 +114,6 @@ data Null
 instance Root_ Null where
     new = error "cannot instantiated null"
     new_local = error "cannot instantiated null"
-
-
 
 
 -- * ABS monad related (object state world)
@@ -201,42 +173,14 @@ newtype COG = COG { fromCOG :: (Chan Job, CH.ProcessId)}
 instance Eq COG where
     COG (_,pid1) == COG (_,pid2) = pid1 == pid2
 
-instance Binary COG where
-    put (COG (_, pid)) = put pid
-    get = do
-      pid <- get
-      return (COG (undefined, pid))
-
 -- Used for creating (Set COG) for organizing promises listeners.
 instance Ord COG where
     COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
 data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS o a)
-         | forall f . Serializable f => WakeupSignal (Fut f)
+         | forall a . (Serializable a) => WakeupSignal a COG Int
 
-
--- | create this stub table
-stable :: Map Fingerprint SomeGet
-stable = fromList
-    [ (mkSMapEntry (undefined :: Fut Bool))
-    , (mkSMapEntry (undefined :: Fut [Int]))
-    , (mkSMapEntry (undefined :: Fut [String]))
-    ]
-
-data SomeGet = forall a. Serializable a => SomeGet (Get (Fut a))
-
-mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet)
-mkSMapEntry a = (fingerprint a,SomeGet (get :: Get (Fut a)))
-
--- | any-futures can be serialized
-instance Binary AnyFut where
-  put (AnyFut a) = put (encodeFingerprint$ fingerprint a) >> put a
-  get = do
-      fp<-get
-      case Data.Map.lookup (decodeFingerprint fp) stable of
-        Just (SomeGet someget) -> fmap (AnyFut) someget
-        Nothing -> error "Binary AnyFut: fingerprint unknown"
 
 -- ** COG-held datastructures
 
@@ -247,36 +191,14 @@ instance Binary AnyFut where
 -- The COG will strictly not re-schedule this processes until the object-field is modified.
 -- 
 -- A mapping of (object-id,field-id) to list of suspended jobs
-type ObjectMap = M.Map (Int, Int) [(Job, Maybe (AnyFut, Int))] 
+type ObjectMap = M.Map (Int, Int) [(Job, Maybe ((COG,Int), Int))] 
 
 -- | A mapping of futures to list of disabled processes.
 --
 -- It represents sleeping procesess that wait on some futures to become resolved. e.g. await f?
 --
 -- The COG will strictly not re-schedule this processes until the future-key is resolved.
-type FutureMap = M.Map AnyFut [(Job, Maybe ((Int, Int), Int))]
-
--- | (internal-only) An existential-wrapper of futures to remove their contained type
---
--- Only internally-used as the key of the "FutureMap"
-data AnyFut = forall a. Serializable a => AnyFut (Fut a)
-               deriving Typeable
-
--- | Necessary instance for Map: Equality between "AnyFut"s
-instance Eq AnyFut where
-    AnyFut (FutureRef _ cid1 id1) == AnyFut (FutureRef _ cid2 id2) = id1 == id2 && cid1 == cid2
-    _ == _ = error "this should not happen: equality on topref"
-
--- | Necessary instance for Map: Ordering between "AnyFut"s to use them as keys in the "FutureMap"
-instance Ord AnyFut where
-    compare (AnyFut (FutureRef _ (COG (_, tid1)) id1)) (AnyFut (FutureRef _ (COG (_, tid2)) id2)) = compare (tid1,id1) (tid2,id2)
-    compare _ _ = error "this should not happen: ordering on topref"
-
-
-
-
-
-
+type FutureMap = M.Map (COG,Int) [(Job, Maybe ((Int, Int), Int))]
 
 -- * Builtin Exception-constructors for ABS
 data BlockedAwaitException = BlockedAwaitException
@@ -301,3 +223,101 @@ instance MonadCatch CH.Process where
 instance MonadMask CH.Process where
     mask = CH.mask
     -- uninterruptibleMask, not provided by CH
+
+
+
+-- | A future can be serialized.
+instance Binary (Fut a) where
+    put (FutureRef _ c i) = do
+      put (0 :: Word8) >> put c >> put i
+    put MainFutureRef = put (1 :: Word8)
+    get = do
+      t <- get :: Get Word8
+      case t of
+        1 -> return MainFutureRef
+        0 -> do
+            c <- get
+            i <- get
+            return (FutureRef undefined c i)
+        _ -> error "binary Fut decoding"
+
+
+instance Binary COG where
+    put (COG (_, pid)) = put pid
+    get = do
+      pid <- get
+      return (COG (undefined, pid))
+
+
+instance Binary (Obj a) where
+    put (ObjectRef _ cog i) = do
+      put (0 :: Word8) >> put cog >> put i
+    put NullRef = put (1 :: Word8)
+    get = do
+      t <- get :: Get Word8
+      case t of
+        1 -> return NullRef
+        0 -> do
+            cog <- get
+            i <- get
+            return (ObjectRef undefined cog i)
+        _ -> error "Binary Obj: cannot decode object-ref"
+
+
+instance Binary Job where
+    put (RunJob o f c) = do
+                      put (0 :: Word8)
+                      put o
+                      put f
+                      -- put c
+    put (WakeupSignal a c i) = do
+                      put (1 :: Word8) 
+                      put (encodeFingerprint$ fingerprint a) >> put a
+                      put c
+                      put i
+    get = do
+      t <- get :: Get Word8
+      case t of
+        0 -> undefined
+        1 -> do
+            fp<-get
+            case Data.Map.lookup (decodeFingerprint fp) stable of
+                 Just (SomeGet someget) -> WakeupSignal <$> someget <*> get <*> get
+                 Nothing -> error "Binary AnyFut: fingerprint unknown"
+
+stable :: Map Fingerprint SomeGet
+stable = fromList
+    [ (mkSMapEntry (undefined :: Bool))
+    , (mkSMapEntry (undefined :: [Int]))
+    , (mkSMapEntry (undefined :: [String]))
+    ]
+    where
+      mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet)
+      mkSMapEntry a = (fingerprint a,SomeGet (get :: Get a))
+      
+data SomeGet = forall a. Serializable a => SomeGet (Get a)
+
+
+-- -- | any-futures can be serialized
+-- instance Binary AnyFut where
+--   put (AnyFut a) = put (encodeFingerprint$ fingerprint a) >> put a
+--   get = do
+--       fp<-get
+--       case Data.Map.lookup (decodeFingerprint fp) stable of
+--         Just (SomeGet someget) -> fmap (AnyFut) someget
+--         Nothing -> error "Binary AnyFut: fingerprint unknown"
+
+-- | create this stub table
+-- stable :: Map Fingerprint SomeGet
+-- stable = fromList
+--     [ (mkSMapEntry (undefined :: Fut Bool))
+--     , (mkSMapEntry (undefined :: Fut [Int]))
+--     , (mkSMapEntry (undefined :: Fut [String]))
+--     ]
+--     where
+--       mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet)
+--       mkSMapEntry a = (fingerprint a,SomeGet (get :: Get (Fut a)))
+      
+-- data SomeGet = forall a. Serializable a => SomeGet (Get (Fut a))
+
+
