@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.0.0
+version:               1.0.3
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -22,10 +22,10 @@ library
                       -- temporal support for arrays in ABS (PA case study)
                       random,
                       array,
-                      transformers<0.4,
+                      transformers>=0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
-                      monad-coroutine>=0.8,
+                      monad-coroutine>=0.9.0.1,
                       -- for lifting exceptions to ABS monad
                       exceptions>=0.6.1,
                       -- for contacting OpenNebula through XML-RPC
@@ -34,18 +34,18 @@ library
                       network-info, 
                       -- utf8-string, (probably not needed anymore)
                       -- for cloud abs / distributed communication of Haskell nodes
-                      distributed-process>=0.5.1, 
+                      distributed-process>=0.5.5, 
                       -- usual distributed-network transport through TCP
-                      network-transport-tcp>=0.4.1, 
+                      network-transport-tcp>=0.4.2, 
                       -- the node discovery/topology backend, this is the automatic: UDP broadcast (turned-off for now)
                       -- distributed-process-simplelocalnet>=0.2.2.0,
-                      network-transport>=0.4.1.0, 
+                      network-transport>=0.4.2.0, 
                       -- for Windows fix
-                      network,
+                      network>=2.6.0.2,
                       -- the rest are for serialization (data, closures)
-                      rank1dynamic>=0.2.0.0, 
-                      distributed-static>=0.3.0.0,
-                      binary>=0.7.1.0,
+                      rank1dynamic>=0.3.1.0, 
+                      distributed-static>=0.3.2.0,
+                      binary>=0.7.5.0,
                       bytestring,
                       cmdargs,
                       -- for injecting package version into cmdargs --help menu
@@ -109,7 +109,7 @@ executable a2h
   build-depends:      base,
                       -- array needed by generated parser
                       array,
-                      transformers<0.4,
+                      transformers>=0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
                       cmdargs,
