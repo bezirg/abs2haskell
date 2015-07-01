@@ -19,7 +19,7 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - cabal sandbox init
- - cabal sandbox update
+ - cabal update
  - cabal sandbox add-source haxr-browser
  - cabal sandbox add-source opennebula
  - cabal install --only-dependencies
