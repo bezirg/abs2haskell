@@ -21,13 +21,12 @@ module Lang.ABS.Compiler.Include
      Prelude.undefined,
      Prelude.fromIntegral, Prelude.Show, Prelude.show, Prelude.Eq, (Prelude.$),
      -- * For reading the runtime configuration "AConf" by "Prim"itive statements : this + thisCOG
-     RWS.ask, RWS.get, RWS.put, thisCOG, readThis,
+     S.get, S.put, readThis,
      -- * Applicative style and monad utilities
-     Control.Monad.when, Control.Monad.Coroutine.mapMonad, Control.Monad.join,
+     Control.Monad.when, Control.Monad.join,
      -- * Exceptions
      Control.Monad.Catch.Handler (..), PHandler (..), Control.Monad.Catch.Exception, Control.Monad.Catch.SomeException (..), caseEx,
      Control.Monad.Catch.fromException,
-     withReaderT,
 
      -- * For creating objects (by the runtime)
      newIORef, readIORef, writeIORef, modifyIORef', 
@@ -50,13 +49,12 @@ module Lang.ABS.Compiler.Include
 
 import Prelude
 import Control.Monad.Trans.Class
-import Control.Monad.IO.Class (liftIO, MonadIO)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad
 import Data.IORef
-import Control.Monad.Coroutine
 import Control.Concurrent
 import qualified Data.Map.Strict
-import qualified Control.Monad.Trans.RWS as RWS
+import qualified Control.Monad.Trans.State.Strict as S
 import qualified Data.Typeable
 import qualified Control.Monad.Catch
 import qualified Control.Exception.Base (PatternMatchFail (..), throw)
@@ -64,9 +62,9 @@ import Control.Applicative
 import Lang.ABS.Runtime.Base
 import Control.Distributed.Process.Node (initRemoteTable)
 
--- util function, used in code generation
-withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
-withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
+-- -- util function, used in code generation
+-- withReaderT :: (r' -> r) -> RWS.RWST r w s m a -> RWS.RWST r' w s m a
+-- withReaderT f r = RWS.withRWST (\ r s -> (f r, s)) r
 
 
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx
@@ -83,39 +81,31 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
                 Nothing -> res
 
 
-newRef :: MonadIO m => m a -> m (IORef a)
+newRef :: ABS a -> ABS (IORef a)
 newRef v = do
   res <- v
   liftIO $ newIORef res
 
-writeRef :: MonadIO m => IORef a -> m a -> m ()
+writeRef :: IORef a -> ABS a -> ABS ()
 writeRef r v = do
   res <- v
   liftIO $ writeIORef r res
 
-readRef :: MonadIO m => IORef a -> m a
+readRef :: IORef a -> ABS a
 readRef r = liftIO $ readIORef r
 
 -- for easier code generation
-empty_fut :: (Root_ o) => ABS o (Fut a)
-empty_fut = FutureRef <$> liftIO newEmptyMVar <*> thisCOG <*> pure (-10 :: Int)
+empty_fut :: (Root_ o) => Obj o -> ABS (Fut a)
+empty_fut (ObjectRef _ hereCOG _) = FutureRef <$> liftIO newEmptyMVar <*> pure hereCOG <*> pure (-10 :: Int)
 
 -- for easier code generation
-empty_pro :: (Root_ o) => ABS o (Promise a)
-empty_pro = PromiseRef <$> liftIO newEmptyMVar <*> liftIO newEmptyMVar <*> thisCOG <*> pure (-11 :: Int)
-
-
--- | A way to read the current executing COG inside an ABS process 
-thisCOG :: (Root_ o) => ABS o COG
-thisCOG = do
-  t <- aCOG <$> lift RWS.ask
-  return t
-
+empty_pro :: (Root_ o) => Obj o -> ABS (Promise a)
+empty_pro (ObjectRef _ hereCOG _) = PromiseRef <$> liftIO newEmptyMVar <*> liftIO newEmptyMVar <*> pure hereCOG <*> pure (-11 :: Int)
 
 -- | A way to de-reference an object-ref from the heap and read its attributes
 --
 -- _NOTE_: assumes the compiler is correct and __only__ passes the _this_ last formal-parameter of the method
-readThis :: (Root_ o) => Obj o -> ABS o o
+readThis :: (Root_ o) => Obj o -> ABS o
 readThis (ObjectRef ioref _ _) = liftIO $ readIORef ioref
 readThis NullRef = error "Compile Error: this should not happen. Inform the developers"
 

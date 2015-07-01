@@ -42,7 +42,7 @@ __nebulaDC cpu memory
   = NebulaDC{nebulaDC_cpu = cpu, nebulaDC_memory = memory}
  
 instance I__.Root_ NebulaDC where
-        new __cont
+        new __cont this@(I__.ObjectRef _ __hereCOG _) 
           = do __chan <- I__.liftIO I__.newChan
                __new_tid <- I__.lift (I__.lift (I__.spawnCOG __chan))
                let load = 0
@@ -54,13 +54,12 @@ instance I__.Root_ NebulaDC where
                __ioref <- I__.liftIO (I__.newIORef __c)
                let __obj = I__.ObjectRef __ioref (I__.COG (__chan, __new_tid)) 0
                do __mvar <- I__.liftIO I__.newEmptyMVar
-                  __hereCOG <- I__.thisCOG
                   __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
                   I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
                   let __f = I__.FutureRef __mvar __hereCOG __counter
                   I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__init __obj)))
                return __obj
-        new_local __cont
+        new_local __cont __this
           = 
             -- REMOVED:
             -- do let load = 0
@@ -91,12 +90,11 @@ instance I__.Root_ NebulaDC where
           let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession myProgName
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           I__.when (not success) (I__.error "Allocating VM failed")
-          set_nebulaDC_vmId vmId
+          set_nebulaDC_vmId vmId this
 
-set_nebulaDC_cpu :: Int -> I__.ABS NebulaDC ()
-set_nebulaDC_cpu v
-  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
-                                                          I__.ask
+set_nebulaDC_cpu :: Int -> I__.Obj NebulaDC -> I__.ABS ()
+set_nebulaDC_cpu v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
+  = do 
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
        let (maybeWoken, om')
@@ -106,10 +104,9 @@ set_nebulaDC_cpu v
          maybeWoken
        I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
-set_nebulaDC_load :: Int -> I__.ABS NebulaDC ()
-set_nebulaDC_load v
-  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
-                                                          I__.ask
+set_nebulaDC_load :: Int -> I__.Obj NebulaDC -> I__.ABS ()
+set_nebulaDC_load v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
+  = do 
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
        let (maybeWoken, om')
@@ -119,10 +116,9 @@ set_nebulaDC_load v
          maybeWoken
        I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
-set_nebulaDC_memory :: Int -> I__.ABS NebulaDC ()
-set_nebulaDC_memory v
-  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
-                                                          I__.ask
+set_nebulaDC_memory :: Int -> I__.Obj NebulaDC -> I__.ABS ()
+set_nebulaDC_memory v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
+  = do 
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
        let (maybeWoken, om')
@@ -132,10 +128,9 @@ set_nebulaDC_memory v
          maybeWoken
        I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
-set_nebulaDC_nodeId :: Maybe NodeId -> I__.ABS NebulaDC ()
-set_nebulaDC_nodeId v
-  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
-                                                          I__.ask
+set_nebulaDC_nodeId :: Maybe NodeId -> I__.Obj NebulaDC -> I__.ABS ()
+set_nebulaDC_nodeId v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
+  = do 
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
        let (maybeWoken, om')
@@ -145,10 +140,9 @@ set_nebulaDC_nodeId v
          maybeWoken
        I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
-set_nebulaDC_vmId :: Int -> I__.ABS NebulaDC ()
-set_nebulaDC_vmId v
-  = do (I__.AConf (I__.ObjectRef ioref _ oid) (I__.COG (thisChan, _))) <- I__.lift
-                                                          I__.ask
+set_nebulaDC_vmId :: Int -> I__.Obj NebulaDC -> I__.ABS ()
+set_nebulaDC_vmId v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
+  = do 
        __astate@(I__.AState _ om fm) <- I__.lift I__.get
        I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
        let (maybeWoken, om')

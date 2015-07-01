@@ -22,8 +22,7 @@ import Data.Foldable (foldlM)
 tBody :: (?moduleTable::ModuleTable) => ABS.FunBody -> [ABS.UIdent] -> [ABS.Param] -> HS.Exp
 tBody ABS.BuiltinFunBody _tyvars _params = HS.Var $ identI "undefined" -- builtin turned to undefined
 tBody (ABS.NormalFunBody pexp) tyvars params = runReader (tPureExp pexp tyvars) 
-                (M.fromList $ map (\ (ABS.Par t i) -> (i,t)) params -- initial function scope is the formal params
-                ,error "no class context") -- no class scope
+                (M.fromList $ map (\ (ABS.Par t i) -> (i,t)) params) -- initial function scope is the formal params
         
 
 -- | Translating a pure expression
@@ -40,8 +39,8 @@ tPureExp (ABS.If predE thenE elseE) tyvars = do
 
 -- translate it into a lambda exp
 tPureExp (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
-  tin <- local (\ (fscope, interf) -> (M.insert pid ptyp fscope, -- add to function scope of the "in"-expression
-                                            interf)) $ 
+  tin <- local (\ fscope -> M.insert pid ptyp fscope -- add to function scope of the "in"-expression
+                                            ) $ 
         tPureExp inE tyvars
   teq <- tPureExp eqE tyvars
   let pat = HS.PVar $ HS.Ident var
@@ -54,7 +53,7 @@ tPureExp (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
 
 tPureExp (ABS.Case matchE branches) tyvars = do
   tmatch <- tPureExp matchE tyvars
-  (scope,_) <- ask
+  scope <- ask
   case matchE of
     ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (undefined, "Exception"))])) -> tCaseException tmatch branches
     ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen tid]) | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
@@ -62,8 +61,8 @@ tPureExp (ABS.Case matchE branches) tyvars = do
     _ -> do
         talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
                         let new_vars = collectPatVars pat
-                        texp <- local (\ (fscope, interf) -> 
-                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, interf)) -- TODO: tunderscore acts as a placeholder since the types of the new vars in the matchE are not taken into account
+                        texp <- local (\ fscope -> 
+                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope)) -- TODO: tunderscore acts as a placeholder since the types of the new vars in the matchE are not taken into account
                                                                               (tPureExp pexp tyvars)
                         return $ HS.Alt HS.noLoc (tPattern pat) (HS.UnGuardedAlt texp) (HS.BDecls []))
                 branches
@@ -73,8 +72,8 @@ tPureExp (ABS.Case matchE branches) tyvars = do
     tCaseException tmatch brs = do
       talts <- mapM (\ (ABS.CaseBranc pat pexp) -> do
              let new_vars = collectPatVars pat
-             texp <- local (\ (fscope, interf) -> 
-                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope, interf)) (tPureExp pexp tyvars)
+             texp <- local (\ fscope -> 
+                                          (M.fromList (zip new_vars (repeat ABS.TUnderscore)) `M.union` fscope)) (tPureExp pexp tyvars)
              return $ HS.App (HS.Con (identI "PHandler"))
                     -- TODO: if hse support lambdacase, it will lead to cleaner code
                     (HS.Lambda  HS.noLoc (case pat of
@@ -129,7 +128,7 @@ tPureExp (ABS.EEq (ABS.ELit ABS.LNull) (ABS.ELit ABS.LThis)) _tyvars = return $ 
 tPureExp (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tnull <- tPureExp pnull _tyvars
   tvar <- tPureExp pvar _tyvars
-  (fscope, _) <- ask
+  fscope <- ask
   case M.lookup ident fscope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp
@@ -145,7 +144,7 @@ tPureExp (ABS.EEq pexp pnull@(ABS.ELit (ABS.LNull))) _tyvars = tPureExp (ABS.EEq
 tPureExp (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1,str1))) pvar2@(ABS.EVar ident2@(ABS.LIdent (p2,str2)))) _tyvars = do
   tvar1 <- tPureExp pvar1 _tyvars
   tvar2 <- tPureExp pvar2 _tyvars
-  (fscope, _) <- ask
+  fscope <- ask
   case M.lookup ident1 fscope of -- check the type of the right var
     Just t1 -> case M.lookup ident2 fscope of
                 Just t2 -> if isInterface t1 && isInterface t2
@@ -163,13 +162,6 @@ tPureExp (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1,str1))) pvar2@(ABS.EVar
                                           tvar2
                 Nothing -> errorPos p2 $ str2 ++ " not in scope"
     Nothing -> errorPos p1 $ str1 ++ " not in scope"
-
--- tPureExp (ABS.EEq pfun1@(ABS.EFunCall _ _) pfun2@(ABS.EFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp (ABS.EEq pfun1@(ABS.ENaryFunCall _ _) pfun2@(ABS.ENaryFunCall _ _)) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp (ABS.EEq pfun@(ABS.EFunCall _ _) _)  _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp (ABS.EEq pfun@(ABS.ENaryFunCall _ _) _) _tyvars = error "equality on function expressions not implemented yet"
--- tPureExp (ABS.EEq pexp1 pfun@(ABS.EFunCall _ _)) _tyvars = tPureExp (ABS.EEq pfun pexp1) _tyvars -- commutative
--- tPureExp (ABS.EEq pexp1 pfun@(ABS.ENaryFunCall _ _)) _tyvars = tPureExp (ABS.EEq pfun pexp1) _tyvars -- commutative
 
 -- a catch-all for literals,constructors maybe coupled with vars
 tPureExp (ABS.EEq pexp1 pexp2) _tyvars = do
@@ -339,7 +331,7 @@ tPureExp (ABS.EParamConstr qids args) tyvars = do
               return $ HS.App acc targ) tcon args
 
 tPureExp (ABS.EVar var@(ABS.LIdent (p,pid))) _tyvars = do
-    (fscope, _) <- ask
+    fscope <- ask
     return $ case M.lookup var fscope of
       Nothing ->  errorPos p $ pid ++ " not in scope"
         -- if it of an int type, upcast it

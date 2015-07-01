@@ -1,14 +1,14 @@
 -- | All the types and datastructures used in the ABS-Haskell runtime
-{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables #-}
+{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables, StandaloneDeriving #-}
 
 module Lang.ABS.Runtime.Base where
 
 import Data.IORef (IORef)
 import Control.Concurrent.MVar (MVar)
 import Control.Concurrent.Chan (Chan)
-import qualified Data.Map.Strict as M (Map)
+import qualified Data.Map.Strict as M (Map, fromList, lookup)
 import qualified Data.Set as S (Set)
-import qualified Control.Monad.Trans.RWS as RWS (RWST)
+import Control.Monad.Trans.State.Strict (StateT)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield)
 import Data.Typeable
@@ -19,7 +19,6 @@ import Data.Binary
 import GHC.Fingerprint ( Fingerprint(Fingerprint) )
 import Control.Distributed.Process.Serializable
              ( fingerprint, Serializable, encodeFingerprint, decodeFingerprint )
-import Data.Map ( Map, fromList, lookup )
 import Control.Applicative
 
 -- * Objects and Futures
@@ -80,9 +79,9 @@ instance Sub Root Root where
 --
 -- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
 class Root_ a where
-    new :: (Root_ o) => a -> ABS o (Obj a)
-    new_local :: a -> (Root_ o) => ABS o (Obj a)
-    __init :: Obj a -> ABS a () 
+    new :: Root_ creator => a -> Obj creator -> ABS (Obj a)
+    new_local :: Root_ creator => a -> Obj creator -> ABS (Obj a)
+    __init :: Obj a -> ABS () 
     __init _ = return (())     -- default implementation of init
 
 -- | The root-type of all objects
@@ -129,18 +128,18 @@ instance Root_ Null where
 -- 2. a reader configuration "AConf" that holds references to this-object and this-cog
 -- 3. the state of the current COG "AState" to modify the COG-state-internals
 -- 4. the Process monad (for remotely communicating messages between actors and doing other IO operations) 
-type ABS o = Coroutine (Yield AwaitOn) (RWS.RWST (AConf o) ()  AState CH.Process)
+type ABS = Coroutine (Yield AwaitOn) (StateT AState CH.Process)
 
 -- | Every ABS monad (computation) holds a reader AConf and a state AState
-data AConf o = AConf {
-      aThis :: (Root_ o) => Obj o -- ^ this object
-    , aCOG  :: COG               -- ^ this cog
-    }
+-- data AConf o = AConf {
+--       aThis :: (Root_ o) => Obj o -- ^ this object
+--     , aCOG  :: COG               -- ^ this cog
+--     }
 data AState = AState {
       aCounter :: Int           -- ^ generate (unique-per-COG) ascending counters
     , aSleepingO :: ObjectMap   -- ^ suspended-processes currently sleeping for some object-field
     , aSleepingF :: FutureMap   -- ^ suspended-processes currently sleeping for some future
-    }
+    } deriving Typeable
 
 -- | The yield result of the a currently-executing coroutine after calling 'suspend' or 'await'
 --
@@ -153,12 +152,12 @@ data AwaitOn = S -- suspend is called
 
 -- | The single parameter to an await statement;
 -- a recursive-datatype that can await on multiple items
-data AwaitGuardCompiled o = forall b. (Serializable b) => FutureLocalGuard (Fut b)
-                          | forall b. (Serializable b) => FutureFieldGuard Int (ABS o (Fut b))
+data AwaitGuardCompiled = forall b. (Serializable b) => FutureLocalGuard (Fut b)
+                          | forall b. (Serializable b) => FutureFieldGuard Int (ABS (Fut b))
                           | forall b. (Serializable b) => PromiseLocalGuard (Promise b)
-                          | forall b. (Serializable b) => PromiseFieldGuard Int (ABS o (Promise b))
-                          | AttrsGuard [Int] (ABS o Bool)
-                          | AwaitGuardCompiled o :&: AwaitGuardCompiled o
+                          | forall b. (Serializable b) => PromiseFieldGuard Int (ABS (Promise b))
+                          | AttrsGuard [Int] (ABS Bool)
+                          | AwaitGuardCompiled :&: AwaitGuardCompiled
 
 
 
@@ -178,7 +177,7 @@ instance Ord COG where
     COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
-data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS o a)
+data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS a)
          | forall a . (Serializable a) => WakeupSignal a COG Int
 
 
@@ -264,10 +263,15 @@ instance Binary (Obj a) where
         _ -> error "Binary Obj: cannot decode object-ref"
 
 
+deriving instance Typeable AwaitOn
+deriving instance Typeable Yield
+deriving instance Typeable Coroutine
+deriving instance Typeable StateT
+
+
 instance Binary Job where
     put (RunJob o f c) = do
                       put (0 :: Word8)
-                      put o
                       put f
                       -- put c
     put (WakeupSignal a c i) = do
@@ -279,14 +283,19 @@ instance Binary Job where
       t <- get :: Get Word8
       case t of
         0 -> undefined
+            -- do
+            -- o <- get
+            -- f <- get
+            -- c <- get
+            -- return (RunJob o f undefined)
         1 -> do
             fp<-get
-            case Data.Map.lookup (decodeFingerprint fp) stable of
+            case M.lookup (decodeFingerprint fp) stable of
                  Just (SomeGet someget) -> WakeupSignal <$> someget <*> get <*> get
                  Nothing -> error "Binary AnyFut: fingerprint unknown"
 
-stable :: Map Fingerprint SomeGet
-stable = fromList
+stable :: M.Map Fingerprint SomeGet
+stable = M.fromList
     [ (mkSMapEntry (undefined :: Bool))
     , (mkSMapEntry (undefined :: [Int]))
     , (mkSMapEntry (undefined :: [String]))

@@ -18,21 +18,21 @@ import Lang.ABS.Compiler.Expr (tPattern, tType)
 import qualified Data.Map as M
 
 -- | Translating a method block or main block that can return
-tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
-tBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
-                                                                    (tBlock stmts True)
-                                                                    (clsScope, mthScope, interfName, cls, False))
-                                                        scopes
+tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> [ABS.LIdent] -> HS.Exp
+tBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = evalState (runReaderT 
+                                                                                  (tBlock stmts True)
+                                                                                  (clsScope, mthScope, interfName, cls, False, meths))
+                                                                       scopes
 
 -- | Translating an init block
 --
 -- can always return (with: return Unit),
 -- can not run await and/or sync calls
-tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> HS.Exp
-tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName = evalState (runReaderT 
-                                                                    (tBlock stmts True)
-                                                                    (clsScope, mthScope, interfName, cls, True))
-                                                        scopes
+tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> [ABS.LIdent] -> HS.Exp
+tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = evalState (runReaderT 
+                                                                                      (tBlock stmts True)
+                                                                                      (clsScope, mthScope, interfName, cls, True, meths))
+                                                                           scopes
 
 -- | Translating any block . This functions pushes a new scope to the 'StmtM' scopes-stack-state.
 tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM HS.Exp
@@ -79,15 +79,16 @@ tStmt (ABS.SExp pexp) = do
 tStmt ABS.SSuspend = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend")]
 
 tStmt (ABS.SAwait g) = do
-  (_,_,_, cls,isInit) <- ask
+  (_,_,_, cls,isInit,_) <- ask
   if isInit 
    then error "Await statements not allowed inside init block"
    else do
      texp <- runExpr $ tAwaitGuard g cls
-     return $ [HS.Qualifier $ HS.InfixApp 
-                  (HS.Var $ HS.UnQual $ HS.Ident "await")
-                  (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
-                  texp]
+     return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
+                     (HS.Paren $ HS.InfixApp 
+                            (HS.Var $ HS.UnQual $ HS.Ident "await")
+                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                            (HS.InfixApp texp (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))))]
 
 tStmt (ABS.SBlock stmts) = do
   tblock <- tBlock stmts False
@@ -144,11 +145,11 @@ tStmt (ABS.SDec typ ident@(ABS.LIdent (p,var))) = -- just rewrites it to Interfa
        ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))]) _ -> do
                     addToScope ident typ
                     return [HS.Generator HS.noLoc
-                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_fut"))]
+                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.App (HS.Var $ identI "empty_fut") (HS.Var $ HS.UnQual $ HS.Ident "this")))]
        ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Promise"))]) _ -> do
                     addToScope ident typ
                     return [HS.Generator HS.noLoc
-                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.Var $ identI "empty_pro"))]
+                                  (HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType typ))) (HS.App (HS.Var $ identI "newRef") (HS.App (HS.Var $ identI "empty_pro") (HS.Var $ HS.UnQual $ HS.Ident "this")))]
        _ -> warnPos p (var ++ " is ADT and has to be initialized") (do
                                                                     addToScope ident typ
                                                                     return [HS.Generator HS.noLoc
@@ -174,7 +175,7 @@ tStmt (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) exp) = do
 
 tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
   fscope <- funScope
-  (cscope,_,_,_,_) <- ask
+  (cscope,_,_,_,_,_) <- ask
   case M.lookup ident fscope of
       Just _ -> do
         texp <- case exp of
@@ -196,15 +197,21 @@ tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
           Nothing -> errorPos p (var ++ " not in scope or cannot modify the variable")
                                                                              
 tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
-  (_, _, _, cls,_) <- ask
+  (_, _, _, cls,_,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
            ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
 
-  return [HS.Qualifier (HS.Paren $ HS.InfixApp 
+  return [HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp 
                           (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ var)
-                          (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
-                          (HS.Paren texp))] -- paren are necessary here
+                          (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                          (HS.InfixApp 
+                           (HS.Paren texp) 
+                           (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
+                           (HS.App (HS.Var (HS.UnQual $ HS.Ident "pure")) (HS.Var (HS.UnQual $ HS.Ident "this")))
+                          )
+                          
+                       )] -- paren are necessary here
 
 tStmt (ABS.SGive pro val) = do
   tpro <- tPureExpStmt pro
@@ -262,7 +269,7 @@ liftInterf ident exp@(ABS.NewLocal _ _) = liftInterf' ident exp
 liftInterf ident exp = return id
 liftInterf' ident@(ABS.LIdent (p,var)) exp =  do
   fscope <- funScope
-  (cscope, _ , _, _,_)<- ask
+  (cscope, _ , _, _,_,_)<- ask
   return $ case M.lookup ident (M.union fscope cscope) of
       Nothing -> errorPos p $ "Identifier " ++ var ++ " cannot be resolved from scope"
       Just (ABS.TUnderscore) -> errorPos p $ "Cannot infer interface type for variable" ++ var

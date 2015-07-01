@@ -18,7 +18,7 @@ import Data.List (foldl', find, splitAt)
 import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
-import qualified Control.Monad.Trans.RWS as RWS (runRWST, modify)
+import qualified Control.Monad.Trans.State.Strict as S (runStateT, modify)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
 import System.Exit (exitSuccess)
@@ -26,7 +26,7 @@ import Control.Exception (throw)
 import Control.Monad.Catch (catchAll)
 import qualified Control.Distributed.Process as CH
 import Control.Distributed.Process.Node
-import Network.Transport.TCP (createTransport, defaultTCPParameters, socketToEndPoint)
+import Network.Transport.TCP (createTransport, defaultTCPParameters, socketToEndPoint, encodeEndPointAddress)
 import Network.Transport (newEndPoint, address)
 import Network.Socket (withSocketsDo)
 import Network.Info -- querying NIC IPs
@@ -36,6 +36,7 @@ import qualified Data.Binary as Bin (decode)
 import Data.String (fromString)
 import Control.Monad (when, foldM, liftM)
 import Control.Distributed.Process.Serializable
+import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under a null COG-process
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
 -- | (only applied when --distributed). This is a so-called cog-forwarder which is an extra (lightweight) thread
@@ -46,9 +47,15 @@ fwd_cog :: Chan Job              -- ^ the _local-only_ channel (queue) of the CO
         -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog c = do
   return ()
-  -- AnyFut j <- CH.expect :: CH.Process AnyFut
-  -- -- TODO: putMVar to local future
-  -- CH.liftIO $ writeChan c (WakeupSignal j)
+  -- j <- CH.expect
+  -- CH.liftIO $ writeChan c j
+  -- TODO: putMVar to local future
+
+-- test1 :: CH.ProcessId -> CH.Process ()
+-- test1 pid = CH.send pid (WakeupSignal "mplo" undefined 4)
+
+-- test2 :: CH.ProcessId -> CH.Process ()
+-- test2 pid = CH.send pid (RunJob NullRef MainFutureRef (undefined :: ABS Null Int))
 
 -- | Each COG is a thread or a process
 spawnCOG :: Chan Job            -- ^ the caller is responsible to create a communication-queue. The caller is responsible for later creating the 1st object and _schedule_ its init process by sending a message to this channel
@@ -86,7 +93,7 @@ spawnCOG c = do
              loop pid sleepingOnFut'' sleepingOnAttr' counter
           -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
           RunJob obj fut@(FutureRef mvar cog@(COG (fcog, ftid)) fid) coroutine -> do
-             (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
+             (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''})) <- S.runStateT (do
               -- the cog catches any exception and lazily records it into the future-box (mvar)
               p <- resume coroutine `catchAll` (\ someEx -> do
                                                  when (traceExceptions conf) $ 
@@ -107,7 +114,7 @@ spawnCOG c = do
                                 -- put the woken back to the enabled queue
                                 maybe (return ()) (\ woken -> do
                                                    sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
-                                                   RWS.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
+                                                   S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                 return sleepingOnFut'
                     -- the process deliberately suspended (by calling suspend)
                     Left (Yield S cont) -> do
@@ -126,24 +133,21 @@ spawnCOG c = do
                        
                        let lengthOnFut = maybe 0 length mFutEntry
                        let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
-                       RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
                     -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
                     Left (Yield (A o@(ObjectRef _ _ oid)  fields) cont) -> do
                            -- update sleepingo-table
                            let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
-                           RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                           S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                            return sleepingOnFut
-                                                    ) (AConf {aThis = obj, 
-                                                              aCOG = COG (c, pid)
-                                                             })
-                                                                     (AState {aCounter = counter,
-                                                                              aSleepingO = sleepingOnAttr})
+                                                    )  (AState {aCounter = counter,
+                                                                aSleepingO = sleepingOnAttr})
              loop pid sleepingOnFut'' sleepingOnAttr'' counter''
 
 
 -- | ABS main-block thread (COG-like thread)
-main_is :: ABS Null () -- ^ a main-block monadic action (a fully-applied method with a null this-context that returns "Unit")
+main_is :: (Obj Null -> ABS ()) -- ^ a main-block monadic action (a fully-applied method with a null this-context that returns "Unit")
         -> CH.RemoteTable        -- ^ this is a _remotely-shared_ table of pointers to __remotable__ methods (methods that can be called remotely)
         -> IO ()                  -- ^ returns void. It is the main procedure of a compiled ABS application.
 main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
@@ -166,9 +170,9 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex ->  -- no creator, this is the START-SYSTEM and runs MAIN
-           writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
+           writeChan c (RunJob ((error "not this at top-level") :: Obj Null) MainFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp "9000" 0)) undefined)) -- send the Main Block as the 1st created process
         Right "" -> -- no creator, this is the START-SYSTEM and runs MAIN
-           writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
+           writeChan c (RunJob ((error "not this at top-level") :: Obj Null) MainFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp "9000" 0)) undefined)) -- send the Main Block as the 1st created process
         Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let creatorPid = Bin.decode (fromString creatorPidStr) :: CH.ProcessId
@@ -187,7 +191,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
       c <- newChan               -- in-memory channel
-      writeChan c (RunJob (error "not this at top-level") MainFutureRef mainABS) -- send the Main Block as the 1st created process
+      writeChan c (RunJob ((error "not this at top-level") :: Obj Null) MainFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp "9000" 0)) undefined)) -- send the Main Block as the 1st created process
       runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid M.empty M.empty 1)
 
 
@@ -200,7 +204,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
            sleepingOnAttr' <- maybe (return sleepingOnAttr) (CH.liftIO . updateWoken c sleepingOnAttr) maybeWoken -- put the woken back to the enabled queue
            loop c pid sleepingOnFut'' sleepingOnAttr' counter
          RunJob obj fut coroutine -> do
-           (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''}), _) <- RWS.runRWST (do
+           (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''})) <- S.runStateT (do
               p <- resume coroutine `catchAll` (\ someEx -> do
                                                  when (traceExceptions conf) $ 
                                                       CH.liftIO $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
@@ -220,7 +224,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                                      -- put the woken back to the enabled queue
                                      maybe (return ()) (\ woken -> do
                                                          sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
-                                                         RWS.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
+                                                         S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                      return sleepingOnFut'
                               MainFutureRef -> CH.liftIO $ do
                                          if (distributed conf || keepAlive conf)
@@ -243,16 +247,14 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                        
                        let lengthOnFut = maybe 0 length mFutEntry
                        let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(RunJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
-                       RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut' -- update sleepingf-table                          
                 Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
                        let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(RunJob obj fut cont,Nothing)] m) sleepingOnAttr fields
-                       RWS.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
+                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
                        return sleepingOnFut
-                                              ) (AConf {aThis = obj, 
-                                                        aCOG = COG (c, pid)
-                                                       }) (AState {aCounter = counter,
-                                                                   aSleepingO = sleepingOnAttr})
+                                              ) (AState {aCounter = counter,
+                                                         aSleepingO = sleepingOnAttr})
            loop c pid sleepingOnFut'' sleepingOnAttr'' counter''
 
 

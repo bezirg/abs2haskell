@@ -224,10 +224,10 @@ elemAt(a, i) = a BArray.! i
 ----------------------------
 
 
-println :: (Root_ o) => ABS o Prelude.String -> ABS o ()
+println :: ABS Prelude.String -> ABS ()
 println act = act Prelude.>>= \ s -> liftIO (Prelude.putStrLn s)
 
-readln :: (Root_ o) => ABS o Prelude.String
+readln :: ABS Prelude.String
 readln = liftIO Prelude.getLine
 
 toString :: (Prelude.Show a) => a -> Prelude.String

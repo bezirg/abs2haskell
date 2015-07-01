@@ -13,11 +13,11 @@ import Lang.ABS.Runtime.Base
 
 import Prelude hiding (null)
 import qualified Data.List (null)
-import Control.Monad (liftM, when, unless)
+import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
 import Control.Concurrent.Chan (writeChan)
 import Control.Monad.Trans.Class (lift)
-import qualified Control.Monad.Trans.RWS as RWS (ask, get, put)
+import qualified Control.Monad.Trans.State.Strict as S (get, put)
 import Control.Concurrent.MVar
 import Control.Monad.Coroutine hiding (suspend)
 import Control.Monad.Coroutine.SuspensionFunctors (yield)
@@ -26,52 +26,50 @@ import qualified Control.Exception (fromException, evaluate, AssertionFailed (..
 import qualified Data.Set as S (insert, toList, empty)
 import Control.Distributed.Process.Serializable
 
-skip :: (Root_ o) => ABS o ()
-skip = return (())
+skip :: ABS ()
+skip = return ()
 
-suspend :: ABS o ()
+suspend :: ABS ()
 suspend = yield S
 
-await ::  (Root_ o) => AwaitGuardCompiled o -> ABS o () 
-await (FutureLocalGuard f@(FutureRef mvar _ _ ))  = do
+await :: (Root_ o) => AwaitGuardCompiled -> Obj o -> ABS () 
+await (FutureLocalGuard f@(FutureRef mvar _ _ )) _ = do
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
     yield (FL f)
 
-await g@(FutureFieldGuard i tg)  = do
+await g@(FutureFieldGuard i tg) this  = do
   f@(FutureRef mvar _ _) <- tg
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
     yield (FF f i)
-    await g
+    await g this
 
-await g@(AttrsGuard is tg) = do
+await g@(AttrsGuard is tg) this = do
   check <- tg
   if not check
     then if Data.List.null is             -- no field-checks, so this will block indefinitely
          then do -- like suspend
            -- throw (return BlockedAwaitException) -- disabled the optimization for now and changed it to busy-waiting
            yield S
-           await g 
+           await g this
          else do
-           AConf obj _ <- lift $ RWS.ask
-           yield (A obj is)
-           await g
+           yield (A this is)
+           await g this
     else return ()                 -- check succeeded, continue
 
-await (PromiseLocalGuard p@(PromiseRef mvar regsvar _ _ ))  = do
+await (PromiseLocalGuard p@(PromiseRef mvar regsvar _ _ )) (ObjectRef _ hereCOG _)  = do
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
     mregs <- liftIO $ takeMVar regsvar
     case mregs of
       Nothing -> return ()        -- there was a race-condition, so we repair it with a maybe check
       Just scogs -> do
-                 hereCOG <- liftM aCOG $ lift RWS.ask
                  let scogs' = S.insert hereCOG scogs
                  liftIO $ putMVar regsvar (Just scogs')
                  yield (FL (proToFut p))
   
-await g@(PromiseFieldGuard i tg)  = do
+await g@(PromiseFieldGuard i tg) this@(ObjectRef _ hereCOG _)  = do
   p@(PromiseRef mvar regsvar _ _) <- tg
   empty <- liftIO $ isEmptyMVar mvar
   when empty $ do
@@ -79,27 +77,26 @@ await g@(PromiseFieldGuard i tg)  = do
     case mregs of
       Nothing -> return ()        -- there was a race-condition, so we repair it with a maybe check
       Just scogs -> do
-                 hereCOG <- liftM aCOG $ lift RWS.ask
                  let scogs' = S.insert hereCOG scogs
                  liftIO $ putMVar regsvar (Just scogs')
                  yield (FF (proToFut p) i)
-                 await g
+                 await g this
 
-await (left :&: rest) = do
-  await left
-  await rest
+await (left :&: rest) this = do
+  await left this
+  await rest this
 
 -- | For use in awaitguard: a p$ becomes f?
 proToFut :: Promise a -> Fut a
 proToFut (PromiseRef valVar _regsVar creatorCog creatorCounter) = FutureRef valVar creatorCog creatorCounter
 
 
-while :: (Root_ o) => ABS o Bool -> ABS o a -> ABS o ()
+while :: ABS Bool -> ABS a -> ABS ()
 while predAction loopAction = do
   res <- predAction
   when res (loopAction >> while predAction loopAction)
 
-pro_give :: (Root_ o, Serializable a) => ABS o (Promise a) -> ABS o a -> ABS o ()
+pro_give :: Serializable a => ABS (Promise a) -> ABS a -> ABS ()
 pro_give aP aVal = do
   (PromiseRef valMVar regsMVar _creatorCog _creatorCounter) <- aP
   val <- aVal
@@ -109,32 +106,31 @@ pro_give aP aVal = do
   liftIO $ mapM_ (\ (COG (fcog, _ftid)) -> writeChan fcog (WakeupSignal val _creatorCog _creatorCounter)) (S.toList cogs)
   liftIO $ putMVar regsMVar Nothing
 
-pro_new :: (Root_ o) => ABS o (Promise a)
-pro_new = do
+pro_new :: (Root_ o) => Obj o -> ABS (Promise a)
+pro_new (ObjectRef _ hereCOG _) = do
   valMVar <- liftIO $ newEmptyMVar
   regsMVar <-liftIO $ newMVar (Just S.empty)
-  __hereCOG <- liftM aCOG $ lift RWS.ask
-  astate@(AState{aCounter = __counter}) <- lift RWS.get
-  lift (RWS.put (astate{aCounter = __counter + 1}))
-  return (PromiseRef valMVar regsMVar __hereCOG __counter)
+  astate@(AState{aCounter = __counter}) <- lift S.get
+  lift (S.put (astate{aCounter = __counter + 1}))
+  return (PromiseRef valMVar regsMVar hereCOG __counter)
 
-get :: (Root_ o) => Fut f -> ABS o f
+get :: Fut f -> ABS f
 get (FutureRef mvar _ _) = liftIO $ Control.Exception.evaluate =<< readMVar mvar 
 
-pro_get :: (Root_ o) => Promise f -> ABS o f
+pro_get :: Promise f -> ABS f
 pro_get (PromiseRef mvar _ _ _) = liftIO $ Control.Exception.evaluate =<< readMVar mvar 
 
-pro_isempty :: (Root_ o) => Promise f -> ABS o Bool
+pro_isempty :: Promise f -> ABS Bool
 pro_isempty (PromiseRef mvar _ _ _) = liftIO $ Control.Exception.evaluate =<< isEmptyMVar mvar 
 
 -- forces the reading of the future-box to whnf, so when the future-box is opened (through get) then the remote future exception will be raised
 
 -- for using inside ABS monad
-ifthenM :: Monad m => m Bool -> m () -> m ()
+ifthenM :: ABS Bool -> ABS () -> ABS ()
 ifthenM texp stm_then = texp >>= (\ e -> when e stm_then)
 
 -- for using inside ABS monad
-ifthenelseM :: Monad m => m Bool -> m b -> m b -> m b
+ifthenelseM :: ABS Bool -> ABS b -> ABS b -> ABS b
 ifthenelseM texp stm_then stm_else = texp >>= (\ e -> if e 
                                                      then stm_then
                                                      else stm_else)
@@ -154,12 +150,12 @@ instance (Functor s, Control.Monad.Catch.MonadMask m) => Control.Monad.Catch.Mon
     Coroutine $ Control.Monad.Catch.uninterruptibleMask $ \u -> resume (a $ q u)
       where q u b = Coroutine $ u (resume b)
 
--- aliases for easier exporting
-throw :: (Root_ o, Control.Monad.Catch.Exception e) => ABS o e -> ABS o a
+-- | aliases for easier exporting
+throw :: Control.Monad.Catch.Exception e => ABS e -> ABS a
 throw e = e >>= Control.Monad.Catch.throwM
 
 -- | Catches different sorts of exceptions. See "Control.Exception"'s 'ControlException.catches'
-catches :: (Root_ o)  => ABS o a -> [Control.Monad.Catch.Handler (ABS o) (Maybe a)] -> ABS o a
+catches :: ABS a -> [Control.Monad.Catch.Handler ABS (Maybe a)] -> ABS a
 catches a hs = a `Control.Monad.Catch.catch` handler
   where
     handler e = foldr probe (Control.Monad.Catch.throwM e) hs
@@ -170,39 +166,15 @@ catches a hs = a `Control.Monad.Catch.catch` handler
                                                                               (Control.Exception.fromException e)
 
 
-finally :: (Root_ o) => ABS o a -> ABS o b -> ABS o a
+finally :: ABS a -> ABS b -> ABS a
 finally = Control.Monad.Catch.finally
 
 type Exception = Control.Monad.Catch.SomeException
 
 -- | The ABS assertions. 
-assert :: (Root_ o) => ABS o Prelude.Bool -> ABS o ()
+assert :: ABS Prelude.Bool -> ABS ()
 assert act = act Prelude.>>= \ pred -> when (Prelude.not pred) 
              (throw $ return $ Control.Exception.AssertionFailed "Assertion Failed")
-
-
--- -- | Sync call to run
--- run_sync (Root __obj@(ObjectRef __ioref _ _))
---   = do __hereCOG <- liftM aCOG $ lift RWS.ask
---        __obj1 <- liftIO (readIORef __ioref)
---        otherCOG <- __cog __obj1
---        when (not (__hereCOG == otherCOG))
---          (error "Sync Call on a different COG detected")
---        mapMonad (RWS.withRWST (\ r s -> ((\ aconf -> aconf{aThis = __obj}) r, s))) (__run __obj)
--- run_sync (Root NullRef) = error "sync call to null"
-
--- -- | Async call to run
--- run_async (Root __obj@(ObjectRef __ioref _ _))
---   = do __obj1 <- liftIO (readIORef __ioref)
---        COG (__chan, _) <- __cog __obj1
---        __mvar <- liftIO newEmptyMVar
---        AConf{aCOG = __cog} <- lift RWS.ask
---        astate@(AState{aCounter = __counter}) <- lift RWS.get
---        lift (RWS.put (astate{aCounter = __counter + 1}))
---        let __f = FutureRef __mvar __cog __counter
---        liftIO (writeChan __chan (RunJob __obj __f (__run __obj)))
---        return __f
--- run_async (Root NullRef) = error "async call to null"
 
 
 -- | The reference to a null object

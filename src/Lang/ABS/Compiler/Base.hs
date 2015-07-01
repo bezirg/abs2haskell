@@ -38,9 +38,7 @@ type ScopeTable = M.Map ABS.LIdent (ABS.Type)
 -- 2. the interface name
 --
 -- It has no state
-type ExprM = Reader (ScopeTable -- the current functional scope (introduced by let-local-variables and case)
-                    ,String     -- the interface name
-                    )
+type ExprM = Reader ScopeTable -- the current functional scope (introduced by let-local-variables and case)
 
 -- ^ The translation monad of _pure_ and _effectful_ expressions inside the ABS object-layer
 -- It holds
@@ -55,8 +53,9 @@ type ExprM = Reader (ScopeTable -- the current functional scope (introduced by l
 type ExprLiftedM = Reader (ScopeTable -- current functional scope (introduced by local variables)
                     ,ScopeTable -- current class scope, i.e. fscope `union` cscope == full_current_scope
                     ,ScopeTable -- current method parameters
-                    ,String     -- the interface name that we are currently implementing with this class method
+                    ,String     -- the class name that we are currently implementing with this class method
                     ,Bool -- is init block? then it cannot use await and/or synchronous calls
+                    ,[ABS.LIdent] -- a list of visible methods (exluding non-methods); needed by exprlifted thismethcalls
                     )
 
 -- ^ The translation monad of ABS (monadic) statements, inside the ABS object-layer
@@ -76,6 +75,7 @@ type StmtM = ReaderT (ScopeTable -- current class scope
                      ,String      -- interface name
                      ,String      -- class name
                      ,Bool     -- is init block? then it cannot use await and/or synchronous calls
+                     ,[ABS.LIdent] -- a list of visible methods (exluding non-methods); needed by exprlifted thismethcalls
                      )
     (State [ScopeTable])  -- all function block scopes
     

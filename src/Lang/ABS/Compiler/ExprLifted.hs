@@ -16,7 +16,7 @@ import Control.Monad.Trans.Reader (ask, runReader, withReader)
 import Data.List (nub, findIndices)
 import qualified Data.Map as M
 import Data.Foldable (foldlM, find)
-import Control.Monad (liftM)
+import Control.Monad (liftM,when)
 
 -- | Translates a pure expression in the statement world
 --
@@ -26,7 +26,7 @@ import Control.Monad (liftM)
 -- 3) if a sub-expression reads local-variables it calls readIORef on them (by tPureExp')
 tPureExpStmt :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.PureExp -> StmtM HS.Exp
 tPureExpStmt pexp = do
-  (_,_,_,cls, _) <- ask
+  (_,_,_,cls, _,_) <- ask
   runExpr (tPureExpWrap pexp cls)
 
 -- | Wrapping a pure-expression with field de-referencing
@@ -49,16 +49,15 @@ tPureExpWrap pexp cls = do
 -- | Translates an effectful expression in the statement world
 tEffExpStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.EffExp -> StmtM HS.Exp
 tEffExpStmt eexp = do
-  (_,_,_,cls, _) <- ask
+  (_,_,_,cls, _,_) <- ask
   runExpr (tEffExpWrap eexp cls)
-
 
 -- | Lifting an 'ExprLiftedM' monad to a 'StmtM' monad
 runExpr :: ExprLiftedM a -> StmtM a
 runExpr e = do
   fscope <- funScope
-  (cscope,mscope,interf,_,isInit) <- ask
-  return $ runReader e (fscope,cscope,mscope,interf,isInit)
+  (cscope,mscope,interf,_,isInit,meths) <- ask
+  return $ runReader e (fscope,cscope,mscope,interf,isInit,meths)
 
 
 -- | tEffExpWrap is a wrapper arround tEffExp' that adds a single read to the object pointer to collect the necessary fields
@@ -127,8 +126,8 @@ tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
 -- NOTE: leave the case for now. It might work out of the box
 tPureExp' (ABS.Case matchE branches) tyvars = do
   -- we use the Expr.hs pureExp , because we do not want to lift it
-  tmatch <- withReader (\ (fscope,_,mscope,iname,_) -> (fscope `M.union` mscope,iname)) $ tPureExp matchE tyvars 
-  (fscope,cscope,_,_,_) <- ask
+  tmatch <- withReader (\ (fscope,_,mscope,_,_,_) -> (fscope `M.union` mscope)) $ tPureExp matchE tyvars 
+  (fscope,cscope,_,_,_,_) <- ask
   let scope = fscope `M.union` cscope
   case matchE of
     ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (undefined, "Exception"))])) -> tCaseException tmatch branches
@@ -217,7 +216,7 @@ tPureExp' (ABS.EEq (ABS.ELit ABS.LNull) (ABS.ELit ABS.LThis)) _tyvars = return $
 tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tnull <- tPureExp' pnull _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _,_) <- ask
+  (fscope, _,_, _,_,_) <- ask
   case M.lookup ident fscope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
@@ -231,7 +230,7 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (
 tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tthis <- tPureExp' pthis _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _,_) <- ask
+  (fscope, _,_, _,_,_) <- ask
   case M.lookup ident fscope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
@@ -251,7 +250,7 @@ tPureExp' (ABS.EEq pexp pthis@(ABS.ELit (ABS.LThis))) _tyvars = tPureExp' (ABS.E
 tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1, str1))) pvar2@(ABS.EVar ident2@(ABS.LIdent (p2,str2)))) _tyvars = do
   tvar1 <- tPureExp' pvar1 _tyvars
   tvar2 <- tPureExp' pvar2 _tyvars
-  (fscope, _,_, _,_) <- ask
+  (fscope, _,_, _,_,_) <- ask
   case M.lookup ident1 fscope of -- check the type of the right var
     Just t1 -> case M.lookup ident2 fscope of
                 Just t2 -> if isInterface t1 && isInterface t2
@@ -501,7 +500,7 @@ tPureExp' (ABS.EQualVar (ABS.TTyp tsegs) (ABS.LIdent (_,pid))) _tyvars = -- todo
     -- we tread it as pure for now
 
 tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
-    (fscope, cscope, mscope,_,_) <- ask
+    (fscope, cscope, mscope,_,_,_) <- ask
     return $ HS.Paren $ case M.lookup var fscope of
       Nothing -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ -- fields are read from the Wrap function, so they are pure
                 case M.lookup var mscope of
@@ -554,10 +553,36 @@ tEffExp' (ABS.NewLocal _ _) = error "Not valid class name"
 tEffExp' (ABS.SyncMethCall pexp (ABS.LIdent (_,method)) args) = tSyncOrAsync "sync" pexp method args
 tEffExp' (ABS.AsyncMethCall pexp (ABS.LIdent (_,method)) args) = tSyncOrAsync "async" pexp method args
 
--- normalize
-tEffExp' (ABS.ThisSyncMethCall method args) = tEffExp' (ABS.SyncMethCall (ABS.ELit $ ABS.LThis) method args)
--- normalize
-tEffExp' (ABS.ThisAsyncMethCall method args) = tEffExp' (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args)
+tEffExp' (ABS.ThisSyncMethCall method@(ABS.LIdent (_,mname)) args) = do
+  (_,_,_,_,isInit,meths) <- ask
+  when isInit $ error "Synchronous method calls are not allowed inside init block"
+  if method `elem` meths
+   then tEffExp' (ABS.SyncMethCall (ABS.ELit $ ABS.LThis) method args) --  it is actually a method (interface-declared)
+   else do                           -- it is a non-method, thus do not wrap the object with the existential type of the interface
+    tapp <- (foldlM                                -- the method's arguments
+              (\ acc arg -> do
+                 targ <- tPureExp' arg []
+                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
+              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ mname ++ "_sync") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
+              args)
+    return $ HS.Paren $ HS.App (HS.Var (identI "join")) (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
+
+
+tEffExp' (ABS.ThisAsyncMethCall method@(ABS.LIdent (_,mname)) args) = do
+ (_,_,_,_,_,meths) <- ask
+ if method `elem` meths
+  then                           --  it is actually a method (interface-declared)
+      tEffExp' (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args)
+  else do
+    tapp <- (foldlM                                -- the method's arguments
+              (\ acc arg -> do
+                 targ <- tPureExp' arg []
+                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
+              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ mname ++ "_async") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
+              args)
+    return $ HS.Paren $ HS.App (HS.Var (identI "join")) (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
+
+      
 
 tEffExp' (ABS.Get pexp) = do
   texp <- tPureExp' pexp []
@@ -571,7 +596,7 @@ tEffExp' (ABS.ProEmpty pexp) = do
   texp <- tPureExp' pexp []
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "pro_isempty") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
-tEffExp' ABS.ProNew = return $ HS.Paren $ HS.Var $ HS.UnQual $ HS.Ident "pro_new"
+tEffExp' ABS.ProNew = return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pro_new") (HS.Var $ HS.UnQual $ HS.Ident "this")
 
 
 
@@ -582,32 +607,32 @@ tNewOrNewLocal newOrNewLocal qtids args = do
            (\ acc pexp -> do
               texp <- tPureExp' pexp []
               return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
-           (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var  
+           (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var  
                   ((let mids = init qtids
                     in
                       if null mids
                       then HS.UnQual
                       else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
-                   (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids))))))) args -- wrap with the class-constructor function
-  return $ HS.Paren $ HS.InfixApp (HS.Var $ identI newOrNewLocal) 
-             (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<")
-             targs
+                   (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids)))))) args -- wrap with the class-constructor function
+  return $ HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Var $ identI newOrNewLocal) 
+             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+             (HS.InfixApp (HS.Paren targs) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
 
 -- | shorthand generator, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> String -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method args = do
-  (_,_,_,_, isInit) <- ask
+  (_,_,_,_, isInit,_) <- ask
   if (isInit && syncOrAsync == "sync")
     then error "Synchronous method calls are not allowed inside init block"
     else do
       texp <- tPureExp' pexp [] -- the callee object (usually, the this)
-      tapp <- foldlM                                -- the method's arguments
-             (\ acc arg -> do
-                targ <- tPureExp' arg []
-                return $ HS.Paren (HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ))
-             (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") texp))
-             args
-      return $ HS.Paren $ HS.App (HS.Var (identI "join")) tapp
+      tapp <- (foldlM                                -- the method's arguments
+              (\ acc arg -> do
+                 targ <- tPureExp' arg []
+                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
+              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
+              args)
+      return $ HS.Paren $ HS.App (HS.Var (identI "join")) (HS.InfixApp (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
 
 
 -- | Translates the parameter (guard) of an await statement
@@ -637,7 +662,7 @@ tAwaitGuard (ABS.ProGuard ident) _cls = do
              texp
 
 tAwaitGuard (ABS.ProFieldGuard ident) cls =do
-  (_,cscope,_,_,_) <- ask
+  (_,cscope,_,_,_,_) <- ask
   texp <- tPureExpWrap (ABS.EVar ident) cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
              HS.App (HS.App (HS.Con $ identI "PromiseFieldGuard")
@@ -646,7 +671,7 @@ tAwaitGuard (ABS.ProFieldGuard ident) cls =do
 
 -- fieldguard: this.f?
 tAwaitGuard (ABS.FutFieldGuard ident) cls =do
-  (_,cscope,_,_,_) <- ask
+  (_,cscope,_,_,_,_) <- ask
   texp <- tPureExpWrap (ABS.EVar ident) cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
              HS.App (HS.App (HS.Con $ identI "FutureFieldGuard")
@@ -658,7 +683,7 @@ tAwaitGuard (ABS.FutFieldGuard ident) cls =do
 -- if the expression contains no fields, then the guard can evaluate it only once and either block (show an error) or continue
 -- if it contains fields, collect them to try them out whenever the object is mutated
 tAwaitGuard (ABS.ExpGuard pexp) cls = do
-  (_,cscope,_,_,_) <- ask
+  (_,cscope,_,_,_,_) <- ask
   vcscope <- visible_cscope
   let awaitFields = collectVars pexp vcscope
   texp <- tPureExpWrap pexp cls
@@ -679,23 +704,16 @@ tAwaitGuard (ABS.AndGuard gl gr) cls = do
 
 
 
--- | Wraps a given type t to Root_ o => ABS o t
+-- | Wraps a given type t to ABS t
 wrapTypeToABSMonad :: HS.Type -> HS.Type
-wrapTypeToABSMonad t = HS.TyForall Nothing [HS.ClassA (identI "Root_") [HS.TyVar $ HS.Ident "o"]] 
-                       (HS.TyApp (HS.TyApp (HS.TyCon (identI "ABS")) (HS.TyVar $ HS.Ident "o"))  t)
+wrapTypeToABSMonad t = (HS.TyApp (HS.TyCon (identI "ABS")) t)
 
 -- * Utils
-
--- | Util function to read the current interface
-interf :: ExprLiftedM String
-interf = do 
-  (_,_,_,i,_) <- ask
-  return i
 
 -- | Util function to fetch the visible class-scope
 visible_cscope :: ExprLiftedM ScopeTable
 visible_cscope = do
- (fscope, cscope, _, _,_) <- ask
+ (fscope, cscope, _, _,_,_) <- ask
  return $ cscope M.\\ fscope
 
 
