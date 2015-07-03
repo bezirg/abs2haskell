@@ -127,8 +127,7 @@ tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
 tPureExp' (ABS.Case matchE branches) tyvars = do
   -- we use the Expr.hs pureExp , because we do not want to lift it
   tmatch <- withReader (\ (fscope,_,mscope,_,_,_) -> (fscope `M.union` mscope)) $ tPureExp matchE tyvars 
-  (fscope,cscope,_,_,_,_) <- ask
-  let scope = fscope `M.union` cscope
+  scope <- fullScope
   case matchE of
     ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (undefined, "Exception"))])) -> tCaseException tmatch branches
     ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen tid]) | tid `elem` concatMap exceptions ?moduleTable -> tCaseException tmatch branches
@@ -216,8 +215,8 @@ tPureExp' (ABS.EEq (ABS.ELit ABS.LNull) (ABS.ELit ABS.LThis)) _tyvars = return $
 tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tnull <- tPureExp' pnull _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _,_,_) <- ask
-  case M.lookup ident fscope of -- check the type of the right var
+  scope <- fullScope
+  case M.lookup ident scope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
                                               (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
@@ -225,13 +224,13 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
              else errorPos p "cannot equate datatype to null"
-    Nothing -> errorPos p $ str ++ " not in scope or not object variable"
+    Nothing -> errorPos p $ str ++ " not in scope"
 
 tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.LIdent (p,str)))) _tyvars = do
   tthis <- tPureExp' pthis _tyvars
   tvar <- tPureExp' pvar _tyvars
-  (fscope, _,_, _,_,_) <- ask
-  case M.lookup ident fscope of -- check the type of the right var
+  scope <- fullScope
+  case M.lookup ident scope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
                                               (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
@@ -239,7 +238,7 @@ tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.LIdent (
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
              else errorPos p "cannot equate datatype to this"
-    Nothing -> errorPos p $ str ++ " not in scope or not object variable"
+    Nothing -> errorPos p $ str ++ " not in scope"
   
 -- commutative
 tPureExp' (ABS.EEq pexp pnull@(ABS.ELit (ABS.LNull))) _tyvars = tPureExp' (ABS.EEq pnull pexp) _tyvars
@@ -250,9 +249,9 @@ tPureExp' (ABS.EEq pexp pthis@(ABS.ELit (ABS.LThis))) _tyvars = tPureExp' (ABS.E
 tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1, str1))) pvar2@(ABS.EVar ident2@(ABS.LIdent (p2,str2)))) _tyvars = do
   tvar1 <- tPureExp' pvar1 _tyvars
   tvar2 <- tPureExp' pvar2 _tyvars
-  (fscope, _,_, _,_,_) <- ask
-  case M.lookup ident1 fscope of -- check the type of the right var
-    Just t1 -> case M.lookup ident2 fscope of
+  scope <- fullScope
+  case M.lookup ident1 scope of -- check the type of the right var
+    Just t1 -> case M.lookup ident2 scope of
                 Just t2 -> if isInterface t1 && isInterface t2
                           then case joinSub t1 t2 of
                               Just t ->
@@ -274,13 +273,11 @@ tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1, str1))) pvar2@(ABS.EV
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
-                          -- error $ str2 ++ " not in scope" -- todo: turn it into warning
     Nothing -> return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
                                                            (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
-              -- error $ str1 ++ " not in scope" -- todo: turn it into warning
 
 -- a catch-all for literals,constructors maybe coupled with vars
 tPureExp' (ABS.EEq pexp1 pexp2) _tyvars = do
@@ -717,3 +714,7 @@ visible_cscope = do
  return $ cscope M.\\ fscope
 
 
+fullScope :: ExprLiftedM ScopeTable
+fullScope = do
+ (fscope, cscope, _, _,_,_) <- ask
+ return $ fscope `M.union` cscope

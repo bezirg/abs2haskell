@@ -1,0 +1,40 @@
+module RunAndNonMethods;
+
+interface I {
+  Unit k();
+}
+
+interface G {
+
+}
+
+interface E {
+
+}
+
+interface K {
+
+}
+
+interface Z {
+
+}
+
+class C1 implements I {
+  Unit run() {
+      this.m(3,4,5);
+      this ! m(3,4,5);
+      }
+  Unit m(Int x, Int y, Int z) {
+      this.k();
+      this!k();
+  }
+  Unit k() {
+      println(toString(True));
+  }
+}
+
+{
+  I o = new C1();
+  
+}

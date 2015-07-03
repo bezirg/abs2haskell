@@ -51,7 +51,7 @@ class PongImpl implements Pong {
     Unit hello(Ping ping) {
        this.ping = ping;
        ping!ping(HelloPing);
-       println("Pong: hello, Ping");
+       println("Pong: hello, Ping, True");
     }
 
     Unit pong(PongMsg msg){
@@ -61,7 +61,7 @@ class PongImpl implements Pong {
        }  
        else {
            ping!ping(ByePing);
-           println("Pong: Bye, Ping");
+           println("Pong: Bye, Ping, True");
            }
     } 
 

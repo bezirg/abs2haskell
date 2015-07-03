@@ -450,7 +450,8 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                         [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
 
                                         )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
-                                                                          then tNonMethDecl "Root" run
+                                                                          -- add all the non-methods (not only run, because it may call other non-methods)
+                                                                          then concatMap (tNonMethDecl "Root") nonMethods
                                                                           else []) mRun))])
 
                :
@@ -509,7 +510,8 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                          [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
                                                             (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
                                          )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
-                                                                          then tNonMethDecl "Root" run
+                                                                          -- add all the non-methods (not only run, because it may call other non-methods)
+                                                                          then concatMap (tNonMethDecl "Root") nonMethods
                                                                           else []) mRun))])
                                         
                :
@@ -655,7 +657,11 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
          tInitDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
 
 
-         tMethDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = HS.InsDecl $ 
+         tMethDecl interfName (ABS.MethClassBody tReturn (ABS.LIdent (mpos,mident)) mparams (ABS.Bloc block)) = 
+             if mident == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null mparams))
+             then errorPos mpos "run should have zero parameters and return type Unit"
+             else  -- the underline non-method implementation
+                 HS.InsDecl $ 
                       HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (HS.PVar (HS.Ident "this") : map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams )
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
