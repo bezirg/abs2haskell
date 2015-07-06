@@ -13,6 +13,7 @@ import Lang.ABS.Compiler.Include -- added
 import Lang.ABS.StdLib.Prelude -- added
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
+import Control.Distributed.Process.Serializable
 import Control.Distributed.Process.Node
 import Data.List (words)
 import System.IO (readFile)
@@ -20,6 +21,7 @@ import Prelude (Double(..))
 import Text.Read (read)
 import Prelude (toRational)
 import Control.Concurrent.MVar (newMVar)
+
  
 -- * The DC interface
 
@@ -27,10 +29,9 @@ import Control.Concurrent.MVar (newMVar)
 --
 -- All DC classes must implement two methods: 'shutdown' and 'getLoad'.
 class (Root_ a) => IDC_ a where
-         
         shutdown :: Obj a -> ABS Unit
-         
         getLoad :: Obj a -> ABS (Triple Rat Rat Rat)
+        spawns :: (Root_ o, Serializable o) => Obj a -> o -> ABS (Obj o)
  
 -- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
 data IDC = forall a . (IDC_ a) => IDC (Obj a)
@@ -47,10 +48,12 @@ instance Sub IDC Root where
 instance IDC_ Null where
         shutdown
           = I__.error
-              "this should not happen. report the program to the compiler developers"
+              "cannot call shutdown to a null DC"
         getLoad
           = I__.error
-              "this should not happen. report the program to the compiler developers"
+              "cannot call getLoad to a null DC"
+        spawns = I__.error
+              "cannot call spawns to a null DC"
 
 -- * DC Internals
 
@@ -79,7 +82,7 @@ shutdown_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(Objec
        I__.lift (I__.put (astate{aCounter = __counter + 1}))
        let __f = FutureRef __mvar __hereCOG __counter
        I__.liftIO
-         (I__.writeChan __chan (RunJob __obj __f (shutdown __obj)))
+         (I__.writeChan __chan (LocalJob __obj __f (shutdown __obj)))
        return __f
 shutdown_async _ (IDC NullRef) = I__.error "async call to null"
 
@@ -125,4 +128,10 @@ getLoad_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(Object
            return __f
 
 getLoad_async _ (IDC NullRef) = I__.error "async call to null"
+
+
+
+spawns_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(ObjectRef __ioref _ _))) = spawns __obj
+
+spawns_async _ (IDC NullRef) = I__.error "async call to null"
 

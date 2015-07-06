@@ -1,0 +1,22 @@
+module LocalDC_stub;
+
+export *;
+fimport * from System.Process;
+fimport getExecutablePath from System.Environment;
+fimport encode from Data.Binary;
+fimport NodeId from Control.Distributed.Process;
+
+class LocalDC(Int port) implements IDC {
+    NodeId nid;
+    {
+        
+
+    }
+    Unit shutdown() {
+
+    }
+    Triple<Rat,Rat,Rat> getLoad() { // unix style average load, (last minute, 5mins , 15 mins)
+          return Triple(1/2,1/2,1/2); // stub
+    }
+
+}

@@ -43,8 +43,8 @@ __nebulaDC cpu memory
  
 instance I__.Root_ NebulaDC where
         new __cont this@(I__.ObjectRef _ __hereCOG _) 
-          = do __chan <- I__.liftIO I__.newChan
-               __new_tid <- I__.lift (I__.lift (I__.spawnCOG __chan))
+          = do 
+               __new_cog@(I__.COG (__chan,_)) <- I__.lift (I__.lift (I__.spawnCOG))
                let load = 0
                let vmId = (-1)
                let nodeId = Nothing
@@ -52,12 +52,12 @@ instance I__.Root_ NebulaDC where
                      = __cont{nebulaDC_load = load, nebulaDC_vmId = vmId,
                               nebulaDC_nodeId = nodeId}
                __ioref <- I__.liftIO (I__.newIORef __c)
-               let __obj = I__.ObjectRef __ioref (I__.COG (__chan, __new_tid)) 0
+               let __obj = I__.ObjectRef __ioref __new_cog 0
                do __mvar <- I__.liftIO I__.newEmptyMVar
                   __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
                   I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
                   let __f = I__.FutureRef __mvar __hereCOG __counter
-                  I__.liftIO (I__.writeChan __chan (I__.RunJob __obj __f (I__.__init __obj)))
+                  I__.liftIO (I__.writeChan __chan (I__.LocalJob __obj __f (I__.__init __obj)))
                return __obj
         new_local __cont __this
           = 
@@ -181,6 +181,7 @@ instance IDC_ NebulaDC where
                    (s1: s5: s15: _) <- I__.liftIO (words <$> (readFile "/proc/loadavg"))
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
                    -- else I__.error "TODO: remote checking the load of the system is not implemented yet"
+        spawns this obj = I__.undefined
 
 {-# NOINLINE myTyp #-}
 {-# NOINLINE myCreatorPid #-}

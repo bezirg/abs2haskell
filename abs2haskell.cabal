@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.0.6
+version:               1.1.6
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -22,6 +22,7 @@ library
                       -- temporal support for arrays in ABS (PA case study)
                       random,
                       array,
+                      process,
                       transformers>=0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
@@ -48,13 +49,16 @@ library
                       binary>=0.7.5.0,
                       bytestring,
                       cmdargs,
+                      base64-bytestring,
                       -- for injecting package version into cmdargs --help menu
                       cabal-file-th
   exposed-modules:    
                      -- imitating the abslang.abs
                      Lang.ABS.StdLib,
                      -- a DC implementation, connecting to OpenNebula
-                     NebulaDC,
+                     NebulaDC
+                     -- a localhost implementation
+                     LocalDC,
                      -- the ABS-Haskell runtime system
                      -- declarations of data structures used in the Runtime
                      Lang.ABS.Runtime.Base,
@@ -70,6 +74,7 @@ library
                      Lang.ABS.StdLib.Prelude,                    
                      Lang.ABS.StdLib.DC,
                      Lang.ABS.StdLib.NebulaDC,
+                     Lang.ABS.StdLib.LocalDC,
                      -- the ABS-RTS-options
                      Lang.ABS.Runtime.Conf
   extensions:         LambdaCase,

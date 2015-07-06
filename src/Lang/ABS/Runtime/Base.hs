@@ -1,5 +1,5 @@
 -- | All the types and datastructures used in the ABS-Haskell runtime
-{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables, StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables, StandaloneDeriving, DeriveGeneric #-}
 
 module Lang.ABS.Runtime.Base where
 
@@ -20,6 +20,8 @@ import GHC.Fingerprint ( Fingerprint(Fingerprint) )
 import Control.Distributed.Process.Serializable
              ( fingerprint, Serializable, encodeFingerprint, decodeFingerprint )
 import Control.Applicative
+import Network.Transport (EndPointAddress)
+import GHC.Generics (Generic)
 
 -- * Objects and Futures
 
@@ -45,7 +47,7 @@ data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
 -- 3. A unique-per-COG ascending counter being the future's identity inside the cog
 -- Together 2 and 3 makes a future uniquely identified across the network.
 data Fut a = FutureRef (MVar a) COG Int -- ^ a reference to a future (created by await)
-           | MainFutureRef              -- ^ a dummy (internal-only) future-reference where main-method returns to (when finished)
+           | NullFutureRef              -- ^ a dummy (internal-only) future-reference where main-method returns to (when finished)
            deriving Typeable
 
 -- container, waiting-cogs, creator-cog, counter-id when created
@@ -56,7 +58,7 @@ instance Eq (Promise a) where
 
 -- | Equality testing between futures
 instance Eq (Fut a) where
-    MainFutureRef == MainFutureRef = True
+    NullFutureRef == NullFutureRef = True
     FutureRef _ cog1 id1 == FutureRef _ cog2 id2 = cog1 == cog2 && id1 == id2
     _ == _ = False
 
@@ -84,6 +86,8 @@ class Root_ a where
     __init :: Obj a -> ABS () 
     __init _ = return (())     -- default implementation of init
 
+
+
 -- | The root-type of all objects
 --
 -- This is the highest supertype in the subtyping hierarchy.
@@ -108,6 +112,9 @@ __eqRoot = (==)
 -- It does not have any constructors, thus no value (no fields).
 -- It is used only for _typing_ the 'null' object and the the this-context of the main-block-method.
 data Null
+    deriving (Generic, Typeable)
+
+instance Binary Null
 
 -- | The null-class error-implements the Root interface (and by code-generation all user-written interfaces)
 instance Root_ Null where
@@ -168,6 +175,7 @@ data AwaitGuardCompiled = forall b. (Serializable b) => FutureLocalGuard (Fut b)
 
 -- | a COG is identified by its jobqueue+processid
 newtype COG = COG { fromCOG :: (Chan Job, CH.ProcessId)}
+              deriving Typeable
 
 instance Eq COG where
     COG (_,pid1) == COG (_,pid2) = pid1 == pid2
@@ -177,9 +185,12 @@ instance Ord COG where
     COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
-data Job = forall o a . (Serializable a, Root_ o) => RunJob (Obj o) (Fut a) (ABS a)
+data Job = forall o a . (Serializable a) => LocalJob (Obj o) (Fut a) (ABS a)
+         | forall o a . (Serializable a) => RemotJob (Obj o) (Fut a) (CH.Closure (ABS a))
          | forall a . (Serializable a) => WakeupSignal a COG Int
-
+         | MachineUp EndPointAddress
+         | forall o . (Root_ o, Serializable o) => InitJob o
+         deriving Typeable
 
 -- ** COG-held datastructures
 
@@ -211,8 +222,6 @@ instance Control.Monad.Catch.Exception PromiseRewriteException
 
 -- Instances to lift exceptions for the "Process" monad
 
-
-
 instance MonadThrow CH.Process where
     throwM = CH.liftIO . throwIO
     
@@ -227,39 +236,32 @@ instance MonadMask CH.Process where
 
 -- | A future can be serialized.
 instance Binary (Fut a) where
-    put (FutureRef _ c i) = do
-      put (0 :: Word8) >> put c >> put i
-    put MainFutureRef = put (1 :: Word8)
+    put (FutureRef _ c i) = put c >> put i -- we ignore the mvar
+    put NullFutureRef = error "compiler error, this should not happen. MainFutureRef cannot be transmitted"
     get = do
-      t <- get :: Get Word8
-      case t of
-        1 -> return MainFutureRef
-        0 -> do
-            c <- get
-            i <- get
-            return (FutureRef undefined c i)
-        _ -> error "binary Fut decoding"
-
+      c <- get
+      i <- get                   -- TODO: here we have to look at the future-foreign-table
+      return (FutureRef undefined c i)
 
 instance Binary COG where
-    put (COG (_, pid)) = put pid
+    put (COG (_, pid)) = put pid -- we ignore the chan
     get = do
-      pid <- get
+      pid <- get                 -- TODO: here we put the associated chan of the forwarder
       return (COG (undefined, pid))
 
 
 instance Binary (Obj a) where
-    put (ObjectRef _ cog i) = do
+    put (ObjectRef _ cog i) = do -- we ignore the ioref with the value, it is a proxy
       put (0 :: Word8) >> put cog >> put i
     put NullRef = put (1 :: Word8)
     get = do
       t <- get :: Get Word8
       case t of
-        1 -> return NullRef
         0 -> do
             cog <- get
             i <- get
-            return (ObjectRef undefined cog i)
+            return (ObjectRef undefined cog i) -- TODO: here we have to look at the object-foreign-table
+        1 -> return NullRef
         _ -> error "Binary Obj: cannot decode object-ref"
 
 
@@ -270,29 +272,58 @@ deriving instance Typeable StateT
 
 
 instance Binary Job where
-    put (RunJob o f c) = do
+    put (RemotJob o f c) = do
                       put (0 :: Word8)
+                      put (encodeFingerprint$ fingerprint c) >> put c
+                      put o
                       put f
-                      -- put c
+                      put c
     put (WakeupSignal a c i) = do
                       put (1 :: Word8) 
                       put (encodeFingerprint$ fingerprint a) >> put a
                       put c
                       put i
+    put (MachineUp nid) = do
+      put (2 :: Word8)
+      put nid
+    put (InitJob o) = do
+                      put (3 :: Word8)
+                      put (encodeFingerprint$ fingerprint o) >> put o
+
+    put (LocalJob _ _ _) = error "compiler error, LocalJob should not be transmitted."
     get = do
       t <- get :: Get Word8
       case t of
-        0 -> undefined
-            -- do
-            -- o <- get
-            -- f <- get
-            -- c <- get
-            -- return (RunJob o f undefined)
+        0 -> do
+            fp<-get
+            case M.lookup (decodeFingerprint fp) stable2 of
+                 Just (SomeGet2 someget) -> RemotJob <$> get <*> get <*> someget
+                 Nothing -> error "Binary remotjob: fingerprint unknown"
         1 -> do
             fp<-get
             case M.lookup (decodeFingerprint fp) stable of
                  Just (SomeGet someget) -> WakeupSignal <$> someget <*> get <*> get
-                 Nothing -> error "Binary AnyFut: fingerprint unknown"
+                 Nothing -> error "Binary WakeUpsignal: fingerprint unknown"
+        2 -> MachineUp <$> get
+        3 -> do
+            fp <- get
+            case M.lookup (decodeFingerprint fp) stable3 of
+                 Just (SomeGet3 someget) -> InitJob <$> someget
+                 Nothing -> error "Binary InitJob: fingerprint unknown"
+        _ -> error "Binary Job: cannot decode job"
+
+stable2 :: M.Map Fingerprint SomeGet2
+stable2 = M.fromList
+    [ (mkSMapEntry (undefined :: CH.Closure (ABS Bool)))
+    , (mkSMapEntry (undefined :: CH.Closure (ABS [Int])))
+    , (mkSMapEntry (undefined :: CH.Closure (ABS [String])))
+    ]
+    where
+      mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet2)
+      mkSMapEntry a = (fingerprint a,SomeGet2 (get :: Get (CH.Closure (ABS a))))
+
+data SomeGet2 = forall a. Serializable a => SomeGet2 (Get (CH.Closure (ABS a)))
+
 
 stable :: M.Map Fingerprint SomeGet
 stable = M.fromList
@@ -305,6 +336,17 @@ stable = M.fromList
       mkSMapEntry a = (fingerprint a,SomeGet (get :: Get a))
       
 data SomeGet = forall a. Serializable a => SomeGet (Get a)
+
+
+stable3 :: M.Map Fingerprint SomeGet3
+stable3 = M.fromList
+    [ (mkSMapEntry (undefined :: Null))
+    ]
+    where
+      mkSMapEntry :: forall a. (Root_ a, Serializable a) => a -> (Fingerprint,SomeGet3)
+      mkSMapEntry a = (fingerprint a,SomeGet3 (get :: Get a))
+      
+data SomeGet3 = forall a. (Root_ a, Serializable a) => SomeGet3 (Get a)
 
 
 -- -- | any-futures can be serialized
@@ -328,5 +370,3 @@ data SomeGet = forall a. Serializable a => SomeGet (Get a)
 --       mkSMapEntry a = (fingerprint a,SomeGet (get :: Get (Fut a)))
       
 -- data SomeGet = forall a. Serializable a => SomeGet (Get (Fut a))
-
-

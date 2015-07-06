@@ -70,6 +70,7 @@ tEffExpWrap eexp cls = do
                          ABS.ProEmpty pexp -> [pexp]
                          ABS.ProNew -> []
                          ABS.New _ pexps  -> pexps
+                         ABS.Spawns pexp1 _ pexps2 -> pexp1:pexps2
                          ABS.NewLocal _ pexps -> pexps
                          ABS.SyncMethCall pexp1 _ pexps2 -> pexp1:pexps2
                          ABS.ThisSyncMethCall _ pexps -> pexps
@@ -595,7 +596,9 @@ tEffExp' (ABS.ProEmpty pexp) = do
 
 tEffExp' ABS.ProNew = return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pro_new") (HS.Var $ HS.UnQual $ HS.Ident "this")
 
-
+tEffExp' (ABS.Spawns dc cls pargs) = do
+  tdc <- tPureExp' dc []         -- the callee dc
+  return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "spawns") tdc
 
 -- | shorthand generator, because new and new local are similar
 tNewOrNewLocal :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
