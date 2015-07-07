@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.1.7
+version:               1.1.9
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -39,7 +39,7 @@ library
                       -- usual distributed-network transport through TCP
                       network-transport-tcp>=0.4.2, 
                       -- the node discovery/topology backend, this is the automatic: UDP broadcast (turned-off for now)
-                      -- distributed-process-simplelocalnet>=0.2.2.0,
+                      distributed-process-simplelocalnet>=0.2.3.0,
                       network-transport>=0.4.2.0, 
                       -- for Windows fix
                       network>=2.6.0.2,

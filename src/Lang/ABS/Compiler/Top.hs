@@ -394,9 +394,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                -- the new method
                HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new") [HS.PVar $ HS.Ident "__cont", HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard]))] Nothing
                                        (HS.UnGuardedRhs $ HS.Do (
-                                        -- chan <- lift $ lift $ newChan
-                                        (HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__chan") $ HS.App (HS.Var $ identI "liftIO") (HS.Var $ identI "newChan"))
-                                        :
                                         -- __new_cog@(COG (__chan,_)) <- lift $ lift $ spawnCOG
                                         (HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__new_cog") (HS.PParen $ HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar $ HS.Ident "__chan",HS.PWildCard]])) $ HS.App (HS.Var $ identI "lift") $ HS.App (HS.Var $ identI "lift")
                                                        (HS.Var $ identI "spawnCOG"))
@@ -438,12 +435,12 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                                     )
                                                                   ) (HS.BDecls [])]
                                         -- init_async __obj
-                                        , HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))])
+                                        , HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))
                                         ]
                                         ++
                                         -- run_async __obj iff there is a run method implemented by this class
                                         (if isJust mRun
-                                         then (HS.Qualifier (HS.Do [HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "run") (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))]) :)
+                                         then (HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var (HS.UnQual $ HS.Ident "run")) (HS.Var (HS.UnQual (HS.Ident "__obj")))))))))) :)
                                          else id)
                                         -- return $ __obj
                                         [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
