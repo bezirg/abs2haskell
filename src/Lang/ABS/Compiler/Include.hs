@@ -49,7 +49,7 @@ module Lang.ABS.Compiler.Include
 
 import Prelude
 import Control.Monad.Trans.Class
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class
 import Control.Monad
 import Data.IORef
 import Control.Concurrent
@@ -81,17 +81,21 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
                 Nothing -> res
 
 
-newRef :: ABS a -> ABS (IORef a)
+-- These are kept abstract (MonadIO), because we may have to interface with foreign code of IO
+-- TODO: maybe SPECIALIZE
+
+newRef :: MonadIO m => m a -> m (IORef a)
 newRef v = do
   res <- v
   liftIO $ newIORef res
 
-writeRef :: IORef a -> ABS a -> ABS ()
+
+writeRef :: MonadIO m => IORef a -> m a -> m ()
 writeRef r v = do
   res <- v
   liftIO $ writeIORef r res
 
-readRef :: IORef a -> ABS a
+readRef :: MonadIO m => IORef a -> m a
 readRef r = liftIO $ readIORef r
 
 -- for easier code generation
