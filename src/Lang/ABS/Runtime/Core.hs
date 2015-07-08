@@ -10,6 +10,8 @@ module Lang.ABS.Runtime.Core
     (spawnCOG
     ,main_is
     ,updateWoken
+    ,new
+    ,new_local
     ,spawnCOG__static
     ) where
 
@@ -20,7 +22,8 @@ import Data.List (foldl', find, splitAt)
 import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
 import Control.Concurrent.MVar (putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
-import qualified Control.Monad.Trans.State.Strict as S (runStateT, modify)
+import qualified Control.Monad.Trans.State.Strict as S (runStateT, modify, get, put)
+import Control.Monad.Trans.Class
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
 import System.Exit (exitSuccess)
@@ -316,4 +319,29 @@ updateWoken ch m ls = liftM fst $ foldM (\ (m, alreadyDeleted) (j, mo) -> do
                                                   in left ++ tail right
 
 
+{-# INLINE new #-}
+new :: (Root_ a) => a -> Obj creator -> ABS (Obj a)
+new smart _this = do 
+  new_cog@(COG (chan, _)) <- lift $ lift spawnCOG
+  ioref <- CH.liftIO $ newIORef smart
+  let obj = ObjectRef ioref new_cog 0
+  CH.liftIO $ writeChan chan (LocalJob obj NullFutureRef (__init obj))
+  return obj
+
+{-# INLINE new_local #-}
+new_local :: (Root_ a) => a -> Obj creator -> ABS (Obj a)
+new_local smart (ObjectRef _ thisCOG _) = do
+  ioref <- CH.liftIO $ newIORef smart
+  astate@(AState{aCounter = counter}) <- lift S.get
+  lift (S.put (astate{aCounter = counter + 1}))
+  let obj = ObjectRef ioref thisCOG counter
+  __init obj
+  return obj
+
+
+
 remotable ['spawnCOG]
+
+
+
+

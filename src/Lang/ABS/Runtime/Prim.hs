@@ -182,3 +182,4 @@ assert act = act Prelude.>>= \ pred -> when (Prelude.not pred)
 -- The class of a null object is "Null".
 null :: Obj Null
 null = NullRef
+

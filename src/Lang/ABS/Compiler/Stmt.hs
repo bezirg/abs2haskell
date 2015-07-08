@@ -36,7 +36,7 @@ tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = evalS
 
 -- | Translating any block . This functions pushes a new scope to the 'StmtM' scopes-stack-state.
 tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM HS.Exp
-tBlock stmts canReturn | null stmts = return $ eReturnUnit
+tBlock stmts canReturn | null stmts = return $ HS.Do [HS.Qualifier eReturnUnit]
                        | otherwise = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
   lift $ modify tail     -- remove the added scope level, after executing

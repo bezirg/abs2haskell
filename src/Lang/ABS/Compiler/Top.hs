@@ -421,90 +421,13 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
               (identI "Root_") -- interface name
               [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
               (
-               -- the new method
-               HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new") [HS.PVar $ HS.Ident "__cont", HS.PVar (HS.Ident "this")] Nothing
-                                       (HS.UnGuardedRhs $ HS.Do (
-                                        -- __new_cog@(COG (__chan,_)) <- lift $ lift $ spawnCOG
-                                        (HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__new_cog") (HS.PParen $ HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar $ HS.Ident "__chan",HS.PWildCard]])) $ HS.App (HS.Var $ identI "lift") $ HS.App (HS.Var $ identI "lift")
-                                                       (HS.Var $ identI "spawnCOG"))
-                                        :
-                                        [                                         
-                                         -- __ioref <- lift $ lift $ newIORef __cont
-                                        HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ 
-                                                           (HS.App (HS.Var $ identI "liftIO")
-                                                                  (HS.App (HS.Var $ identI "newIORef")
-                                                                         (HS.Var $ HS.UnQual $ HS.Ident "__cont")))
-                                        -- let __obj = ObjectRef __ioref 0 __new_cog
-                                        , HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__obj") Nothing 
-                                                                  (HS.UnGuardedRhs (HS.App (HS.App 
-                                                                                            (HS.App (HS.Con $ identI "ObjectRef")
-                                                                                                   (HS.Var $ HS.UnQual $ HS.Ident "__ioref"))
-                                                                                            (HS.Var $ HS.UnQual $ HS.Ident "__new_cog")
-                                                                                           ) (HS.Lit $ HS.Int 0)
-                                                                                    )
-                                                                  ) (HS.BDecls [])]
-                                        -- init_async __obj
-                                        , HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))))))))
-                                        ]
-                                        ++
-                                        -- run_async __obj iff there is a run method implemented by this class
-                                        (if isJust mRun
-                                         then (HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.Paren (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (identI "NullFutureRef"))) (HS.Paren (HS.App (HS.Var (HS.UnQual $ HS.Ident "run")) (HS.Var (HS.UnQual (HS.Ident "__obj")))))))))) :)
-                                         else id)
-                                        -- return $ __obj
-                                        [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
-
-                                        )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
-                                                                          -- add all the non-methods (not only run, because it may call other non-methods)
-                                                                          then concatMap (tNonMethDecl "Root") nonMethods
-                                                                          else []) mRun))])
-
-               :
-               -- the new local method
-               HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new_local") [HS.PVar $ HS.Ident "__cont", HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard]))] Nothing
-                                       (HS.UnGuardedRhs $ HS.Do (
-                                         [
-                                         
-                                         -- __ioref <- lift $ lift $ newIORef __cont
-                                        HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ (HS.App (HS.Var $ identI "liftIO")
-                                                                                                                      (HS.App (HS.Var $ identI "newIORef")
-                                                                                                                             (HS.Var $ HS.UnQual $ HS.Ident "__cont")))
-                                         --       __astate@(AState {aCounter = __counter})  <- lift $ RWS.get
-                                         , HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
-
-                                         -- lift $ RWS.put (__astate {aCounter = __counter + 1})
-                                         , HS.Qualifier $ HS.App (HS.Var $ identI "lift") $ (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))])))
-                                         -- let __obj = ObjectRef __ioref __thisCOG __counter
-                                         , HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__obj") Nothing 
-                                                                  (HS.UnGuardedRhs (HS.App (HS.App 
-                                                                                          (HS.App (HS.Con $ identI "ObjectRef")
-                                                                                                 (HS.Var $ HS.UnQual $ HS.Ident "__ioref"))
-                                                                                           (HS.Var $ HS.UnQual $ HS.Ident "__thisCOG"))
-                                                                                    (HS.Var $ HS.UnQual $ HS.Ident "__counter"))
-                                                                                   ) (HS.BDecls [])]
-
-                                         -- __init_sync __obj
-                                         , HS.Qualifier (HS.App (HS.Var (identI "__init")) (HS.Var (HS.UnQual (HS.Ident "__obj"))))
-                                         ]
-                                         ++
-                                         -- __run_sync __obj iff there is a run method implemented by this class
-                                        (if isJust mRun
-                                         then (HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "run") (HS.Var (HS.UnQual (HS.Ident "__obj")))) :)
-                                         else id)                           
-                                         -- return $ __obj
-                                         [HS.Qualifier $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
-                                                            (HS.Var $ HS.UnQual $ HS.Ident "__obj")]
-                                         )) (HS.BDecls (maybe [] (\ run -> if run `elem` nonMethods
-                                                                          -- add all the non-methods (not only run, because it may call other non-methods)
-                                                                          then concatMap (tNonMethDecl "Root") nonMethods
-                                                                          else []) mRun))])
-                                        
-               :
                -- the init method (optional)
                -- normalize to a method decl with name __init
                (case maybeBlock of
                   ABS.JustBlock _ b -> [tInitDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos,"__init")) [] b]
-                  ABS.NoBlock -> []
+                  ABS.NoBlock -> if isJust mRun -- it should still create init, because __init calls run
+                                then [tInitDecl "I__.Root" $ ABS.MethClassBody (error "compiler implementation") (ABS.LIdent (pos,"__init")) [] (ABS.Bloc [])]
+                                else []
                ) 
               )
        :
@@ -593,13 +516,11 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                       ) ldecls
 
          -- treat it as a special instance method, since it disallows await and synchronous calls
-         tInitDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = HS.InsDecl $ 
-                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"])
-                                    Nothing (HS.UnGuardedRhs $ tInitBlockWithReturn block clsName allFields 
-                                             -- method scoping of input arguments
-                                             (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
-                                                       M.insertWith (const $ const $ errorPos p $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName methsList)  (HS.BDecls (concatMap (tNonMethDecl interfName) nonMethods) --turned off non-meth decls
-                                                                                                                                                                                                      )] -- 
+         tInitDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = 
+             let HS.Do tinit = tInitBlockWithReturn block clsName allFields (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
+                                                       M.insertWith (const $ const $ errorPos p $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName methsList
+             in HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"]) Nothing (HS.UnGuardedRhs $ HS.Do $ if isJust mRun then tinit++ [HS.Qualifier (HS.App (HS.Var (HS.UnQual $ HS.Ident "run")) (HS.Var (HS.UnQual (HS.Ident "this"))))] else tinit)  (HS.BDecls (concatMap (tNonMethDecl interfName) nonMethods))]
+
          tInitDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
 
 

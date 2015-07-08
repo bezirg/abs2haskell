@@ -81,12 +81,8 @@ instance Sub Root Root where
 --
 -- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
 class Root_ a where
-    new :: Root_ creator => a -> Obj creator -> ABS (Obj a)
-    new_local :: Root_ creator => a -> Obj creator -> ABS (Obj a)
     __init :: Obj a -> ABS () 
-    __init _ = return (())     -- default implementation of init
-
-
+    __init _ = return (())       -- default implementation of init
 
 -- | The root-type of all objects
 --
@@ -117,10 +113,7 @@ data Null
 instance Binary Null
 
 -- | The null-class error-implements the Root interface (and by code-generation all user-written interfaces)
-instance Root_ Null where
-    new = error "cannot instantiated null"
-    new_local = error "cannot instantiated null"
-
+instance Root_ Null
 
 -- * ABS monad related (object state world)
 
