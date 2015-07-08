@@ -373,10 +373,40 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
         -- the smart constructor
         HS.FunBind [HS.Match HS.noLoc (HS.Ident $ "__" ++ headToLower clsName)
                     (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) params) Nothing 
-                    (HS.UnGuardedRhs $ HS.RecConstr (HS.UnQual $ HS.Ident clsName) 
-                           (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> 
-                                     HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ pid) (HS.Var $ HS.UnQual $ HS.Ident pid)) params)
-                    )
+                    (HS.UnGuardedRhs $ let is = fimports $ fromJust $ (find (\ m -> moduleName m == ?moduleName) ?moduleTable) in
+                        foldr (\ fdecl acc -> case fdecl of
+                           ABS.FieldAssignClassBody _t (ABS.LIdent (_, fid)) pexp -> do
+                                 HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc)
+                                       (runReader (tPureExp pexp []) allFields)
+                           ABS.FieldClassBody t (ABS.LIdent (p,fid)) ->  
+                               if isInterface t 
+                               then HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc)
+                                         (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.TSimple (ABS.QTyp qsegs)) -> joinQualTypeIds qsegs) t) $ (HS.Var $ HS.UnQual $ HS.Ident "null"))
+                               else case t of
+                                      -- it is an unitialized future (abs allows this)
+                                      ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))])  _ -> 
+                                          HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc) (HS.Var $ identI "NullFutureRef")
+                                      -- it is an unitialized promise (abs allows this)
+                                      ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Promise"))])  _ -> 
+                                                -- TODO: this will not work fix later
+                                          HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc) (HS.Var $ identI "NullFutureRef")
+                                            -- maybe it is a foreign polymorphic datatype, 
+                                            -- so it can be left uninitialized, because its creation may be monadic
+                                      ABS.TGen (ABS.QTyp qsegs) _ -> case find (\case
+                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
+                                                              _ -> False) is of
+                                                                              Just _ -> HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc) (HS.Var $ identI "undefined")
+                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
+                                      -- maybe it is a foreign simple datatype, 
+                                      ABS.TSimple (ABS.QTyp qsegs) -> case find (\case
+                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
+                                                              _ -> False) is of
+                                                                              Just _ -> HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc) (HS.Var $ identI "undefined")
+                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
+                                      _ -> errorPos p "A field must be initialised if it is not of a reference type"
+                           ABS.MethClassBody _ _ _ _ -> case maybeBlock of
+                                                          ABS.NoBlock -> acc
+                                                          ABS.JustBlock _ _->  error "Second parsing error: Syntactic error, no method declaration accepted here")  (HS.RecConstr (HS.UnQual $ HS.Ident clsName) (map (\ (ABS.LIdent (_,pid)) -> HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ pid) (HS.Var $ HS.UnQual $ HS.Ident pid)) (M.keys allFields))) ldecls)
                     (HS.BDecls [])
                    ]
 
@@ -392,39 +422,18 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
               [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
               (
                -- the new method
-               HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new") [HS.PVar $ HS.Ident "__cont", HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard]))] Nothing
+               HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new") [HS.PVar $ HS.Ident "__cont", HS.PVar (HS.Ident "this")] Nothing
                                        (HS.UnGuardedRhs $ HS.Do (
                                         -- __new_cog@(COG (__chan,_)) <- lift $ lift $ spawnCOG
                                         (HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__new_cog") (HS.PParen $ HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar $ HS.Ident "__chan",HS.PWildCard]])) $ HS.App (HS.Var $ identI "lift") $ HS.App (HS.Var $ identI "lift")
                                                        (HS.Var $ identI "spawnCOG"))
                                         :
-                                        -- let __field = initialized_value
-                                        fieldInits
-                                        ++
-                                        -- update the passed class ADT
-                                        -- let __c = cont { class1_field1 = __field1, ... }
-                                        [HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__c") Nothing 
-                                                                   (HS.UnGuardedRhs (let init_decls = foldr (\ fdecl acc -> (case fdecl of
-                                                                                             ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
-                                                                                                 HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-                                                                                             ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-
-                                                                                             ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
-                                                                                                                         ABS.NoBlock -> acc
-                                                                                                                         ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
-                                                                                                                            )) 
-                                                                                                       []
-                                                                                                       ldecls in if null init_decls
-                                                                                                                 then HS.Var $ HS.UnQual $ HS.Ident "__cont"
-                                                                                                                 else HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont") init_decls
-
-                                                                                    )) (HS.BDecls [])]                                         
-                                         -- __ioref <- lift $ lift $ newIORef __c
-                                        , HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ 
+                                        [                                         
+                                         -- __ioref <- lift $ lift $ newIORef __cont
+                                        HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ 
                                                            (HS.App (HS.Var $ identI "liftIO")
                                                                   (HS.App (HS.Var $ identI "newIORef")
-                                                                         (HS.Var $ HS.UnQual $ HS.Ident "__c")))
+                                                                         (HS.Var $ HS.UnQual $ HS.Ident "__cont")))
                                         -- let __obj = ObjectRef __ioref 0 __new_cog
                                         , HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__obj") Nothing 
                                                                   (HS.UnGuardedRhs (HS.App (HS.App 
@@ -454,32 +463,12 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                -- the new local method
                HS.InsDecl (HS.FunBind [HS.Match HS.noLoc (HS.Ident "new_local") [HS.PVar $ HS.Ident "__cont", HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard]))] Nothing
                                        (HS.UnGuardedRhs $ HS.Do (
-                                         fieldInits
-                                         ++
-
                                          [
-                                         -- let __c = cont { class1_field1 = __field1, ...}, #field >=1, haskell does not allow empty record updates
-                                         HS.LetStmt $ HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__c") Nothing 
-                                                                   (HS.UnGuardedRhs (let init_decls = foldr (\ fdecl acc -> (case fdecl of
-                                                                                             ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) _pexp -> 
-                                                                                                 HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-                                                                                             ABS.FieldClassBody _t (ABS.LIdent (_,fid)) ->  
-                                                                                                  HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower clsName ++ "_" ++ fid) (HS.Var $ HS.UnQual $ HS.Ident fid) : acc
-
-                                                                                             ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
-                                                                                                                         ABS.NoBlock -> acc
-                                                                                                                         ABS.JustBlock _ _ ->  error "Second parsing error: Syntactic error, no method declaration accepted here")
-                                                                                                                            )) 
-                                                                                                       []
-                                                                                                       ldecls in if null init_decls
-                                                                                                                 then HS.Var $ HS.UnQual $ HS.Ident "__cont"
-                                                                                                                 else HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "__cont") init_decls
-
-                                                                                    )) (HS.BDecls [])]                                          
-                                         -- __ioref <- lift $ lift $ newIORef __c
-                                        , HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ (HS.App (HS.Var $ identI "liftIO")
+                                         
+                                         -- __ioref <- lift $ lift $ newIORef __cont
+                                        HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__ioref") $ (HS.App (HS.Var $ identI "liftIO")
                                                                                                                       (HS.App (HS.Var $ identI "newIORef")
-                                                                                                                             (HS.Var $ HS.UnQual $ HS.Ident "__c")))
+                                                                                                                             (HS.Var $ HS.UnQual $ HS.Ident "__cont")))
                                          --       __astate@(AState {aCounter = __counter})  <- lift $ RWS.get
                                          , HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
 
@@ -602,45 +591,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                        ABS.FieldAssignClassBody t i _ -> Just (i,t)
                                                                        ABS.MethClassBody _ _ _ _ -> Nothing
                                                                       ) ldecls
-         fieldInits :: [HS.Stmt]
-         fieldInits = let is = fimports $ fromJust $ (find (\ m -> moduleName m == ?moduleName) ?moduleTable) -- fimports of current module
-                      in
-                        foldr (\ fdecl acc -> (case fdecl of
-                                                ABS.FieldAssignClassBody _t (ABS.LIdent (_,fid)) pexp -> 
-                                                    HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing 
-                                                                                   (HS.UnGuardedRhs $ runReader (tPureExp pexp []) (allFields)) (HS.BDecls [])])
-                                                    : acc
-                                                ABS.FieldClassBody t (ABS.LIdent (p,fid)) ->  
-                                                    if isInterface t 
-                                                    then HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing
-                                                                                 (HS.UnGuardedRhs $ runReader (tPureExp (ABS.ELit ABS.LNull) []) (allFields)) (HS.BDecls [])]) : acc
-                                                    else case t of
-                                                           -- it is an unitialized future (abs allows this)
-                                                           ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))])  _ -> 
-                                                               HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.App (HS.Var $ identI "empty_fut") (HS.Var $ HS.UnQual $ HS.Ident "this"))
-                                                                                       : acc
-                                                           -- it is an unitialized promise (abs allows this)
-                                                           ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Promise"))])  _ -> 
-                                                               HS.Generator HS.noLoc (HS.PVar $ HS.Ident fid) (HS.Var $ identI "empty_pro")
-                                                                                       : acc
-                                                           -- maybe it is a foreign polymorphic datatype, 
-                                                           -- so it can be left uninitialized, because its creation may be monadic
-                                                           ABS.TGen (ABS.QTyp qsegs) _ -> case find (\case
-                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
-                                                              _ -> False) is of
-                                                                              Just _ -> HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing (HS.UnGuardedRhs (HS.Var $ identI "undefined")) (HS.BDecls [])]) : acc
-                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
-                                                           -- maybe it is a foreign simple datatype, 
-                                                           ABS.TSimple (ABS.QTyp qsegs) -> case find (\case
-                                                              ABS.AnyTyIden (ABS.UIdent (_, uid)) -> uid == joinQualTypeIds qsegs
-                                                              _ -> False) is of
-                                                                              Just _ -> HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar $ HS.Ident fid) Nothing (HS.UnGuardedRhs (HS.Var $ identI "undefined")) (HS.BDecls [])]) : acc
-                                                                              Nothing -> errorPos p "A field must be initialised if it is not of a reference type"
-                                                           _ -> errorPos p "A field must be initialised if it is not of a reference type"
-                                                ABS.MethClassBody _ _ _ _ -> (case maybeBlock of
-                                                                               ABS.NoBlock -> acc
-                                                                               ABS.JustBlock _ _->  error "Second parsing error: Syntactic error, no method declaration accepted here")
-                               )) [] ldecls
 
          -- treat it as a special instance method, since it disallows await and synchronous calls
          tInitDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = HS.InsDecl $ 
