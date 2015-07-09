@@ -9,9 +9,9 @@
 module Lang.ABS.Runtime.Core 
     (spawnCOG
     ,main_is
-    ,updateWoken
     ,new
     ,new_local
+    ,set
     ,spawnCOG__static
     ) where
 
@@ -338,6 +338,17 @@ new_local smart (ObjectRef _ thisCOG _) = do
   __init obj
   return obj
 
+
+{-# INLINE set #-}
+set :: Int -> (v -> a -> a) -> v -> Obj a -> ABS ()
+set i upd v _this@(ObjectRef ioref (COG (chan, _)) oid)  = do 
+  astate@(AState _ om fm) <- lift S.get
+  CH.liftIO (modifyIORef' ioref (upd v))
+  let (maybeWoken, om') = M.updateLookupWithKey (\ _k _v -> Nothing) (oid, i) om
+  fm' <- maybe (return fm)
+        (\ woken -> CH.liftIO (updateWoken chan fm woken))
+        maybeWoken
+  lift  (S.put astate{aSleepingO = om', aSleepingF = fm'})
 
 
 remotable ['spawnCOG]

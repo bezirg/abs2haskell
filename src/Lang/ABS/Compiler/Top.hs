@@ -281,7 +281,7 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
        : HS.InstDecl HS.noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ identI "Null"] 
              (map (\ (ABS.AnnMethSig _ (ABS.MethSig _ (ABS.LIdent (_,mid)) _)) -> HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mid) [] Nothing 
                                                                                (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "this should not happen. report the program to the compiler developers"))) (HS.BDecls [])]) ms)
-       -- instance Eq I where (==) = __eqI   -- this is needed for ADTs deriving Eq
+       -- instance Eq I where (==) =   -- this is needed for ADTs deriving Eq
        : HS.InstDecl HS.noLoc [] (identI "Eq") [HS.TyCon $ HS.UnQual $ HS.Ident tname]
          [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Symbol "==") 
                                    [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id1", HS.PVar $ HS.Ident "tid1"]],
@@ -418,37 +418,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                ) 
               )
        :
-
-       (concatMap (\ ((ABS.LIdent (_,i), t), fieldNumber) ->
-                 [
-                  -- adds an explicit type signature for setters
-                  HS.TypeSig HS.noLoc [HS.Ident $ "set_" ++ headToLower clsName ++ "_" ++ i]
-                                      (HS.TyFun (tType t) $
-                                         HS.TyFun (HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyCon $ HS.UnQual $ HS.Ident clsName)) $
-                                           HS.TyApp (HS.TyCon (identI "ABS")) (HS.TyCon $ HS.Special $ HS.UnitCon))
-
-                  ,
-                  HS.FunBind [HS.Match HS.noLoc (HS.Ident $ "set_" ++ headToLower clsName ++ "_" ++ i) [HS.PVar $ HS.Ident "v", HS.PAsPat (HS.Ident "this") (HS.PApp (identI "ObjectRef") [HS.PVar $ HS.Ident "__thisIORef", (HS.PParen (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "__thisChan"),HS.PWildCard]])), HS.PVar $ HS.Ident "__thisOid"])] Nothing
-                                   (HS.UnGuardedRhs $ HS.Do
-                                    [
-                                     -- astate@(AState _ om) <- lift $ S.get
-                                    HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PApp (identI "AState") [HS.PWildCard,HS.PVar (HS.Ident "om"), HS.PVar (HS.Ident "fm")]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get")))
-                                     -- lift $ lift $ modifyIORef' ioref (\ c -> c {class1_p1 = v})      -- update the field value
-                                    ,HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "modifyIORef'")) (HS.Var (HS.UnQual (HS.Ident "__thisIORef")))) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "c")] (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "c"))) [HS.FieldUpdate (HS.UnQual (HS.Ident $ headToLower clsName ++ "_" ++ i )) (HS.Var (HS.UnQual (HS.Ident "v")))])))))
-                                     -- let (maybeWoken, om') = M.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
-                                     ,HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PTuple HS.Boxed [HS.PVar (HS.Ident "maybeWoken"),HS.PVar (HS.Ident "om'")]) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Var (identI "updateLookupWithKey")) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "k"),HS.PVar (HS.Ident "v")] (HS.Con (HS.UnQual (HS.Ident "Nothing")))))) (HS.Tuple HS.Boxed [HS.Var (HS.UnQual (HS.Ident "__thisOid")),HS.Lit (HS.Int fieldNumber)])) (HS.Var (HS.UnQual (HS.Ident "om"))))) (HS.BDecls [])])
-
-                                     -- fm' <- maybe (return fm) (\ woken -> lift $ lift $ writeList2Chan thisChan woken) maybeWoken
-                                     ,HS.Generator HS.noLoc (HS.PVar (HS.Ident "fm'")) (HS.App (HS.App (HS.App (HS.Var (identI "maybe")) (HS.Paren (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "fm")))))) (HS.Paren (HS.Lambda HS.noLoc [HS.PVar (HS.Ident "woken")] (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.App (HS.Var (identI "updateWoken")) (HS.Var (HS.UnQual (HS.Ident "__thisChan")))) (HS.Var (HS.UnQual (HS.Ident "fm")))) (HS.Var (HS.UnQual (HS.Ident "woken")))))))) (HS.Var (HS.UnQual (HS.Ident "maybeWoken"))))
-
-                                     -- lift $ RWS.put $ astate {aSleepingO = om', aSleepingF = fm'}
-                                     ,HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.App (HS.Var (identI "put")) (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aSleepingO") (HS.Var (HS.UnQual (HS.Ident "om'"))), HS.FieldUpdate (identI "aSleepingF") (HS.Var (HS.UnQual $ HS.Ident "fm'"))])))
-                                    ]
-                                   )
-                                   (HS.BDecls [])]])
-            ) (zip (M.assocs allFields) [0..])
-
-       ++
 
        generateClsSub clsName (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent (pos,"I__.Root")]) -- root class
        : generateClsSubs clsName imps

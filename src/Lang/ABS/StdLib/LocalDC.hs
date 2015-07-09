@@ -53,37 +53,6 @@ instance I__.Root_ LocalDC where
              return ()
 
  
-set_localDC_nid :: NodeId -> I__.Obj LocalDC -> I__.ABS ()
-set_localDC_nid v
-  this@(I__.ObjectRef __thisIORef (I__.COG (__thisChan, _))
-          __thisOid)
-  = do __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO
-         (I__.modifyIORef' __thisIORef (\ c -> c{localDC_nid = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (__thisOid, 0) om
-       fm' <- I__.maybe (return fm)
-                (\ woken -> I__.liftIO (I__.updateWoken __thisChan fm woken))
-                maybeWoken
-       I__.lift
-         (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
-
-
-set_localDC_port :: Int -> I__.Obj LocalDC -> I__.ABS ()
-set_localDC_port v
-  this@(I__.ObjectRef __thisIORef (I__.COG (__thisChan, _))
-          __thisOid)
-  = do __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO
-         (I__.modifyIORef' __thisIORef (\ c -> c{localDC_port = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (__thisOid, 0) om
-       fm' <- I__.maybe (return fm)
-                (\ woken -> I__.liftIO (I__.updateWoken __thisChan fm woken))
-                maybeWoken
-       I__.lift
-         (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
- 
 instance I__.Sub (I__.Obj LocalDC) I__.Root where
         up = I__.Root
  

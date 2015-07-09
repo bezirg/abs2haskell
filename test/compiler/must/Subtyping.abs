@@ -6,5 +6,7 @@ class C implements B { }
 
 {
     B b = new C();
-    List<A> bs = Cons(b,Nil);
+    A a = new C();
+    List<A> as1 = Cons(a,Cons(b,Nil));
+    List<A> as2 = Cons(b,Cons(a,Nil));
 }

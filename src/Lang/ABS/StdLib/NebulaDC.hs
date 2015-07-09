@@ -90,67 +90,8 @@ instance I__.Root_ NebulaDC where
           let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession myProgName
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           I__.when (not success) (I__.error "Allocating VM failed")
-          set_nebulaDC_vmId vmId this
+          I__.set 4 (\ v c -> c{nebulaDC_vmId=v}) vmId this
 
-set_nebulaDC_cpu :: Int -> I__.Obj NebulaDC -> I__.ABS ()
-set_nebulaDC_cpu v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
-  = do 
-       __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_cpu = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 0) om
-       fm' <- I__.maybe (return fm)
-         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
-         maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
- 
-set_nebulaDC_load :: Int -> I__.Obj NebulaDC -> I__.ABS ()
-set_nebulaDC_load v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
-  = do 
-       __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_load = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 1) om
-       fm' <- I__.maybe (return fm)
-         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
-         maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
- 
-set_nebulaDC_memory :: Int -> I__.Obj NebulaDC -> I__.ABS ()
-set_nebulaDC_memory v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
-  = do 
-       __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_memory = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 2) om
-       fm' <- I__.maybe (return fm)
-         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
-         maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
- 
-set_nebulaDC_nodeId :: Maybe NodeId -> I__.Obj NebulaDC -> I__.ABS ()
-set_nebulaDC_nodeId v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
-  = do 
-       __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_nodeId = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 3) om
-       fm' <- I__.maybe (return fm)
-         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
-         maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
- 
-set_nebulaDC_vmId :: Int -> I__.Obj NebulaDC -> I__.ABS ()
-set_nebulaDC_vmId v this@(I__.ObjectRef ioref thisCOG@(I__.COG(thisChan,_)) oid)
-  = do 
-       __astate@(I__.AState _ om fm) <- I__.lift I__.get
-       I__.liftIO (I__.modifyIORef' ioref (\ c -> c{nebulaDC_vmId = v}))
-       let (maybeWoken, om')
-             = I__.updateLookupWithKey (\ k v -> Nothing) (oid, 4) om
-       fm' <- I__.maybe (return fm)
-         (\ woken -> I__.liftIO (I__.updateWoken thisChan fm woken))
-         maybeWoken
-       I__.lift (I__.put __astate{I__.aSleepingO = om', I__.aSleepingF = fm'})
  
 instance I__.Sub (I__.Obj NebulaDC) I__.Root where
         up = I__.Root

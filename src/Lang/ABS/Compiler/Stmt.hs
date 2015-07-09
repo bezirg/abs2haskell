@@ -197,16 +197,17 @@ tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
           Nothing -> errorPos p (var ++ " not in scope or cannot modify the variable")
                                                                              
 tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
-  (_, _, _, cls,_,_) <- ask
+  (clsScope, _, _, cls,_,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
            ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
 
   return [HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp 
-                          (HS.Var $ HS.UnQual $ HS.Ident $ "set_" ++ headToLower cls ++ "_" ++ var)
+                          (HS.App (HS.App (HS.Var $ identI $ "set") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
+                                 (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "v__", HS.PVar $ HS.Ident "c__"] $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "c__") [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower cls ++ "_" ++ var) (HS.Var $ HS.UnQual $ HS.Ident "v__")]))
                           (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
-                          (HS.InfixApp 
-                           (HS.Paren texp) 
+                          (HS.InfixApp   
+                           texp
                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                            (HS.App (HS.Var (HS.UnQual $ HS.Ident "pure")) (HS.Var (HS.UnQual $ HS.Ident "this")))
                           )
