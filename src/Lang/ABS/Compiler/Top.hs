@@ -24,12 +24,11 @@ tProg (ABS.Prog moduls) = map tModul moduls
 tModul :: (?moduleTable::ModuleTable) => ABS.Module -> HS.Module
 tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let strModuleName = joinQualTypeIds qsegs in
                HS.Module HS.noLoc (HS.ModuleName strModuleName) 
-                     [HS.LanguagePragma HS.noLoc [HS.Ident "Rank2Types"
-                                              ,HS.Ident "NoImplicitPrelude" -- for not importing haskell's prelude
-                                              ,HS.Ident "FlexibleInstances" -- for subtype null to any interface
+                     [HS.LanguagePragma HS.noLoc [
+                                              HS.Ident "NoImplicitPrelude" -- for not importing haskell's prelude
                                               ,HS.Ident "ExistentialQuantification" -- for heterogenous collections
                                               ,HS.Ident "MultiParamTypeClasses" -- for subtyping
-                                              ,HS.Ident "ScopedTypeVariables" -- for inlining type annotations
+                                              ,HS.Ident "PatternSignatures" -- for inlining type annotations
                                               ,HS.Ident "DeriveDataTypeable" -- for defining ABS exceptions (exceptions are dynamically typed in haskell)
                                               ]
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
@@ -275,7 +274,7 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
        -- Sub instances generation
        : generateSubSelf tname
        -- for lifting null to I, essentially null is a subtype of I
-       : generateSubNull tname
+       : generateUnwrappedSub tname
        : generateSub tname (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")]) -- root class
        -- null class is an instance of any interface
        : HS.InstDecl HS.noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ identI "Null"] 
@@ -398,8 +397,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                    ]
 
        -- show instance for object turned off, because we rely on show instance of interface wrapper-datatype
-       -- :
-       -- -- a Show instance for object
+       -- a Show instance for object
        -- HS.InstDecl HS.noLoc [] (identI "Show") [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName]
        --       [HS.InsDecl (HS.FunBind  [HS.Match HS.noLoc (HS.Ident "show") [HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Lit $ HS.String clsName) (HS.BDecls [])])]
        :
@@ -418,11 +416,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                ) 
               )
        :
-
-       generateClsSub clsName (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent (pos,"I__.Root")]) -- root class
-       : generateClsSubs clsName imps
-
-       ++
        -- create the typeclass-instances
        map (\ (ABS.UIdent (_,interf), imdecls) -> 
                 HS.InstDecl HS.noLoc [{- empty context for now, may need to fix later -}] 
@@ -518,50 +511,35 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
 generateSubSelf :: String -> HS.Decl
 generateSubSelf iname = HS.InstDecl HS.noLoc [] 
                             (identI "Sub")
-                            [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident iname] -- instance Sup Interf1 Interf1
+                            [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident iname] -- instance Sub Interf1 Interf1
                             [   -- the upcasting method
                                 -- is id in this case
                                 HS.InsDecl $ HS.FunBind $ [HS.Match HS.noLoc (HS.Ident "up") [HS.PVar $ HS.Ident "x"] Nothing 
                                                            (HS.UnGuardedRhs $ HS.Var $ HS.UnQual $ HS.Ident "x") (HS.BDecls [])]
                             ]
 
-generateSubNull :: String -> HS.Decl
-generateSubNull iname = HS.InstDecl HS.noLoc [] 
-                            (identI "Sub")
-                            -- instance Sub (Obj Null) Interf1
-                            [HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyCon $ identI "Null"), HS.TyCon $ HS.UnQual $ HS.Ident iname]
-                            [   -- the upcasting method
-                                HS.InsDecl $ HS.FunBind $ [HS.Match HS.noLoc (HS.Ident "up") [] Nothing 
-                                                           -- up = Interf1
-                                                           (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident iname) (HS.BDecls [])]
-                            ]
-                                                      
-
 generateSubs :: (?moduleTable :: ModuleTable) =>String -> [ABS.QType] -> [HS.Decl]
 generateSubs iname extends = map (generateSub iname) (nub $ collectSubs extends)
 
 generateSub iname (ABS.QTyp sup) =  HS.InstDecl HS.noLoc [] 
                               (identI "Sub")
-                              [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup Interf1 Interf1
+                              [HS.TyCon $ HS.UnQual $ HS.Ident iname, HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sub Interf2 Interf1
                               [   -- the upcasting method
-                                  -- is id in this case
+                                  -- is unwrapping and wrapping the data constructors
                                   HS.InsDecl $ HS.FunBind $ [HS.Match HS.noLoc (HS.Ident "up") [HS.PApp (HS.UnQual $ HS.Ident iname) [HS.PVar $ HS.Ident "a"]] Nothing 
                                                                              (HS.UnGuardedRhs $ HS.App (HS.Con $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup)
                                                                                     (HS.Var $ HS.UnQual $ HS.Ident "a")) (HS.BDecls [])]
                                         ]
 
 
-generateClsSubs :: (?moduleTable :: ModuleTable) => String -> [ABS.QType] -> [HS.Decl]
-generateClsSubs clsName impls = map (generateClsSub clsName) (nub $ collectSubs impls)
-
-generateClsSub clsName (ABS.QTyp sup) =  HS.InstDecl HS.noLoc [] 
+generateUnwrappedSub iname =  HS.InstDecl HS.noLoc [HS.ClassA (HS.UnQual $ HS.Ident (iname ++ "_")) [HS.TyVar $ HS.Ident "a"]] 
                               (identI "Sub")
-                              [HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyCon $ HS.UnQual $ HS.Ident clsName), 
-                                 HS.TyCon $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup] -- instance Sup (Obj Cls) Interf1
+                              [HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"), 
+                                 HS.TyCon $ HS.UnQual $ HS.Ident $ iname] -- instance (Interf1_ a) => Sub (Obj a) Interf1
                               [   -- the upcasting method
-                                  -- is id in this case
+                                  -- is wrapping with the constructor
                                   HS.InsDecl $ HS.FunBind $ [HS.Match HS.noLoc (HS.Ident "up") [] Nothing 
-                                                                             (HS.UnGuardedRhs $ (HS.Con $ HS.UnQual $ HS.Ident $ joinQualTypeIds sup)
+                                                                             (HS.UnGuardedRhs $ (HS.Con $ HS.UnQual $ HS.Ident iname)
                                                                                     ) (HS.BDecls [])]]
 
 

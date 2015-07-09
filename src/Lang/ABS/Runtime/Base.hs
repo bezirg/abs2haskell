@@ -82,7 +82,7 @@ instance Sub Root Root where
 -- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
 class Root_ a where
     __init :: Obj a -> ABS () 
-    __init _ = return (())       -- default implementation of init
+    __init _ = return ()       -- default implementation of init
 
 -- | The root-type of all objects
 --
@@ -98,10 +98,8 @@ data Root = forall o. Root_ o => Root (Obj o)
 instance Eq Root where
     -- it maybe can be used for root type equality if we expose to the ABS language the AnyObject interface type
     Root (ObjectRef _ id1 tid1) == Root (ObjectRef _ id2 tid2) = tid1 == tid2 && id1 == id2
-
--- | (internal) an alias for code-geration for object equality
-__eqRoot :: Root -> Root -> Bool
-__eqRoot = (==)
+    Root NullRef == Root NullRef = True
+    _ == _ = False
 
 -- | The null class (datatype)
 --
@@ -114,6 +112,13 @@ instance Binary Null
 
 -- | The null-class error-implements the Root interface (and by code-generation all user-written interfaces)
 instance Root_ Null
+
+-- | Lifting un-interfaced objects to the Root interface
+--
+-- used on method calls. the this object is passed un-interfaced, so it can be upcasted to other interfaces than
+-- just the interface belonging to the current method.
+instance (Root_ a) => Sub (Obj a) Root where
+    up = Root
 
 -- * ABS monad related (object state world)
 
@@ -130,11 +135,7 @@ instance Root_ Null
 -- 4. the Process monad (for remotely communicating messages between actors and doing other IO operations) 
 type ABS = Coroutine (Yield AwaitOn) (StateT AState CH.Process)
 
--- | Every ABS monad (computation) holds a reader AConf and a state AState
--- data AConf o = AConf {
---       aThis :: (Root_ o) => Obj o -- ^ this object
---     , aCOG  :: COG               -- ^ this cog
---     }
+-- | Every ABS monad (computation) holds a state AState
 data AState = AState {
       aCounter :: Int           -- ^ generate (unique-per-COG) ascending counters
     , aSleepingO :: ObjectMap   -- ^ suspended-processes currently sleeping for some object-field
