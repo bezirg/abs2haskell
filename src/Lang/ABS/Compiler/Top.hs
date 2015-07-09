@@ -281,30 +281,17 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
        : HS.InstDecl HS.noLoc [] (HS.UnQual $ HS.Ident $ tname ++ "_") [HS.TyCon $ identI "Null"] 
              (map (\ (ABS.AnnMethSig _ (ABS.MethSig _ (ABS.LIdent (_,mid)) _)) -> HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mid) [] Nothing 
                                                                                (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "this should not happen. report the program to the compiler developers"))) (HS.BDecls [])]) ms)
-       -- generate the equality smart function
-       -- __eqI :: I -> I -> Bool
-       : HS.FunBind [
-       --__eqI (I NullRef) (I NullRef) = True
-       HS.Match HS.noLoc (HS.Ident $ "__eq" ++ tname) (replicate 2 (HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "NullRef") []]))
-         Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "True") (HS.BDecls []),
-       --__eqI (I (ObjectRef _ id1 tid1)) (I (ObjectRef _ id2 tid2)) = id1 == id2 && tid1 == tid2
-       HS.Match HS.noLoc (HS.Ident $ "__eq" ++ tname) 
-             [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id1", HS.PVar $ HS.Ident "tid1"]],
-              HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id2", HS.PVar $ HS.Ident "tid2"]]]
-             Nothing (HS.UnGuardedRhs $ HS.InfixApp
-                        (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "id1") (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ HS.UnQual $ HS.Ident "id2")))
-                        (HS.QVarOp $ HS.UnQual $ HS.Symbol "&&")
-                        (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "tid1") (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ HS.UnQual $ HS.Ident "tid2"))))
-                     (HS.BDecls []),
-       -- __eqI _ _ = False
-       HS.Match HS.noLoc (HS.Ident $ "__eq" ++ tname) [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "False") (HS.BDecls [])
-             ]
-
        -- instance Eq I where (==) = __eqI   -- this is needed for ADTs deriving Eq
        : HS.InstDecl HS.noLoc [] (identI "Eq") [HS.TyCon $ HS.UnQual $ HS.Ident tname]
-         [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Symbol "==") [] Nothing (HS.UnGuardedRhs $ HS.Var $ HS.UnQual $ HS.Ident $ "__eq" ++ tname) (HS.BDecls [])]]
-       
-
+         [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Symbol "==") 
+                                   [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id1", HS.PVar $ HS.Ident "tid1"]],
+                                      HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id2", HS.PVar $ HS.Ident "tid2"]]] Nothing (HS.UnGuardedRhs $  HS.InfixApp
+                        (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "id1") (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ HS.UnQual $ HS.Ident "id2")))
+                        (HS.QVarOp $ HS.UnQual $ HS.Symbol "&&")
+                        (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "tid1") (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ HS.UnQual $ HS.Ident "tid2")))) (HS.BDecls []),
+                                   HS.Match HS.noLoc (HS.Symbol "==") (replicate 2 (HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "NullRef") []]))
+                                     Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "True") (HS.BDecls []),                                   
+                                   HS.Match HS.noLoc (HS.Symbol "==") [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "False") (HS.BDecls [])]]
        : generateSubs tname (filter (\ (ABS.QTyp qids) -> qids /= [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")])  extends) 
 
 
