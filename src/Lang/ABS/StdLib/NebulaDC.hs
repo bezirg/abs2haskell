@@ -32,7 +32,8 @@ import Data.List (lookup)
 import Data.Maybe (fromMaybe)
 import Control.Concurrent (myThreadId)
 import Network.Transport.TCP (encodeEndPointAddress)
- 
+import Data.IORef (newIORef)
+
 -- * Internals
 
 data NebulaDC = NebulaDC{
@@ -89,7 +90,7 @@ instance I__.Root_ NebulaDC where
           myProgName <- I__.liftIO getProgName
           let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession myProgName
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
-          I__.when (not success) (I__.error "Allocating VM failed")
+          ifthenM (pure (not success)) (I__.error "Allocating VM failed")
           I__.set 4 (\ v c -> c{nebulaDC_vmId=v}) vmId this
 
  
@@ -149,7 +150,7 @@ myVmIP = if "--distributed" `Prelude.elem` myArgs
          else "127.0.0.1"
 
 {-# NOINLINE thisDC #-}
-thisDC = IDC (I__.ObjectRef (unsafePerformIO (I__.newIORef (
+thisDC = IDC (I__.ObjectRef (unsafePerformIO (newIORef (
                                                         NebulaDC{
                                                                  nebulaDC_cpu = -1, -- TODO
                                                                  nebulaDC_memory = -1, -- TODO

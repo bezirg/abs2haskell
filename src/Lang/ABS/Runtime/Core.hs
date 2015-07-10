@@ -20,7 +20,7 @@ import Lang.ABS.Runtime.Conf
 import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
 import Data.List (foldl', find, splitAt)
 import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
-import Control.Concurrent.MVar (putMVar)
+import Control.Concurrent.MVar (putMVar, newEmptyMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
 import qualified Control.Monad.Trans.State.Strict as S (runStateT, modify, get, put)
 import Control.Monad.Trans.Class

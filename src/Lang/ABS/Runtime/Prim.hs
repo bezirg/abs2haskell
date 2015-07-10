@@ -3,7 +3,8 @@ module Lang.ABS.Runtime.Prim
     (
      -- * Basic ABS primitives
      skip, suspend, await, while, get, pro_get, pro_give, pro_new, pro_isempty, ifthenM, ifthenelseM, null
-     -- * The run built-in method
+     -- * The async and sync calls
+     ,(^!),(^.)
      -- * The failure model
     ,throw, catches, finally, Exception, assert
     )
@@ -180,6 +181,26 @@ assert act = act Prelude.>>= \ pred -> when (Prelude.not pred)
 -- | The reference to a null object
 --
 -- The class of a null object is "Null".
+{-# INLINE null #-}
 null :: Obj Null
 null = NullRef
 
+{-# INLINE (^!) #-}
+-- | The asynchronous wrapper that makes the method call
+(^!) :: Serializable res => Obj caller -> Obj callee -> (Obj callee -> ABS res) -> ABS (Fut res)
+(^!) this@(ObjectRef _ thisCOG _) (obj@(ObjectRef _ (COG (chan, pid)) _)) mth
+  = do __mvar <- liftIO newEmptyMVar
+       __astate@(AState{aCounter = __counter}) <- lift S.get
+       lift (S.put (__astate{aCounter = __counter + 1}))
+       let __f = FutureRef __mvar thisCOG __counter
+       liftIO (writeChan chan (LocalJob obj __f (mth obj)))
+       return __f
+(^!) _ NullRef _ = error "async call to null"
+
+{-# INLINE (^.) #-}
+-- | The synchronous wrapper that makes the method call
+(^.) :: Obj caller -> Obj callee -> (Obj callee -> ABS res) -> ABS res
+(^.) this@(ObjectRef _ thisCOG _) obj@(ObjectRef _ otherCOG _) mth = if (not (thisCOG == otherCOG)) 
+                                                                     then error "Sync Call on a different COG detected"
+                                                                     else mth obj
+(^.) _ NullRef _ = error "sync call to null"

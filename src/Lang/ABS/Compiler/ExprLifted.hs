@@ -548,8 +548,8 @@ tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "n
 tEffExp' (ABS.NewLocal _ _) = error "Not valid class name"
 
 
-tEffExp' (ABS.SyncMethCall pexp (ABS.LIdent (_,method)) args) = tSyncOrAsync "sync" pexp method args
-tEffExp' (ABS.AsyncMethCall pexp (ABS.LIdent (_,method)) args) = tSyncOrAsync "async" pexp method args
+tEffExp' (ABS.SyncMethCall pexp method args) = tSyncOrAsync "^." pexp method args
+tEffExp' (ABS.AsyncMethCall pexp method args) = tSyncOrAsync "^!" pexp method args
 
 tEffExp' (ABS.ThisSyncMethCall method@(ABS.LIdent (_,mname)) args) = do
   (_,_,_,_,isInit,meths) <- ask
@@ -619,20 +619,28 @@ tNewOrNewLocal newOrNewLocal qtids args = do
              (HS.InfixApp (HS.Paren targs) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
 
 -- | shorthand generator, because sync and async are similar
-tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> String -> [ABS.PureExp] -> ExprLiftedM HS.Exp
-tSyncOrAsync syncOrAsync pexp method args = do
+tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
   (_,_,_,_, isInit,_) <- ask
-  if (isInit && syncOrAsync == "sync")
+  if (isInit && syncOrAsync == "^.")
     then error "Synchronous method calls are not allowed inside init block"
     else do
-      texp <- tPureExp' pexp [] -- the callee object (usually, the this)
-      tapp <- (foldlM                                -- the method's arguments
-              (\ acc arg -> do
-                 targ <- tPureExp' arg []
-                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
-              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ method ++ "_" ++ syncOrAsync) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
-              args)
-      return $ HS.Paren $ HS.App (HS.Var (identI "join")) (HS.InfixApp (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
+      -- the interf declaring the calling method 
+      let mInterf = find (\ (_,ms) -> method `elem` ms) $ M.assocs $ M.unions (map methods ?moduleTable) 
+      case mInterf of
+        Nothing -> errorPos mpos $ "Method " ++ mname ++ " Not in scope"
+        Just (ABS.UIdent (_,iname),_) -> do
+          texp <- tPureExp' pexp [] -- the callee object
+          tapp <- (foldlM -- the applied method to the arguments
+                  (\ acc arg -> do
+                     targ <- tPureExp' arg []
+                     return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ)
+                  (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident $ mname))
+                  args)
+          return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
+               (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PVar (HS.Ident "__obj")])] 
+                 (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Paren tapp)))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) texp))))))
+      -- return $ HS.Paren $ HS.App (HS.Var (identI "join")) (HS.InfixApp (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
 
 
 -- | Translates the parameter (guard) of an await statement

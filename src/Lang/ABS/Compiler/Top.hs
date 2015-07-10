@@ -295,37 +295,21 @@ tDecl (ABS.ExtendsDecl (ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
 
 
 
-       ++ (concatMap (\ (ABS.AnnMethSig _ (ABS.MethSig _ (ABS.LIdent (_,mid)) pars)) -> let 
-                          parspvars = map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar $ HS.Ident pid) pars
-                          parsvars = map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.Var $ HS.UnQual $ HS.Ident pid) pars
-                     in
-                                                                 [
-                -- the sync call for each method: method1_sync
-                HS.FunBind [HS.Match HS.noLoc (HS.Ident $ mid ++ "_sync" ) (parspvars ++ [HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard])),HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PVar (HS.Ident "__otherCOG"), HS.PWildCard]))]))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Qualifier (HS.App (HS.App (HS.Var $ identI "when") (HS.Paren (HS.App (HS.Var $ HS.UnQual $ HS.Ident "not") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__thisCOG"))) (HS.QVarOp (HS.UnQual (HS.Symbol "=="))) (HS.Var (HS.UnQual (HS.Ident "__otherCOG"))))))) (HS.Paren (HS.App (HS.Var $ identI "error") (HS.Lit (HS.String "Sync Call on a different COG detected"))))),HS.Qualifier (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars))])) (HS.BDecls [])
-                           , HS.Match HS.noLoc (HS.Ident $ mid ++ "_sync") (replicate (length pars) HS.PWildCard ++ [HS.PWildCard,(HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (identI "NullRef") []])]) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "sync call to null"))) (HS.BDecls [])
-                           ]
-                -- the async call for each method: method1_async
-              , HS.FunBind [HS.Match HS.noLoc (HS.Ident $ headToLower mid ++ "_async") (parspvars ++ [HS.PAsPat (HS.Ident "this") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar (HS.Ident "__thisCOG"),HS.PWildCard])),HS.PParen (HS.PParen (HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PAsPat (HS.Ident "__obj") (HS.PParen (HS.PApp (identI "ObjectRef") [HS.PVar (HS.Ident "__ioref"),HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PVar (HS.Ident "__chan"), HS.PVar (HS.Ident "_pid")]], HS.PWildCard]))]))]) Nothing (HS.UnGuardedRhs (HS.Do [HS.Generator HS.noLoc (HS.PVar (HS.Ident "__obj1")) (HS.App (HS.Var $ identI "readRef") (HS.Var (HS.UnQual (HS.Ident "__ioref")))),HS.Generator HS.noLoc (HS.PVar (HS.Ident "__mvar")) (HS.App (HS.Var $ identI "liftIO") (HS.Var (identI "newEmptyMVar"))), HS.Generator HS.noLoc (HS.PAsPat (HS.Ident "__astate") (HS.PParen (HS.PRec (identI "AState") [HS.PFieldPat (identI "aCounter") (HS.PVar (HS.Ident "__counter"))]))) (HS.App (HS.Var $ identI "lift") (HS.Var (identI "get"))),HS.Qualifier (HS.App (HS.Var $ identI "lift") (HS.Paren (HS.App (HS.Var (identI "put")) (HS.Paren (HS.RecUpdate (HS.Var (HS.UnQual (HS.Ident "__astate"))) [HS.FieldUpdate (identI "aCounter") (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "__counter"))) (HS.QVarOp (HS.UnQual (HS.Symbol "+"))) (HS.Lit (HS.Int 1)))]))))),HS.LetStmt (HS.BDecls [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "__f")) Nothing (HS.UnGuardedRhs (HS.App (HS.App (HS.App (HS.Con (identI "FutureRef")) (HS.Var (HS.UnQual (HS.Ident "__mvar")))) (HS.Var (HS.UnQual (HS.Ident "__thisCOG")))) (HS.Var (HS.UnQual (HS.Ident "__counter"))))) (HS.BDecls [])]),HS.Qualifier (HS.App (HS.Var $ identI "liftIO") (HS.App (HS.App (HS.Var (identI "writeChan")) (HS.Var (HS.UnQual (HS.Ident "__chan")))) (HS.Paren (HS.App (HS.App (HS.App (HS.Con (identI "LocalJob")) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.Var (HS.UnQual (HS.Ident "__f")))) (HS.Paren (foldl HS.App (HS.App (HS.Var (HS.UnQual (HS.Ident mid))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) parsvars) ))))),HS.Qualifier (HS.App (HS.Var (HS.UnQual (HS.Ident "return"))) (HS.Var (HS.UnQual (HS.Ident "__f"))))])) (HS.BDecls [])
-                           , HS.Match HS.noLoc (HS.Ident $ mid ++ "_async") (replicate (length pars) HS.PWildCard ++ [HS.PWildCard,(HS.PApp (HS.UnQual (HS.Ident tname)) [HS.PApp (identI "NullRef") []])]) Nothing (HS.UnGuardedRhs (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String "async call to null"))) (HS.BDecls [])
-                           ]
-                      ]
-       ) ms)
     where
+    -- method_signature :: args -> Obj a (THIS) -> ABS result
     tMethSig :: String -> ABS.AnnotMethSignat -> HS.ClassDecl
     tMethSig ityp (ABS.AnnMethSig _ann (ABS.MethSig tReturn (ABS.LIdent (mpos,mname)) pars))  = 
         if mname == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null pars))
         then errorPos mpos "run should have zero parameters and return type Unit"
         else HS.ClsDecl $ HS.TypeSig HS.noLoc [HS.Ident mname] $
-             HS.TyFun 
-              (HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))
                ((foldr  -- function application is right-associative
-                 (\ tpar acc -> HS.TyFun (tType tpar) acc)
+                 (\ tpar acc -> HS.TyFun tpar acc)
                  -- the this objectref passed as input to the method
                  (HS.TyApp ((HS.TyCon $ identI "ABS") 
                                    )
                   (tType tReturn))
                 )
-                (map (\ (ABS.Par typ _) -> typ) pars))
+                (map (\ (ABS.Par typ _) -> tType typ) pars ++ [(HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))]))
 
 
     -- normalize
@@ -478,7 +462,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
              then errorPos mpos "run should have zero parameters and return type Unit"
              else  -- the underline non-method implementation
                  HS.InsDecl $ 
-                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (HS.PVar (HS.Ident "this") : map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams )
+                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar (HS.Ident "this")] )
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
                                              (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 

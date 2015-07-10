@@ -46,21 +46,21 @@ class PingImpl(Pong pong) implements Ping {
 } 
 
 class PongImpl implements Pong {
-    Ping ping;
+    Ping ping_obj;
 
-    Unit hello(Ping ping) {
-       this.ping = ping;
-       ping!ping(HelloPing);
+    Unit hello(Ping ping_obj) {
+       this.ping_obj = ping_obj;
+       ping_obj!ping(HelloPing);
        println("Pong: hello, Ping, True");
     }
 
     Unit pong(PongMsg msg){
        if (msg == HowAreYou) {
-           ping!ping(Fine);
+           ping_obj!ping(Fine);
            println("Pong: Fine");
        }  
        else {
-           ping!ping(ByePing);
+           ping_obj!ping(ByePing);
            println("Pong: Bye, Ping, True");
            }
     } 

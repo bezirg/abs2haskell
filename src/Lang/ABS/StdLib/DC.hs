@@ -120,9 +120,9 @@ getLoad_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(Object
            let __f = FutureRef __mvar __hereCOG __counter
            return __f
          else do
-           self <- lift $ lift $ getSelfPid -- this is probably wrong, it has to record the forwarder_pid, not the cog_pid
-           lift $ lift $ spawn rnid ($(mkClosure 'rload) pid)
-           res <- lift $ lift $ expect :: ABS (Triple Rat Rat Rat)
+           self <- lift (lift (getSelfPid)) -- this is probably wrong, it has to record the forwarder_pid, not the cog_pid
+           lift (lift (spawn rnid ($(mkClosure 'rload) pid)))
+           res <- lift (lift (expect)) :: ABS (Triple Rat Rat Rat)
            __mvar <- I__.liftIO (newMVar res)
            let __f = FutureRef __mvar __hereCOG __counter
            return __f
