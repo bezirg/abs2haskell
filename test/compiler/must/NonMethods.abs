@@ -6,17 +6,17 @@ interface I {
 
 class C implements I {
    Unit m() {
-     Int res = this.h1();
+     Int res = this.h1(True);
      println(toString(res == 3));
    }
-   Int h1() {
-     Fut<Int> f1 = this ! h2();
+   Int h1(Bool x) {
+     Fut<Int> f1 = this ! h2(3);
      await f1?;
      Int res1 = f1.get;
      return res1;
    }
-   Int h2() {
-     return 3;
+   Int h2(Int x) {
+     return x;
    }
 }
 

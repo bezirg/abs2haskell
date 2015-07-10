@@ -556,14 +556,7 @@ tEffExp' (ABS.ThisSyncMethCall method@(ABS.LIdent (_,mname)) args) = do
   when isInit $ error "Synchronous method calls are not allowed inside init block"
   if method `elem` meths
    then tEffExp' (ABS.SyncMethCall (ABS.ELit $ ABS.LThis) method args) --  it is actually a method (interface-declared)
-   else do                           -- it is a non-method, thus do not wrap the object with the existential type of the interface
-    tapp <- (foldlM                                -- the method's arguments
-              (\ acc arg -> do
-                 targ <- tPureExp' arg []
-                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
-              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ mname ++ "_sync") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
-              args)
-    return $ HS.Paren $ HS.App (HS.Var (identI "join")) (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
+   else tNonSyncOrAsync "^." method args -- it is a non-method, thus do not wrap the object with the existential type of the interface
 
 
 tEffExp' (ABS.ThisAsyncMethCall method@(ABS.LIdent (_,mname)) args) = do
@@ -571,16 +564,7 @@ tEffExp' (ABS.ThisAsyncMethCall method@(ABS.LIdent (_,mname)) args) = do
  if method `elem` meths
   then                           --  it is actually a method (interface-declared)
       tEffExp' (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args)
-  else do
-    tapp <- (foldlM                                -- the method's arguments
-              (\ acc arg -> do
-                 targ <- tPureExp' arg []
-                 return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>"))
-              (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ mname ++ "_async") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>"))
-              args)
-    return $ HS.Paren $ HS.App (HS.Var (identI "join")) (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
-
-      
+  else tNonSyncOrAsync "^!" method args -- it is a non-method, thus do not wrap the object with the existential type of the interface
 
 tEffExp' (ABS.Get pexp) = do
   texp <- tPureExp' pexp []
@@ -618,7 +602,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
              (HS.InfixApp (HS.Paren targs) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
 
--- | shorthand generator, because sync and async are similar
+-- | shorthand generator for method calls, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
   (_,_,_,_, isInit,_) <- ask
@@ -640,7 +624,27 @@ tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
           return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
                (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PVar (HS.Ident "__obj")])] 
                  (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Paren tapp)))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) texp))))))
-      -- return $ HS.Paren $ HS.App (HS.Var (identI "join")) (HS.InfixApp (tapp (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
+
+
+-- | shorthand generator for non-method calls, because sync and async are similar
+tNonSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tNonSyncOrAsync syncOrAsync (ABS.LIdent (mpos,mname)) args = do
+  (_,_,_,clsName, isInit,_) <- ask
+  _ <- errorPos mpos clsName
+  if (isInit && syncOrAsync == "^.")
+    then error "Synchronous method calls are not allowed inside init block"
+    else do
+          tapp <- (foldlM -- the applied method to the arguments
+                  (\ acc arg -> do
+                     targ <- tPureExp' arg []
+                     return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ)
+                  (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident $ mname))
+                  args)
+          return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
+                 (HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "this") 
+                              (HS.QVarOp $ HS.UnQual $ HS.Symbol syncOrAsync) 
+                              (HS.Var $ HS.UnQual $ HS.Ident "this")) 
+                  (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Paren tapp)))))
 
 
 -- | Translates the parameter (guard) of an await statement
