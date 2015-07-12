@@ -17,6 +17,7 @@ data ModuleInfo = ModuleInfo {
     , exceptions :: [ABS.UIdent]                    -- ^ names of exceptions, needed for code generating smart-exception-constructors
     , fimports :: [ABS.AnyIdent]                    -- ^ all the foreign-imports of that module (temp fix)
     , exports :: [ABS.AnyIdent]                     -- ^ all the ABS exports of that module
+    , classes :: M.Map ABS.UIdent [ABS.QType]       -- ^ a mapping of class => to all interfaces it _directly_ implements.
     } deriving (Show)
 
 

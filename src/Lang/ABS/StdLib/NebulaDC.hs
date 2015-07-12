@@ -5,9 +5,9 @@
 -- > import NebulaDC
 --
 -- More about the open-source OpenNebula project at <http://opennebula.org>
-{-# LANGUAGE Rank2Types, NoImplicitPrelude, FlexibleInstances,
+{-# LANGUAGE NoImplicitPrelude,
   ExistentialQuantification, MultiParamTypeClasses,
-  ScopedTypeVariables, DeriveDataTypeable #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
@@ -39,9 +39,13 @@ import Data.IORef (newIORef)
 data NebulaDC = NebulaDC{
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
                          nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
+              deriving (I__.Typeable, I__.Generic)
+
 __nebulaDC cpu memory
   = NebulaDC{nebulaDC_cpu = cpu, nebulaDC_memory = memory}
  
+instance I__.Binary NebulaDC
+
 instance I__.Root_ NebulaDC where
         -- new __cont this@(I__.ObjectRef _ __hereCOG _) 
         --   = do 

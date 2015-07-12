@@ -49,6 +49,8 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
    hierarchy = foldl insertInterfs 
    -- the IDC is a principal interface of the stdlib
                (M.singleton (ABS.UIdent ((-1,-1), "IDC")) []) decls,
+   classes = foldl insertClasses
+             (M.singleton (ABS.UIdent ((-1,-1), "DC")) [(ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1),"IDC")])]) decls,
    methods = foldl insertMethods 
              -- the IDC is the stdlib interface with 2 methods
              (M.singleton (ABS.UIdent ((-1,-1),"IDC")) 
@@ -72,6 +74,13 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
       insertInterfs acc (ABS.AnnDec _ (ABS.InterfDecl tident@(ABS.UIdent (p,_)) _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
       insertInterfs acc (ABS.AnnDec _ (ABS.ExtendsDecl tident@(ABS.UIdent (p,_)) extends _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident extends acc
       insertInterfs acc _ = acc
+
+      insertClasses :: M.Map ABS.UIdent [ABS.QType] -> ABS.AnnotDecl -> M.Map ABS.UIdent [ABS.QType]
+      insertClasses acc (ABS.AnnDec _ (ABS.ClassDecl tident@(ABS.UIdent (p,_)) _ _ _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
+      insertClasses acc (ABS.AnnDec _ (ABS.ClassParamDecl tident@(ABS.UIdent (p,_)) _ _ _ _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident [] acc
+      insertClasses acc (ABS.AnnDec _ (ABS.ClassImplements tident@(ABS.UIdent (p,_)) interfs _ _ _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident interfs acc
+      insertClasses acc (ABS.AnnDec _ (ABS.ClassParamImplements tident@(ABS.UIdent (p,_)) _ interfs _ _ _msigs)) = M.insertWith (const $ const $ errorPos p "duplicate interface declaration") tident interfs acc
+      insertClasses acc _ = acc
 
       insertMethods :: M.Map ABS.UIdent [ABS.LIdent] -> ABS.AnnotDecl -> M.Map ABS.UIdent [ABS.LIdent]
       insertMethods acc (ABS.AnnDec a (ABS.InterfDecl tident msigs)) = insertMethods acc (ABS.AnnDec a (ABS.ExtendsDecl tident [] msigs))  -- normalization

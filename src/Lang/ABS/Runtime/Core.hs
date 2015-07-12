@@ -12,7 +12,6 @@ module Lang.ABS.Runtime.Core
     ,new
     ,new_local
     ,set
-    ,spawnCOG__static
     ) where
 
 import Lang.ABS.Runtime.Base
@@ -318,7 +317,6 @@ updateWoken ch m ls = liftM fst $ foldM (\ (m, alreadyDeleted) (j, mo) -> do
                                 deleteIndex l i = let (left,right) = Data.List.splitAt (i-1) l
                                                   in left ++ tail right
 
-
 {-# INLINE new #-}
 new :: (Root_ a) => a -> Obj creator -> ABS (Obj a)
 new smart _this = do 
@@ -351,7 +349,7 @@ set i upd v _this@(ObjectRef ioref (COG (chan, _)) oid)  = do
   lift  (S.put astate{aSleepingO = om', aSleepingF = fm'})
 
 
-remotable ['spawnCOG]
+--remotable ['new]
 
 
 

@@ -1,6 +1,6 @@
-{-# LANGUAGE Rank2Types, NoImplicitPrelude, FlexibleInstances,
+{-# LANGUAGE  NoImplicitPrelude, 
   ExistentialQuantification, MultiParamTypeClasses,
-  ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell #-}
+  PatternSignatures, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
@@ -31,7 +31,7 @@ import Control.Concurrent.MVar (newMVar)
 class (Root_ a) => IDC_ a where
         shutdown :: Obj a -> ABS Unit
         getLoad :: Obj a -> ABS (Triple Rat Rat Rat)
-        spawns :: (Root_ o, Serializable o) => Obj a -> o -> ABS (Obj o)
+        spawns :: (Root_ o, Serializable o) => o -> Obj a -> ABS (Obj o)
  
 -- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
 data IDC = forall a . (IDC_ a) => IDC (Obj a)
@@ -129,9 +129,4 @@ getLoad_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(Object
 
 getLoad_async _ (IDC NullRef) = I__.error "async call to null"
 
-
-
-spawns_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(ObjectRef __ioref _ _))) = spawns __obj
-
-spawns_async _ (IDC NullRef) = I__.error "async call to null"
 

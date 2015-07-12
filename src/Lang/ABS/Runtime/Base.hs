@@ -36,7 +36,7 @@ import GHC.Generics (Generic)
 -- Together 2 and 3 makes any object uniquely identified accross the network.
 data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
            | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
-                 deriving Eq --, Typeable)
+                 deriving (Eq, Typeable)
 
 -- | A reference to any live future.
 --
@@ -80,7 +80,8 @@ instance Sub Root Root where
 -- Optionally the user can implement two extra "methods": 'init' (which corresponds to the init-block) and 'run'
 --
 -- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
-class Root_ a where
+-- All objects must be serializable (not only their references, but object records too, when we call new)
+class Serializable a => Root_ a where
     __init :: Obj a -> ABS () 
     __init _ = return ()       -- default implementation of init
 
@@ -364,3 +365,9 @@ data SomeGet3 = forall a. (Root_ a, Serializable a) => SomeGet3 (Get a)
 --       mkSMapEntry a = (fingerprint a,SomeGet (get :: Get (Fut a)))
       
 -- data SomeGet = forall a. Serializable a => SomeGet (Get (Fut a))
+
+-- TODO exception existential serialization
+instance Data.Binary.Binary SomeException where
+    put _ = put "SomeException"
+    get = return (Control.Monad.Catch.SomeException PromiseRewriteException) -- stub
+

@@ -8,8 +8,9 @@
 
 module Lang.ABS.Compiler.Include 
     (
-     -- * Typeable must be automatically derived on all newly-created ABS exceptions (Haskell-compatible)
-     Data.Typeable.Typeable,
+     -- * Typeable and Binary (through Generic) must be automatically derived on all datatypes and classes
+     -- typeable must be derived for newly-created ABS exceptions so as to be Haskell-compatible
+     Data.Typeable.Typeable, GHC.Generics.Generic, Data.Binary.Binary,
      Prelude.error,
      -- * lifting State operations and IO operations (for both threads and cloudhaskell) to the ABS monad
      Control.Monad.Trans.Class.lift, Control.Monad.IO.Class.liftIO,
@@ -36,7 +37,8 @@ module Lang.ABS.Compiler.Include
      
      -- | Haskell's unary (-) has the same repr as the binary (-) subtract. When we have to lift code, we cannot use (-),
      -- because Haskell defaults to 'subtract'. Thus, instead, we explicitly lift and call the 'negate' function.
-     Prelude.negate
+     Prelude.negate,
+     module Control.Distributed.Process.Serializable, Data.Map.Strict.lookup, Data.Map.Strict.fromList
     )
  where
 
@@ -54,6 +56,10 @@ import qualified Control.Exception.Base (PatternMatchFail (..), throw)
 import Control.Applicative
 import Lang.ABS.Runtime.Base
 import Control.Distributed.Process.Node (initRemoteTable)
+import qualified GHC.Generics (Generic)
+import qualified Data.Binary (Binary)
+import qualified Data.Map.Strict (lookup, fromList)
+import Control.Distributed.Process.Serializable
 
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx
 data PHandler a = forall e . Control.Monad.Catch.Exception e => PHandler (e -> Maybe a)

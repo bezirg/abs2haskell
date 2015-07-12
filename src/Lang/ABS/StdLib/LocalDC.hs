@@ -1,6 +1,6 @@
-{-# LANGUAGE Rank2Types, NoImplicitPrelude, FlexibleInstances,
+{-# LANGUAGE NoImplicitPrelude, 
   ExistentialQuantification, MultiParamTypeClasses,
-  ScopedTypeVariables, DeriveDataTypeable, TemplateHaskell #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric, TemplateHaskell #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
@@ -18,7 +18,11 @@ import Control.Distributed.Process
 import Control.Distributed.Process.Closure
  
 data LocalDC = LocalDC{localDC_nid :: NodeId, localDC_port :: Int}
+             deriving (I__.Typeable, I__.Generic)
+
 __localDC port = LocalDC{localDC_port = port}
+
+instance I__.Binary LocalDC
 
 instance I__.Root_ LocalDC where
         -- new __cont this@(I__.ObjectRef _ __thisCOG _)
@@ -65,9 +69,10 @@ instance IDC_ LocalDC where
           = do (pure ((,,)) <*> ((/) <$> pure 1 <*> pure 2) <*>
                   ((/) <$> pure 1 <*> pure 2)
                   <*> ((/) <$> pure 1 <*> pure 2))
-        spawns this obj = do
-                        println(pure "in spawn")
-                        nid <- localDC_nid <$> I__.readThis this
-                        __new_cog@(I__.COG(_,pid)) <- I__.lift (I__.lift (call' nid $(mkStaticClosure 'spawnCOG)))
-                        I__.lift (I__.lift (send pid (I__.InitJob obj)))
-                        return (I__.ObjectRef I__.undefined __new_cog 0)
+        spawns smart this = do
+                        return (I__.undefined)
+             -- println(pure "in spawn")
+             -- nid <- localDC_nid <$> I__.readThis this
+             -- lift (I__.lift (call' nid $(mkStaticClosure 'spawnCOG)))
+             -- I__.lift (I__.lift (send pid (I__.InitJob obj)))
+             -- return (I__.ObjectRef I__.undefined __new_cog 0)
