@@ -3,8 +3,8 @@ module Lang.ABS.Runtime.Prim
     (
      -- * Basic ABS primitives
      skip, suspend, await, while, get, pro_get, pro_give, pro_new, pro_isempty, ifthenM, ifthenelseM, null
-     -- * The async and sync calls
-     ,(^!),(^.)
+     -- * The async, async-optimized and sync calls
+     ,(^!),(^!!), (^.)
      -- * The failure model
     ,throw, catches, finally, Exception, assert
     )
@@ -196,6 +196,17 @@ null = NullRef
        liftIO (writeChan chan (LocalJob obj __f (mth obj)))
        return __f
 (^!) _ NullRef _ = error "async call to null"
+
+{-# INLINE (^!!) #-}
+-- | Optimized wrapper where we throw away the result. The transcompiler checks if the future returned is not stored to a variable.
+(^!!) :: Serializable res => Obj caller -> Obj callee -> (Obj callee -> ABS res) -> ABS ()
+(^!!) _this (obj@(ObjectRef _ (COG (chan, _)) _)) mth
+  = do __mvar <- liftIO newEmptyMVar
+       __astate@(AState{aCounter = __counter}) <- lift S.get
+       lift (S.put (__astate{aCounter = __counter + 1}))
+       liftIO (writeChan chan (LocalJob obj NullFutureRef (mth obj)))
+(^!!) _ NullRef _ = error "async call to null"
+
 
 {-# INLINE (^.) #-}
 -- | The synchronous wrapper that makes the method call

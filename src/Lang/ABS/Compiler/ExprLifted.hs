@@ -1,6 +1,8 @@
 -- | Functions for translating _pure_ and _effectful_ expressions inside a method block
 module Lang.ABS.Compiler.ExprLifted
     (tPureExpStmt
+    ,tSyncOrAsync
+    ,tNonSyncOrAsync
     ,tEffExpStmt
     ,runExpr
     ,tAwaitGuard
@@ -27,7 +29,7 @@ import Control.Monad (liftM,when)
 tPureExpStmt :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.PureExp -> StmtM HS.Exp
 tPureExpStmt pexp = do
   (_,_,_,cls, _,_) <- ask
-  runExpr (tPureExpWrap pexp cls)
+  runExpr (tPureExpWrap pexp cls) False
 
 -- | Wrapping a pure-expression with field de-referencing
 tPureExpWrap pexp cls = do
@@ -47,17 +49,17 @@ tPureExpWrap pexp cls = do
                                           ] texp)
 
 -- | Translates an effectful expression in the statement world
-tEffExpStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.EffExp -> StmtM HS.Exp
-tEffExpStmt eexp = do
+tEffExpStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.EffExp -> Bool -> StmtM HS.Exp
+tEffExpStmt eexp isStandaloneRhs = do
   (_,_,_,cls, _,_) <- ask
-  runExpr (tEffExpWrap eexp cls)
+  runExpr (tEffExpWrap eexp cls) isStandaloneRhs
 
 -- | Lifting an 'ExprLiftedM' monad to a 'StmtM' monad
-runExpr :: ExprLiftedM a -> StmtM a
-runExpr e = do
+runExpr :: ExprLiftedM a -> Bool -> StmtM a
+runExpr e isStandaloneRhs = do
   fscope <- funScope
   (cscope,mscope,interf,_,isInit,meths) <- ask
-  return $ runReader e (fscope,cscope,mscope,interf,isInit,meths)
+  return $ runReader e (fscope,cscope,mscope,interf,isInit,meths,isStandaloneRhs)
 
 
 -- | tEffExpWrap is a wrapper arround tEffExp' that adds a single read to the object pointer to collect the necessary fields
@@ -127,7 +129,7 @@ tPureExp' (ABS.Let (ABS.Par ptyp pid@(ABS.LIdent (_,var))) eqE inE) tyvars = do
 -- NOTE: leave the case for now. It might work out of the box
 tPureExp' (ABS.Case matchE branches) tyvars = do
   -- we use the Expr.hs pureExp , because we do not want to lift it
-  tmatch <- withReader (\ (fscope,_,mscope,_,_,_) -> (fscope `M.union` mscope)) $ tPureExp matchE tyvars 
+  tmatch <- withReader (\ (fscope,_,mscope,_,_,_,_) -> (fscope `M.union` mscope)) $ tPureExp matchE tyvars 
   scope <- fullScope
   case matchE of
     ABS.EVar ident | M.lookup ident scope == Just (ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (undefined, "Exception"))])) -> tCaseException tmatch branches
@@ -498,7 +500,7 @@ tPureExp' (ABS.EQualVar (ABS.TTyp tsegs) (ABS.LIdent (_,pid))) _tyvars = -- todo
     -- we tread it as pure for now
 
 tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
-    (fscope, cscope, mscope,_,_,_) <- ask
+    (fscope, cscope, mscope,_,_,_,_) <- ask
     return $ HS.Paren $ case M.lookup var fscope of
       Nothing -> HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ -- fields are read from the Wrap function, so they are pure
                 case M.lookup var mscope of
@@ -549,10 +551,12 @@ tEffExp' (ABS.NewLocal _ _) = error "Not valid class name"
 
 
 tEffExp' (ABS.SyncMethCall pexp method args) = tSyncOrAsync "^." pexp method args
-tEffExp' (ABS.AsyncMethCall pexp method args) = tSyncOrAsync "^!" pexp method args
+tEffExp' (ABS.AsyncMethCall pexp method args) = do
+ (_,_,_,_,_,_,isStandaloneRhs) <- ask
+ tSyncOrAsync (if isStandaloneRhs then "^!!" else "^!") pexp method args
 
 tEffExp' (ABS.ThisSyncMethCall method@(ABS.LIdent (_,mname)) args) = do
-  (_,_,_,_,isInit,meths) <- ask
+  (_,_,_,_,isInit,meths,_) <- ask
   when isInit $ error "Synchronous method calls are not allowed inside init block"
   if method `elem` meths
    then tEffExp' (ABS.SyncMethCall (ABS.ELit $ ABS.LThis) method args) --  it is actually a method (interface-declared)
@@ -560,11 +564,13 @@ tEffExp' (ABS.ThisSyncMethCall method@(ABS.LIdent (_,mname)) args) = do
 
 
 tEffExp' (ABS.ThisAsyncMethCall method@(ABS.LIdent (_,mname)) args) = do
- (_,_,_,_,_,meths) <- ask
+ (_,_,_,_,_,meths,isStandaloneRhs) <- ask
  if method `elem` meths
   then                           --  it is actually a method (interface-declared)
       tEffExp' (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args)
-  else tNonSyncOrAsync "^!" method args -- it is a non-method, thus do not wrap the object with the existential type of the interface
+  else  
+      -- it is a non-method, thus do not wrap the object with the existential type of the interface
+      tNonSyncOrAsync (if isStandaloneRhs then "^!!" else "^!") method args
 
 tEffExp' (ABS.Get pexp) = do
   texp <- tPureExp' pexp []
@@ -605,7 +611,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
 -- | shorthand generator for method calls, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
-  (_,_,_,_, isInit,_) <- ask
+  (_,_,_,_, isInit,_,_) <- ask
   if (isInit && syncOrAsync == "^.")
     then error "Synchronous method calls are not allowed inside init block"
     else do
@@ -629,7 +635,7 @@ tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
 -- | shorthand generator for non-method calls, because sync and async are similar
 tNonSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tNonSyncOrAsync syncOrAsync (ABS.LIdent (mpos,mname)) args = do
-  (_,_,_,clsName, isInit,_) <- ask
+  (_,_,_,clsName, isInit,_,_) <- ask
   _ <- errorPos mpos clsName
   if (isInit && syncOrAsync == "^.")
     then error "Synchronous method calls are not allowed inside init block"
@@ -674,7 +680,7 @@ tAwaitGuard (ABS.ProGuard ident) _cls = do
              texp
 
 tAwaitGuard (ABS.ProFieldGuard ident) cls =do
-  (_,cscope,_,_,_,_) <- ask
+  (_,cscope,_,_,_,_,_) <- ask
   texp <- tPureExpWrap (ABS.EVar ident) cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
              HS.App (HS.App (HS.Con $ identI "PromiseFieldGuard")
@@ -683,7 +689,7 @@ tAwaitGuard (ABS.ProFieldGuard ident) cls =do
 
 -- fieldguard: this.f?
 tAwaitGuard (ABS.FutFieldGuard ident) cls =do
-  (_,cscope,_,_,_,_) <- ask
+  (_,cscope,_,_,_,_,_) <- ask
   texp <- tPureExpWrap (ABS.EVar ident) cls
   return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") $ 
              HS.App (HS.App (HS.Con $ identI "FutureFieldGuard")
@@ -695,7 +701,7 @@ tAwaitGuard (ABS.FutFieldGuard ident) cls =do
 -- if the expression contains no fields, then the guard can evaluate it only once and either block (show an error) or continue
 -- if it contains fields, collect them to try them out whenever the object is mutated
 tAwaitGuard (ABS.ExpGuard pexp) cls = do
-  (_,cscope,_,_,_,_) <- ask
+  (_,cscope,_,_,_,_,_) <- ask
   vcscope <- visible_cscope
   let awaitFields = collectVars pexp vcscope
   texp <- tPureExpWrap pexp cls
@@ -725,11 +731,11 @@ wrapTypeToABSMonad t = (HS.TyApp (HS.TyCon (identI "ABS")) t)
 -- | Util function to fetch the visible class-scope
 visible_cscope :: ExprLiftedM ScopeTable
 visible_cscope = do
- (fscope, cscope, _, _,_,_) <- ask
+ (fscope, cscope, _, _,_,_,_) <- ask
  return $ cscope M.\\ fscope
 
 
 fullScope :: ExprLiftedM ScopeTable
 fullScope = do
- (fscope, cscope, _, _,_,_) <- ask
+ (fscope, cscope, _, _,_,_,_) <- ask
  return $ fscope `M.union` cscope

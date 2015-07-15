@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, GADTs, DeriveDataTypeable, ScopedTypeVariables #-}
 -- | The core of the ABS-Haskell runtime execution. 
 --
 -- This module implements the execution-logic of 
@@ -12,11 +12,13 @@ module Lang.ABS.Runtime.Core
     ,new
     ,new_local
     ,set
+    ,spawnClosure
+    ,RootDict(..)
     ) where
 
 import Lang.ABS.Runtime.Base
 import Lang.ABS.Runtime.Conf
-import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
+--import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
 import Data.List (foldl', find, splitAt)
 import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
 import Control.Concurrent.MVar (putMVar, newEmptyMVar)
@@ -44,8 +46,14 @@ import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under
 import Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as C8
 import qualified Data.ByteString.Base64.Lazy as B64
+import qualified Data.ByteString.Lazy as BS
 import Control.Distributed.Process.Closure
 import Data.IORef
+import qualified Control.Distributed.Static as Static
+import Data.Rank1Dynamic
+import Data.Rank1Typeable
+import Data.Binary
+import Control.Distributed.Process.Closure
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -72,12 +80,11 @@ fwd_cog thisCOG@(COG(c,pid)) = do
              let __obj = ObjectRef __ioref thisCOG 0
              CH.liftIO $ writeChan c (LocalJob __obj NullFutureRef (__init __obj))
     MachineUp remoteAddress -> do
-              CH.liftIO $ print "Machines connected"
-              myNid <- fmap CH.processNodeId CH.getSelfPid
-              let myNodeAddress = CH.nodeAddress myNid
+              myNodeAddress <- fmap CH.nodeAddress CH.getSelfNode
               Right _ <- CH.liftIO $ socketToEndPoint myNodeAddress remoteAddress
                                     True -- reuseaddr
                                     (Just 10000000) -- 10secs timeout to establish connection
+              CH.liftIO $ print "Machines connected"
               return ()
     _ -> error "this should not happen"
   fwd_cog thisCOG
@@ -86,7 +93,7 @@ fwd_cog thisCOG@(COG(c,pid)) = do
 spawnCOG :: CH.Process COG -- ^ it returns the created COG-thread ProcessId. This is used to update the location of the 1st created object
 spawnCOG = do
   c <- CH.liftIO newChan
-  if (distributed conf)     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
+  if (distributed conf || isJust (port conf))     -- DISTRIBUTED (default) (1 COG Process + 1 Forwarder Process)
     then do
       fwdPid <- CH.spawnLocal (CH.getSelfPid >>= \ pid -> fwd_cog (COG (c,pid))) -- Proc-1  is the forwarder cog. It's pid is 1st part of the COG's id
       _ <- CH.spawnLocal $ do  -- Proc-2 is the local cog thread. It's job channel is the 2nd part of the COG's id
@@ -182,7 +189,6 @@ main_is :: (Obj Null -> ABS ()) -- ^ a main-block monadic action (a fully-applie
         -> IO ()                  -- ^ returns void. It is the main procedure of a compiled ABS application.
 main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
   let port' = maybe "9000" show (port conf)
-  print port'
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
   if (distributed conf || isJust (port conf))
     then do
@@ -191,35 +197,28 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
              (error "An outside network interface was not found.")
              (show . ipv4) $ find (\ nic -> name nic == "wlp2s0") nics -- otherwise, eth0's IP
       Right trans <- createTransport myIp port' defaultTCPParameters
-      myLocalNode <- newLocalNode trans (DC.__remoteTable outsideRemoteTable) -- new my-node
       Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
-
+      myLocalNode <- newLocalNode trans (rtable (outsideRemoteTable)) -- outsideRemoteTable) -- new my-node
       c <- newChan            -- sharing in-memory channel between Forwarder and Cog
       fwdPid <- forkProcess myLocalNode (CH.getSelfPid >>= \ pid -> fwd_cog (COG (c,pid))) -- start the Forwarder process
-      print "created node"
       -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           print "no creator"
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) undefined)) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right "" -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           print "no creator"
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) undefined)) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
-                    print ("creator str" ++ creatorPidStr)
                     let creatorPid = Bin.decode (B64.decodeLenient (C8.pack creatorPidStr)) :: CH.ProcessId
                     let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
-                    print ("with creator" ++ show creatorPid)
                     let myNodeAddress = address ep
                     Right _ <- socketToEndPoint myNodeAddress creatorNodeAddress
                               True -- reuseaddr
                               (Just 10000000) -- 10secs timeout to establish connection
                     runProcess myLocalNode (do
-                                             CH.liftIO $ print "sent machine-up"
                                              CH.send creatorPid (MachineUp myNodeAddress) -- send ack to creatorPid
                                              loop c fwdPid M.empty M.empty 1) -- start the COG process
 
@@ -326,6 +325,16 @@ new smart _this = do
   CH.liftIO $ writeChan chan (LocalJob obj NullFutureRef (__init obj))
   return obj
 
+spawn :: (Root_ a) => a -> CH.Process (Obj a)
+spawn smart = do 
+  CH.liftIO $ print "received spawn"
+  new_cog@(COG (chan, _)) <- spawnCOG
+  ioref <- CH.liftIO $ newIORef smart
+  let obj = ObjectRef ioref new_cog 0
+  CH.liftIO $ writeChan chan (LocalJob obj NullFutureRef (__init obj))
+  return obj
+
+
 {-# INLINE new_local #-}
 new_local :: (Root_ a) => a -> Obj creator -> ABS (Obj a)
 new_local smart (ObjectRef _ thisCOG _) = do
@@ -349,8 +358,49 @@ set i upd v _this@(ObjectRef ioref (COG (chan, _)) oid)  = do
   lift  (S.put astate{aSleepingO = om', aSleepingF = fm'})
 
 
+data RootDict a where
+  RootDict :: Root_ a => RootDict a
+  deriving Typeable
+
+spawnDict :: RootDict a -> a -> CH.Process (Obj a)
+spawnDict RootDict = spawn
+
+spawnDictStatic :: Static.Static (RootDict a -> a -> CH.Process (Obj a))
+spawnDictStatic = Static.staticLabel "$spawnDict"
+
+rootDecodeDict :: RootDict a -> BS.ByteString -> a
+rootDecodeDict RootDict = decode 
+
+rootDecodeDictStatic :: Static.Static (RootDict a -> BS.ByteString -> a)
+rootDecodeDictStatic = Static.staticLabel "$rootDecodeDict"
+
+rtable :: Static.RemoteTable -> Static.RemoteTable
+rtable = Static.registerStatic "$spawnDict" (toDynamic (spawnDict :: RootDict ANY -> ANY -> CH.Process (Obj ANY)))
+        . Static.registerStatic "$rootDecodeDict" (toDynamic (rootDecodeDict :: RootDict ANY -> BS.ByteString -> ANY))
+        
+
+spawnClosure :: forall a. Root_ a => Static.Static (RootDict a) -> a -> Static.Closure (CH.Process (Obj a))
+spawnClosure dict objv = Static.closure decoder (encode objv)
+   where
+    decoder :: Static.Static (BS.ByteString -> CH.Process (Obj a))
+    decoder = (spawnDictStatic `Static.staticApply` dict) `Static.staticCompose` (rootDecodeDictStatic `Static.staticApply` dict)
+
+
 --remotable ['new]
 
+-- test :: RootDict a -> a -> CH.Process ()
+-- test RootDict x = return ()
 
 
+-- data BinaryDict a where
+--   BinaryDict :: Serializable a => BinaryDict a
+--   deriving Typeable
 
+-- sendDict :: BinaryDict a -> CH.ProcessId -> a -> CH.Process ()
+-- sendDict BinaryDict = CH.send
+
+-- sendDictStatic :: Static.Static (BinaryDict a -> CH.ProcessId -> a -> CH.Process ())
+-- sendDictStatic = Static.staticLabel "$sendDict"
+
+
+-- rtable1 = Static.registerStatic "$sendDict" (toDynamic (sendDict :: BinaryDict ANY -> CH.ProcessId -> ANY -> CH.Process ()))

@@ -57,6 +57,7 @@ type ExprLiftedM = Reader (ScopeTable -- current functional scope (introduced by
                     ,String     -- the class name that we are currently implementing with this class method
                     ,Bool -- is init block? then it cannot use await and/or synchronous calls
                     ,[ABS.LIdent] -- a list of visible methods (exluding non-methods); needed by exprlifted thismethcalls
+                    ,Bool         -- if is standalone RHS, no lhs (for optimizing async call)
                     )
 
 -- ^ The translation monad of ABS (monadic) statements, inside the ABS object-layer

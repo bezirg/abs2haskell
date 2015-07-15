@@ -31,7 +31,7 @@ import Control.Concurrent.MVar (newMVar)
 class (Root_ a) => IDC_ a where
         shutdown :: Obj a -> ABS Unit
         getLoad :: Obj a -> ABS (Triple Rat Rat Rat)
-        spawns :: (Root_ o, Serializable o) => o -> Obj a -> ABS (Obj o)
+        spawns :: (Root_ o) => Static (SerializableDict (Obj o)) -> o -> Obj a -> ABS (Obj o)
  
 -- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
 data IDC = forall a . (IDC_ a) => IDC (Obj a)
@@ -92,7 +92,7 @@ rload pid = do
   send pid (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
   return ()
 
-$(remotable ['rload])
+-- $(remotable ['rload])
 
 
 getLoad_sync _ ((IDC __obj@(ObjectRef __ioref _ _)))
@@ -121,7 +121,7 @@ getLoad_async this@(ObjectRef _ __hereCOG@(COG(__chan,_)) _) ((IDC __obj@(Object
            return __f
          else do
            self <- lift (lift (getSelfPid)) -- this is probably wrong, it has to record the forwarder_pid, not the cog_pid
-           lift (lift (spawn rnid ($(mkClosure 'rload) pid)))
+           -- lift (lift (spawn rnid ($(mkClosure 'rload) pid)))
            res <- lift (lift (expect)) :: ABS (Triple Rat Rat Rat)
            __mvar <- I__.liftIO (newMVar res)
            let __f = FutureRef __mvar __hereCOG __counter

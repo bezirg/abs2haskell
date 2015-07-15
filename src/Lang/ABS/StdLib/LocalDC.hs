@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude, 
   ExistentialQuantification, MultiParamTypeClasses,
-  PatternSignatures, DeriveDataTypeable, DeriveGeneric, TemplateHaskell #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric, TemplateHaskell, InstanceSigs, ScopedTypeVariables #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
@@ -16,7 +16,12 @@ import Data.Binary (encode)
 import qualified Data.ByteString.Base64.Lazy as B64
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
- 
+import Network.Transport.TCP
+import Control.Concurrent
+import Control.Distributed.Static
+import Data.Rank1Typeable
+import Data.List ((++))
+
 data LocalDC = LocalDC{localDC_nid :: NodeId, localDC_port :: Int}
              deriving (I__.Typeable, I__.Generic)
 
@@ -49,11 +54,9 @@ instance I__.Root_ LocalDC where
         --        return __obj
         __init this@(I__.ObjectRef _ (I__.COG (_, pid)) _) = do
           -- the creator runs the init
-             println(pure "creating local node-process")
-             println(pure (I__.show pid))
              port <- localDC_port <$> I__.readThis this
              d0 <- I__.liftIO getExecutablePath
-             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port]) { env = Just [("FROM_PID", I__.show (B64.encode (encode pid)))] }))
+             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "-t"]) { env = Just [("FROM_PID", I__.show (B64.encode (encode pid)))] }))
              return ()
 
  
@@ -69,10 +72,13 @@ instance IDC_ LocalDC where
           = do (pure ((,,)) <*> ((/) <$> pure 1 <*> pure 2) <*>
                   ((/) <$> pure 1 <*> pure 2)
                   <*> ((/) <$> pure 1 <*> pure 2))
-        spawns smart this = do
-                        return (I__.undefined)
-             -- println(pure "in spawn")
-             -- nid <- localDC_nid <$> I__.readThis this
-             -- lift (I__.lift (call' nid $(mkStaticClosure 'spawnCOG)))
-             -- I__.lift (I__.lift (send pid (I__.InitJob obj)))
-             -- return (I__.ObjectRef I__.undefined __new_cog 0)
+        spawns :: forall o. (I__.Root_ o) => Static (SerializableDict (I__.Obj o)) -> o -> I__.Obj LocalDC -> I__.ABS (I__.Obj o)
+        spawns sdict smart this = do
+             println(pure "in spawn")
+             nid <- localDC_nid <$> I__.readThis this
+             let epa = encodeEndPointAddress "192.168.0.15" "9001" 1
+             s <- I__.lift (I__.lift (call sdict (NodeId epa) (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
+             println(pure "spawn done")
+             return s
+
+

@@ -70,9 +70,23 @@ tStmts (ABS.AnnStm _ stmt:rest) canReturn = do
 
 -- | Translating a single ABS-statement
 tStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Stm -> StmtM [HS.Stmt]
+-- tStmt (ABS.SExp (ABS.ExpE (ABS.AsyncMethCall pexp method args))) = do
+--   texp <- runExpr $ tSyncOrAsync "^!!" pexp method args
+--   return $ [HS.Qualifier texp]
+
+-- tStmt (ABS.SExp (ABS.ExpE (ABS.ThisAsyncMethCall method args))) = do
+--  (_,_,_,_,_,meths) <- ask
+--  if method `elem` meths
+--   then --  it is actually a method (interface-declared), treat is same as above
+--      tStmt (ABS.SExp (ABS.ExpE (ABS.AsyncMethCall (ABS.ELit $ ABS.LThis) method args)))
+--   else do
+--     -- it is a non-method, thus do not wrap the object with the existential type of the interface
+--     texp <- runExpr $ tNonSyncOrAsync "^!!" method args
+--     return $ [HS.Qualifier texp]
+
 tStmt (ABS.SExp pexp) = do
   texp <- case pexp of  -- TODO: have to force to WHNF
-           ABS.ExpE eexp -> tEffExpStmt eexp
+           ABS.ExpE eexp -> tEffExpStmt eexp True
            ABS.ExpP texp -> tPureExpStmt texp
   return [HS.Qualifier texp]
 
@@ -83,7 +97,7 @@ tStmt (ABS.SAwait g) = do
   if isInit 
    then error "Await statements not allowed inside init block"
    else do
-     texp <- runExpr $ tAwaitGuard g cls
+     texp <- runExpr (tAwaitGuard g cls) False
      return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
                      (HS.Paren $ HS.InfixApp 
                             (HS.Var $ HS.UnQual $ HS.Ident "await")
@@ -166,7 +180,7 @@ tStmt (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) exp) = do
       Just _ -> do
         texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
         return [HS.Generator HS.noLoc 
                 (case typ of
                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
@@ -180,7 +194,7 @@ tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
       Just _ -> do
         texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
         return [HS.Qualifier $ HS.App
                 -- lhs
                 (HS.App (HS.Var $ identI "writeRef") (HS.Var $ HS.UnQual $ HS.Ident var))
@@ -200,7 +214,7 @@ tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
   (clsScope, _, _, cls,_,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
 
   return [HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp 
                           (HS.App (HS.App (HS.Var $ identI $ "set") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
