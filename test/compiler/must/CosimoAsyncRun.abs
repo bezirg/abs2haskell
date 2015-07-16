@@ -1,0 +1,30 @@
+module CosimoAsyncRun;
+
+interface I {
+    Unit set_f();
+}
+
+
+class C implements I {
+    Fut<Unit> f;
+    Unit run() {
+        await f?;
+        println("True");
+    }
+    Unit set_f() {
+        f = this ! dummy();
+    }
+    Unit dummy() {
+    }
+}
+
+
+{
+ I o = new local C();  
+ o.set_f();
+ suspend;
+ suspend;
+ suspend;
+ suspend;
+ suspend;
+}

@@ -486,7 +486,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
          tInitDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = 
              let HS.Do tinit = tInitBlockWithReturn block clsName allFields (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
                                                        M.insertWith (const $ const $ errorPos p $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName methsList
-             in HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"]) Nothing (HS.UnGuardedRhs $ HS.Do $ if isJust mRun then tinit++ [HS.Qualifier (HS.App (HS.Var (HS.UnQual $ HS.Ident "run")) (HS.Var (HS.UnQual (HS.Ident "this"))))] else tinit)  (HS.BDecls (map (tNonMethDecl interfName) nonMethods))]
+             in HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"]) Nothing (HS.UnGuardedRhs $ HS.Do $ if isJust mRun then tinit++ [HS.Qualifier (HS.App (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "this") (HS.QVarOp (HS.UnQual (HS.Symbol "^!!")))  (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.Var $ HS.UnQual $ HS.Ident "run"))] else tinit)  (HS.BDecls (map (tNonMethDecl interfName) nonMethods))]
 
          tInitDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
 
