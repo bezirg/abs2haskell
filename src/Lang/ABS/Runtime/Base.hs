@@ -191,7 +191,7 @@ data Job = forall o a . (Serializable a) => LocalJob (Obj o) (Fut a) (ABS a)
 
 -- | A mapping of object-fields to list of disabled processes.
 --
--- It represents sleeping procesess that wait on some object-field to be modified. e.g. await this.x > this.y +1
+-- It represents sleeping processes that wait on some object-field to be modified. e.g. await this.x > this.y +1
 --
 -- The COG will strictly not re-schedule this processes until the object-field is modified.
 -- 

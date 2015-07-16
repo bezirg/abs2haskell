@@ -40,11 +40,16 @@ await (FutureLocalGuard f@(FutureRef mvar _ _ )) _ = do
     yield (FL f)
 
 await g@(FutureFieldGuard i tg) this  = do
-  f@(FutureRef mvar _ _) <- tg
-  empty <- liftIO $ isEmptyMVar mvar
-  when empty $ do
-    yield (FF f i)
-    await g this
+  fut <- tg
+  case fut of
+    (FutureRef mvar _ _) -> do
+             empty <- liftIO $ isEmptyMVar mvar
+             when empty $ do
+               yield (FF fut i)
+               await g this
+    NullFutureRef -> do
+             yield (A this [i]) -- only awaits on one attribute to be field with a real future, not a nullfutureref
+             await g this
 
 await g@(AttrsGuard is tg) this = do
   check <- tg
