@@ -304,6 +304,21 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                                      Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "True") (HS.BDecls []),                                   
                                    HS.Match HS.noLoc (HS.Symbol "==") [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ HS.UnQual $ HS.Ident "False") (HS.BDecls [])]]
 
+       -- instance Ord I where compare = 
+       : HS.InstDecl HS.noLoc [] (identI "Ord") [HS.TyCon $ HS.UnQual $ HS.Ident tname]
+           [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident "compare")
+                                     [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id1", HS.PVar $ HS.Ident "tid1"]],
+                                      HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PVar $ HS.Ident "id2", HS.PVar $ HS.Ident "tid2"]]] Nothing (HS.UnGuardedRhs $ (HS.App (HS.App (HS.Var $ identI "compare") (HS.Tuple HS.Boxed [HS.Var $ HS.UnQual $ HS.Ident "tid1", HS.Var $ HS.UnQual $ HS.Ident "id1"])) (HS.Tuple HS.Boxed [HS.Var $ HS.UnQual $ HS.Ident "tid2", HS.Var $ HS.UnQual $ HS.Ident "id2"])))
+                                     (HS.BDecls []),
+                                     HS.Match HS.noLoc (HS.Ident "compare")
+                                     [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "NullRef") []],
+                                      HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "NullRef") []]] Nothing (HS.UnGuardedRhs $ HS.Con $ identI "EQ") (HS.BDecls []),
+                                     HS.Match HS.noLoc (HS.Ident "compare")
+                                     [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PApp (identI "NullRef") []],
+                                      HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PWildCard]] Nothing (HS.UnGuardedRhs $ HS.Con $ identI "LT") (HS.BDecls []),
+                                     HS.Match HS.noLoc (HS.Ident "compare")
+                                     [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ identI "GT") (HS.BDecls [])
+                                    ]]
        -- instance B__.Binary I where
        : HS.InstDecl HS.noLoc [] (identB "Binary") [HS.TyCon $ HS.UnQual $ HS.Ident tname]
            [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident "put")

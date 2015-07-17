@@ -102,6 +102,13 @@ instance Eq Root where
     Root NullRef == Root NullRef = True
     _ == _ = False
 
+-- | Equality between any object (any class)
+instance Ord Root where
+    Root (ObjectRef _ id1 tid1) `compare` Root (ObjectRef _ id2 tid2) = (tid1,id1) `compare` (tid2,id2)
+    Root NullRef `compare` Root NullRef = EQ
+    Root NullRef `compare` Root _ = LT
+    _ `compare` _ = GT
+
 -- | The null class (datatype)
 --
 -- It does not have any constructors, thus no value (no fields).

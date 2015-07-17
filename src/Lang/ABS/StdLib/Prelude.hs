@@ -20,9 +20,9 @@ module Lang.ABS.StdLib.Prelude
      -- * Functions for boxed "Array" datastructures
      listArray, replace, elemAt,
      -- * The ABS Map datatype and its functions
-     M.Map, map, M.empty, put, insert, lookupUnsafe, lookupMaybe, lookupDefault, removeKey, M.keys, values,
+     M.Map, map, _emptyMap, put, insert, lookupUnsafe, lookupMaybe, lookupDefault, removeKey, keys, values,
      -- * The ABS Set datatype and its functions
-     S.Set, set, emptySet, S.size, contains, S.union, S.intersection, S.difference, insertElement, remove, take,
+     S.Set, set, _emptySet, emptySet, S.size, contains, S.union, S.intersection, S.difference, insertElement, remove, take,
      -- * Printing to Strings and to standard-output
      toString, intToString, substr, strlen, println, readln,
      -- * Lifting ABS pure code to ABS object layer
@@ -77,10 +77,12 @@ instance Number Rat where
 
 -- | Modulo operation. Takes strictly two integers
 -- and returns a polymorphic number (either Int or Rational, based on the followup computation).
+{-# INLINE (%) #-}
 (%) :: Number b => Int -> Int -> b
 x % y = Prelude.fromIntegral (x `Prelude.mod` y)
 
 -- | Raising a number to a non-negative integer power
+{-# INLINE pow #-}
 pow :: Number b => b -> Int -> b
 pow x y | y Prelude.< 0     = 0 -- TODO: this should normally return an error
         | Prelude.otherwise = x Prelude.^ y
@@ -102,85 +104,119 @@ type Rat = Prelude.Rational
 type List = [] 
 
 -- | Returns the element of the list positioned at the given index.
+{-# INLINE nth #-}
 nth :: List a -> Int -> a
 nth = (Prelude.!!)
 
 -- | Checks if the list is empty.
+{-# INLINE isEmpty #-}
 isEmpty :: List a -> Bool
 isEmpty = Prelude.null
 
 -- | Replicating an element 'n' times, forming a list of length n.
+{-# INLINE copy #-}
 copy :: a -> Int -> List a
 copy = Prelude.flip Prelude.replicate
 
 -- | Removes all occurences of an element from a list
+{-# INLINE without #-}
 without :: Prelude.Eq t => [t] -> t -> [t]
 without [] _ = []
 without (x:xs) a | x Prelude.== a = without xs a 
                  | Prelude.otherwise = x : without xs a
 
+{-# INLINE concatenate #-}
 concatenate :: [a] -> [a] -> [a]
 concatenate = (Prelude.++)
 
+{-# INLINE appendright #-}
 appendright :: [a] -> a -> [a]
 appendright l p = l Prelude.++ [p]
 
 -- | dummy function for ABS n-ary constructors
+{-# INLINE list #-}
 list :: [a] -> [a]
 list = Prelude.id
 
 -------- MAPS---------------
 ----------------------------
 
+{-# INLINE put #-}
 put :: Prelude.Ord k => M.Map k v -> k -> v -> M.Map k v
 put m k v = M.insert k v m
 
+{-# INLINE insert #-}
 insert :: Prelude.Ord k => M.Map k v -> (k,v) -> M.Map k v
 insert m (k,v) = M.insert k v m
 
+{-# INLINE lookupUnsafe #-}
 lookupUnsafe :: Prelude.Ord k => M.Map k v -> k -> v
 lookupUnsafe m k = m M.! k
 
+{-# INLINE lookupMaybe #-}
 lookupMaybe :: Prelude.Ord k => M.Map k v -> k -> Prelude.Maybe v
 lookupMaybe = Prelude.flip M.lookup
 
 -- | Returns the value associated with key 'k' in map 'ms', or the value 'd'
 -- if 'k' has no entry in 'ms'.
+{-# INLINE lookupDefault #-}
 lookupDefault :: Prelude.Ord k => M.Map k a -> k -> a -> a
 lookupDefault ms k d = M.findWithDefault d k ms
 
+{-# INLINE removeKey #-}
 removeKey :: Prelude.Ord k => M.Map k v -> k -> M.Map k v
 removeKey = Prelude.flip M.delete
 
 -- | Constructing maps from an association list.
+{-# INLINE map #-}
 map :: Prelude.Ord k => List (Pair k a) -> M.Map k a
 map = M.fromList
 
-values :: Prelude.Ord k => M.Map k v -> List v
+{-# INLINE values #-}
+values :: M.Map k a -> (List a)
 values = M.elems
 
+-- | Constructor of empty Maps, 'EmptyMap' in ABS
+{-# INLINE _emptyMap #-}
+_emptyMap :: M.Map k a
+_emptyMap = M.empty
+
+
+{-# INLINE keys #-}
+keys :: M.Map k a -> S.Set k
+keys = M.keysSet
 
 -------- SETS---------------
 ----------------------------
 
+{-# INLINE set #-}
 set :: Prelude.Ord a => List a -> S.Set a
 set = S.fromList
 
+{-# INLINE contains #-}
 contains :: Prelude.Ord a => S.Set a -> a -> Bool
 contains = Prelude.flip S.member
 
+{-# INLINE emptySet #-}
 emptySet :: S.Set a -> Bool
 emptySet = S.null
 
+{-# INLINE _emptySet #-}
+_emptySet :: S.Set a
+_emptySet = S.empty
+
+{-# INLINE insertElement #-}
 insertElement :: Prelude.Ord a => S.Set a -> a -> S.Set a
 insertElement = Prelude.flip S.insert
 
+{-# INLINE remove #-}
 remove :: Prelude.Ord a => S.Set a -> a -> S.Set a
 remove = Prelude.flip S.delete
 
 -- | Returns one (arbitrary) element from a set.
 -- To iterate over a set, take one element and remove it from the set.
 -- Repeat until set is empty.
+{-# INLINE take #-}
 take :: Prelude.Ord a => S.Set a -> a
 take = S.findMin
 
@@ -213,9 +249,11 @@ right _ = Prelude.error "not a right-Either"
 -- | A pure (persistent) array with O(1) random access
 type Array = BArray.Array
 
+{-# INLINE replace #-}
 replace :: (BArray.IArray a e, BArray.Ix i) => a i e -> [(i, e)] -> a i e
 replace a cs = a BArray.// cs
 
+{-# INLINE elemAt #-}
 elemAt :: (BArray.IArray a e, BArray.Ix i) => (a i e, i) -> e
 elemAt(a, i) = a BArray.! i
 
@@ -230,11 +268,13 @@ println act = act Prelude.>>= \ s -> liftIO (Prelude.putStrLn s)
 readln :: ABS Prelude.String
 readln = liftIO Prelude.getLine
 
+{-# INLINE toString #-}
 toString :: (Prelude.Show a) => a -> Prelude.String
 toString = Prelude.show
 
 -- | Returns a string with the base-10 textual representation of 'n'.
 -- Note: Will work the same as toString. Just a carry-over from the other frontend.
+{-# INLINE intToString #-}
 intToString :: Int -> Prelude.String
 intToString = Prelude.show
 
@@ -243,9 +283,11 @@ intToString = Prelude.show
 -- 
 -- Example:
 --    substr("abcde",1,3) => "bcd"
+{-# INLINE substr #-}
 substr :: Prelude.String -> Int -> Int -> Prelude.String
 substr str d len = Prelude.take len (Prelude.drop d str)
 
+{-# INLINE strlen #-}
 strlen :: Prelude.String -> Int
 strlen = Prelude.length
 

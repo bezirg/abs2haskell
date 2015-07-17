@@ -31,6 +31,9 @@ module Lang.ABS.Compiler.Include
      -- * For creating local variable (by the ABS user). It is the same as the above IORef-operations, but lifted for operating in the ABS-monad.
      newRef, readRef, writeRef, IORef,  -- this should remain in MonadIO monad for polymorphic (IO-fimported) code generation
 
+     -- * For generating Ord instances for interface-wrappers
+     O.Ord, O.Ordering (..), O.compare,
+
      empty_fut, empty_pro,
      initRemoteTable,
      -- * Haskell's 'negate' (-) unary function used in lifted code
@@ -60,6 +63,7 @@ import qualified GHC.Generics (Generic)
 import qualified Data.Binary (Binary)
 import qualified Data.Map.Strict (lookup, fromList)
 import Control.Distributed.Process.Serializable
+import qualified Data.Ord as O
 
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx
 data PHandler a = forall e . Control.Monad.Catch.Exception e => PHandler (e -> Maybe a)

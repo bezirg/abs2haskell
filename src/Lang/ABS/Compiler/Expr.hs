@@ -281,7 +281,10 @@ tPureExp (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Nil"))])) 
     return $ HS.Con $ HS.Special HS.ListCon -- for the translation to []
 
 tPureExp (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"EmptyMap"))])) _ = 
-    return $ HS.Var $ HS.UnQual $ HS.Ident "empty" -- for the translation to Data.Map
+    return $ HS.Var $ HS.UnQual $ HS.Ident "_emptyMap" -- for the translation to Data.Map
+
+tPureExp (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"EmptySet"))])) _ = 
+    return $ HS.Var $ HS.UnQual $ HS.Ident "_emptySet" -- for the translation to Data.Map
 
 tPureExp (ABS.ESinglConstr (ABS.QTyp qids)) _ = return $
   let mids = init qids
