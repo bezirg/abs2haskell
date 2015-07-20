@@ -29,6 +29,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                               ,HS.Ident "ExistentialQuantification" -- for heterogenous collections
                                               ,HS.Ident "MultiParamTypeClasses" -- for subtyping
                                               ,HS.Ident "PatternSignatures" -- for inlining type annotations
+                                              ,HS.Ident "FlexibleContexts" -- for some type inference of methods
                                               ,HS.Ident "DeriveDataTypeable" -- for defining ABS exceptions (exceptions are dynamically typed in haskell)
                                               ,HS.Ident "DeriveGeneric" -- for deriving Binary instances for object records
                                               ]
@@ -328,7 +329,7 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
            ,HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident "get") [] Nothing
                                        (HS.UnGuardedRhs $ HS.Do [HS.Generator HS.noLoc (HS.PVar $ HS.Ident "fp") (HS.Var $ identB "get"),
                                                                  HS.Qualifier (HS.Case (HS.App (HS.App (HS.Var $ identI "lookup") (HS.App (HS.Var $ identI "decodeFingerprint") (HS.Var $ HS.UnQual $ HS.Ident "fp"))) (HS.Var $ HS.UnQual $ HS.Ident $ "stable_" ++ tname))
-                                                                                 [HS.Alt HS.noLoc (HS.PApp (HS.UnQual $ HS.Ident "Just") [HS.PParen (HS.PApp (HS.UnQual $ HS.Ident $ "SomeGet_" ++ tname) [HS.PVar $ HS.Ident "someget"])]) (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident tname) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Var $ HS.UnQual $ HS.Ident "someget"))) (HS.BDecls [])
+                                                                                 [HS.Alt HS.noLoc (HS.PApp (HS.UnQual $ HS.Ident "Just") [HS.PParen (HS.PApp (HS.UnQual $ HS.Ident $ "SomeGet_" ++ tname) [HS.PVar $ HS.Ident "someget"])]) (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident tname) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Var $ HS.UnQual $ HS.Ident "someget"))) (HS.BDecls [])
                                                                                  ,HS.Alt HS.noLoc (HS.PApp (HS.UnQual $ HS.Ident "Nothing") []) (HS.UnGuardedAlt (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String $ "Binary " ++ tname ++ ": fingerprint unknown"))) (HS.BDecls [])
                                                                                  ])]) (HS.BDecls [])]
            ]
@@ -389,7 +390,13 @@ tDecl (ABS.ClassImplements tident imps fdecls maybeBlock mdecls) = tDecl (ABS.Cl
 tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls maybeBlock rdecls) = -- TODO add check for imps, if a method is not implemented
        -- the record-ADT of the ABS class
         HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident clsName) [] 
-              [HS.QualConDecl HS.noLoc [] [] $ HS.RecDecl (HS.Ident clsName) (map (\ ((ABS.LIdent (_,i)), t) -> ([HS.Ident $ headToLower clsName ++ "_" ++ i], HS.UnBangedTy (tType t)))  (M.toAscList allFields))]  [(identI "Typeable",[]), (identI "Generic", [])]
+              [HS.QualConDecl HS.noLoc [] [] $ HS.RecDecl (HS.Ident clsName) (map (\ ((ABS.LIdent (_,i)), t) -> ([HS.Ident $ headToLower clsName ++ "_" ++ i], 
+                                                                                                                let t' = tType t
+                                                                                                                in case t' of
+                                                                                                                     HS.TyCon (HS.UnQual (HS.Ident ident)) -> (if ident `elem` ["Int", "Bool", "Rational", "Unit"] then HS.BangedTy else HS.UnBangedTy) (tType t)
+                                                                                                                -- TODO: unpack the pairs+triples
+                                                                                                                     _ -> HS.UnBangedTy (tType t)
+                                                                                                               )) (M.toAscList allFields))]  [(identI "Typeable",[]), (identI "Generic", [])]
         :
 
         -- the smart constructor

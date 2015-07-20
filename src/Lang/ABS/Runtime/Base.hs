@@ -34,7 +34,7 @@ import GHC.Generics (Generic)
 
 --
 -- Together 2 and 3 makes any object uniquely identified accross the network.
-data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
+data Obj a = ObjectRef (IORef a) !COG !Int -- ^ an actual object reference
            | NullRef                              -- ^ reference to nothing; instead of referring to a predefined constant as done in C-like
                  deriving (Eq, Typeable)
 
@@ -46,12 +46,12 @@ data Obj a = ObjectRef (IORef a) COG Int -- ^ an actual object reference
 -- 2. A reference to the COG of its parent caller, to reply the result to.
 -- 3. A unique-per-COG ascending counter being the future's identity inside the cog
 -- Together 2 and 3 makes a future uniquely identified across the network.
-data Fut a = FutureRef (MVar a) COG Int -- ^ a reference to a future (created by await)
+data Fut a = FutureRef (MVar a) !COG !Int -- ^ a reference to a future (created by await)
            | NullFutureRef              -- ^ a dummy (internal-only) future-reference where main-method returns to (when finished)
            deriving Typeable
 
 -- container, waiting-cogs, creator-cog, counter-id when created
-data Promise a = PromiseRef (MVar a) (MVar (Maybe (S.Set COG))) COG Int 
+data Promise a = PromiseRef (MVar a) (MVar (Maybe (S.Set COG))) !COG !Int 
 
 instance Eq (Promise a) where
     PromiseRef _ _ c1 i1 == PromiseRef _ _ c2 i2 = c1 == c2 && i1 == i2
@@ -145,7 +145,7 @@ type ABS = Coroutine (Yield AwaitOn) (StateT AState CH.Process)
 
 -- | Every ABS monad (computation) holds a state AState
 data AState = AState {
-      aCounter :: Int           -- ^ generate (unique-per-COG) ascending counters
+      aCounter :: !Int           -- ^ generate (unique-per-COG) ascending counters
     , aSleepingO :: ObjectMap   -- ^ suspended-processes currently sleeping for some object-field
     , aSleepingF :: FutureMap   -- ^ suspended-processes currently sleeping for some future
     } deriving Typeable
@@ -155,16 +155,16 @@ data AState = AState {
 -- The running process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
 data AwaitOn = S -- suspend is called
              | forall f. Serializable f => FL (Fut f) -- await on a local future
-             | forall f. Serializable f => FF (Fut f) Int -- await on field future
+             | forall f. Serializable f => FF (Fut f) !Int -- await on field future
              | forall o. Root_ o => A (Obj o) [Int] -- await on object's fields
 
 
 -- | The single parameter to an await statement;
 -- a recursive-datatype that can await on multiple items
 data AwaitGuardCompiled = forall b. (Serializable b) => FutureLocalGuard (Fut b)
-                          | forall b. (Serializable b) => FutureFieldGuard Int (ABS (Fut b))
+                          | forall b. (Serializable b) => FutureFieldGuard !Int (ABS (Fut b))
                           | forall b. (Serializable b) => PromiseLocalGuard (Promise b)
-                          | forall b. (Serializable b) => PromiseFieldGuard Int (ABS (Promise b))
+                          | forall b. (Serializable b) => PromiseFieldGuard !Int (ABS (Promise b))
                           | AttrsGuard [Int] (ABS Bool)
                           | AwaitGuardCompiled :&: AwaitGuardCompiled
 
@@ -189,7 +189,7 @@ instance Ord COG where
 -- | Incoming jobs to the COG thread
 data Job = forall o a . (Serializable a) => LocalJob (Obj o) (Fut a) (ABS a)
          | forall o a . (Serializable a) => RemotJob (Obj o) (Fut a) (CH.Closure (ABS a))
-         | forall a . (Serializable a) => WakeupSignal a COG Int
+         | forall a . (Serializable a) => WakeupSignal a !COG !Int
          | MachineUp EndPointAddress
          | forall o . (Root_ o, Serializable o) => InitJob o
          deriving Typeable

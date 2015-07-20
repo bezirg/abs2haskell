@@ -124,7 +124,7 @@ instance IDC_ NebulaDC where
                    -- otherwise raises a not-implemented-yet error
                    -- if (thisVmId == myVmId)
                       -- then do
-                   (s1: s5: s15: _) <- I__.liftIO (words <$> (readFile "/proc/loadavg"))
+                   (s1: s5: s15: _) <- I__.liftIO (words <$!> (readFile "/proc/loadavg"))
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
                    -- else I__.error "TODO: remote checking the load of the system is not implemented yet"
         spawns this obj = I__.undefined

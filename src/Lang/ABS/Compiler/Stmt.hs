@@ -101,7 +101,7 @@ tStmt (ABS.SAwait g) = do
      return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
                      (HS.Paren $ HS.InfixApp 
                             (HS.Var $ HS.UnQual $ HS.Ident "await")
-                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                             (HS.InfixApp texp (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))))]
 
 tStmt (ABS.SBlock stmts) = do
@@ -219,7 +219,7 @@ tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
   return [HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp 
                           (HS.App (HS.App (HS.Var $ identI $ "set") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
                                  (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "v__", HS.PVar $ HS.Ident "c__"] $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "c__") [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower cls ++ "_" ++ var) (HS.Var $ HS.UnQual $ HS.Ident "v__")]))
-                          (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                          (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                           (HS.InfixApp   
                            texp
                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
@@ -259,11 +259,11 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
                                                    )
                                (case pat of
                                   -- wrap the normal returned expression in a just
-                                  ABS.PUnderscore -> HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") (HS.Paren $ tcstm)
+                                  ABS.PUnderscore -> HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") (HS.Paren $ tcstm)
                                   _ -> HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0")
                                       [HS.Alt HS.noLoc (tPattern pat)
                                        -- wrap the normal returned expression in a just
-                                       (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") (HS.Paren $ tcstm))) (HS.BDecls []),
+                                       (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident "Just") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") (HS.Paren $ tcstm))) (HS.BDecls []),
                                        -- pattern match fail, return nothing
                                        HS.Alt HS.noLoc HS.PWildCard (HS.UnGuardedAlt $ (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return") (HS.Con $ HS.UnQual $ HS.Ident "Nothing"))) (HS.BDecls [])])))
               cbranches
@@ -289,7 +289,7 @@ liftInterf' ident@(ABS.LIdent (p,var)) exp =  do
       Nothing -> errorPos p $ "Identifier " ++ var ++ " cannot be resolved from scope"
       Just (ABS.TUnderscore) -> errorPos p $ "Cannot infer interface type for variable" ++ var
       Just (ABS.TSimple (ABS.QTyp qids)) -> HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.QTypeSegmen (ABS.UIdent (_,iid))) -> iid) (last qids))
-                                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
       Just _ -> errorPos p $ var ++ " not of interface type"
 
 

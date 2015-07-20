@@ -54,7 +54,7 @@ instance I__.Root_ LocalDC where
         --        return __obj
         __init this@(I__.ObjectRef _ (I__.COG (_, pid)) _) = do
           -- the creator runs the init
-             port <- localDC_port <$> I__.readThis this
+             port <- localDC_port <$!> I__.readThis this
              d0 <- I__.liftIO getExecutablePath
              I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "-t"]) { env = Just [("FROM_PID", I__.show (B64.encode (encode pid)))] }))
              return ()
@@ -69,13 +69,13 @@ instance I__.Sub (I__.Obj LocalDC) IDC where
 instance IDC_ LocalDC where
         shutdown this = return ()
         getLoad this
-          = do (pure ((,,)) <*> ((/) <$> pure 1 <*> pure 2) <*>
-                  ((/) <$> pure 1 <*> pure 2)
-                  <*> ((/) <$> pure 1 <*> pure 2))
+          = do (pure ((,,)) <*> ((/) <$!> pure 1 <*> pure 2) <*>
+                  ((/) <$!> pure 1 <*> pure 2)
+                  <*> ((/) <$!> pure 1 <*> pure 2))
         spawns :: forall o. (I__.Root_ o) => Static (SerializableDict (I__.Obj o)) -> o -> I__.Obj LocalDC -> I__.ABS (I__.Obj o)
         spawns sdict smart this = do
              println(pure "in spawn")
-             nid <- localDC_nid <$> I__.readThis this
+             nid <- localDC_nid <$!> I__.readThis this
              let epa = encodeEndPointAddress "192.168.0.15" "9001" 1
              s <- I__.lift (I__.lift (call sdict (NodeId epa) (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
              println(pure "spawn done")

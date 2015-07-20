@@ -222,7 +222,7 @@ tPureExp' (ABS.EEq pnull@(ABS.ELit ABS.LNull) pvar@(ABS.EVar ident@(ABS.LIdent (
   case M.lookup ident scope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                               (HS.ExpTypeSig HS.noLoc tnull (wrapTypeToABSMonad (tType t))))
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
@@ -236,7 +236,7 @@ tPureExp' (ABS.EEq pthis@(ABS.ELit ABS.LThis) pvar@(ABS.EVar ident@(ABS.LIdent (
   case M.lookup ident scope of -- check the type of the right var
     Just t -> if isInterface t
              then return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                               (HS.ExpTypeSig HS.noLoc tthis (wrapTypeToABSMonad (tType t))))
                       (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                       (HS.ExpTypeSig HS.noLoc tvar (wrapTypeToABSMonad (tType t)))
@@ -259,7 +259,7 @@ tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1, str1))) pvar2@(ABS.EV
                           then case joinSub t1 t2 of
                               Just t ->
                                 return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                                            (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                            (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                                                             (HS.ExpTypeSig HS.noLoc tvar1 (wrapTypeToABSMonad (tType t))))
                                            (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                            (HS.ExpTypeSig HS.noLoc tvar2 (wrapTypeToABSMonad (tType t)))
@@ -267,17 +267,17 @@ tPureExp' (ABS.EEq pvar1@(ABS.EVar ident1@(ABS.LIdent (p1, str1))) pvar2@(ABS.EV
                                                ++ " at position " ++ showPos p1 ++ " with interface " ++ str2 ++ " at position " ++ showPos p2)
                           -- treat them as both datatypes and let haskell figure out if there is a type mismatch
                           else return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
                 Nothing -> return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
     Nothing -> return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")
-                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                                                            tvar1)
                                           (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                           tvar2
@@ -287,7 +287,7 @@ tPureExp' (ABS.EEq pexp1 pexp2) _tyvars = do
   texp1 <- tPureExp' pexp1 _tyvars
   texp2 <- tPureExp' pexp2 _tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual  $ HS.Symbol "==")  
-                              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                              (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                               texp1)
          (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
          texp2
@@ -304,7 +304,7 @@ tPureExp' (ABS.EOr left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "||") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -314,7 +314,7 @@ tPureExp' (ABS.EAnd left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "&&") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -324,7 +324,7 @@ tPureExp' (ABS.ELt left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "<") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -334,7 +334,7 @@ tPureExp' (ABS.ELe left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "<=") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -345,7 +345,7 @@ tPureExp' (ABS.EGt left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol ">") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -356,7 +356,7 @@ tPureExp' (ABS.EGe left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol ">=") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -367,7 +367,7 @@ tPureExp' (ABS.EAdd left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "+") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -378,7 +378,7 @@ tPureExp' (ABS.ESub left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "-") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -389,7 +389,7 @@ tPureExp' (ABS.EMul left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "*") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -399,7 +399,7 @@ tPureExp' (ABS.EDiv left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "/") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -410,7 +410,7 @@ tPureExp' (ABS.EMod left right) tyvars = do
   tright <- tPureExp' right tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp 
                                          (HS.Var $ HS.UnQual $ HS.Symbol "%") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          tleft)                -- operand1
                                   (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
                                   tright -- operand2
@@ -419,14 +419,14 @@ tPureExp' (ABS.ELogNeg pexp) tyvars = do
   texp <- tPureExp' pexp tyvars
   return $ HS.Paren $ HS.InfixApp 
                              (HS.Var $ HS.UnQual $ HS.Ident "not") -- operator
-                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                              texp                -- operand1
 
 tPureExp' (ABS.EIntNeg pexp) tyvars = do
   texp <- tPureExp' pexp tyvars
   return $ HS.Paren $ HS.InfixApp 
                              (HS.Var $ identI "negate") -- operator
-                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                              texp                -- operand1
 
 tPureExp' (ABS.ESinglConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Nil"))])) _ = 
@@ -473,7 +473,7 @@ tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Cons"))])
   texp1 <- tPureExp' pexp1 tyvars
   texp2 <- tPureExp' pexp2 tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.Special $ HS.Cons) -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                                          texp1) -- operand1
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
              texp2 -- operand2
@@ -484,7 +484,7 @@ tPureExp' (ABS.EParamConstr (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"InsertAss
   texp1 <- tPureExp' pexp1 tyvars
   texp2 <- tPureExp' pexp2 tyvars
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "insertAssoc") -- operator
-                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") 
+                                         (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") 
                                          texp1) -- operand1
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")
              texp2              -- operand2
@@ -525,10 +525,10 @@ tPureExp' (ABS.EVar var@(ABS.LIdent (_,pid))) _tyvars = do
                         Nothing -> HS.Var $ HS.UnQual $ HS.Ident pid -- error $ pid ++ " not in scope" -- TODO: this should be turned into warning
         -- if it of an int type, upcast it
       Just (ABS.TSimple (ABS.QTyp ([ABS.QTypeSegmen (ABS.UIdent (_,"Int"))]))) -> HS.InfixApp (HS.Var $ identI "fromIntegral") 
-                                                                                  (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>") 
+                                                                                  (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") 
                                                                                   (HS.App (HS.Var $ identI "readRef") (HS.Var $ HS.UnQual $ HS.Ident pid))
       Just t -> HS.Paren $ (if isInterface t
-                           then HS.InfixApp (HS.Var $ identI "up") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")  -- upcasting if it is of a class type
+                           then HS.InfixApp (HS.Var $ identI "up") (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")  -- upcasting if it is of a class type
                            else id) 
                (HS.App (HS.Var $ identI "readRef") (HS.Var $ HS.UnQual $ HS.Ident pid))
 
@@ -608,7 +608,7 @@ tNewOrNewLocal newOrNewLocal qtids args = do
                       else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
                    (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids)))))) args -- wrap with the class-constructor function
   return $ HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Var $ identI newOrNewLocal) 
-             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$>")
+             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
              (HS.InfixApp (HS.Paren targs) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
 
 -- | shorthand generator for method calls, because sync and async are similar
@@ -632,7 +632,7 @@ tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
                   args)
           return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
                (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PVar (HS.Ident "__obj")])] 
-                 (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Paren tapp)))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) texp))))))
+                 (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) texp))))))
 
 
 -- | shorthand generator for non-method calls, because sync and async are similar
@@ -653,7 +653,7 @@ tNonSyncOrAsync syncOrAsync (ABS.LIdent (mpos,mname)) args = do
                  (HS.InfixApp (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "this") 
                               (HS.QVarOp $ HS.UnQual $ HS.Symbol syncOrAsync) 
                               (HS.Var $ HS.UnQual $ HS.Ident "this")) 
-                  (HS.QVarOp (HS.UnQual (HS.Symbol "<$>"))) (HS.Paren tapp)))))
+                  (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))))
 
 
 -- | Translates the parameter (guard) of an await statement
@@ -668,7 +668,7 @@ tAwaitGuard (ABS.FutGuard ident) _cls = do
     texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
     return $ HS.Paren $ HS.InfixApp
              (HS.Con $ identI "FutureLocalGuard")
-             (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+             (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
              texp
 
 tAwaitGuard (ABS.ProGuard ident) _cls = do
@@ -679,7 +679,7 @@ tAwaitGuard (ABS.ProGuard ident) _cls = do
     texp <- tPureExp' (ABS.EVar ident) [] -- treat the input as variable
     return $ HS.Paren $ HS.InfixApp
              (HS.Con $ identI "PromiseLocalGuard")
-             (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+             (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
              texp
 
 tAwaitGuard (ABS.ProFieldGuard ident) cls =do
@@ -717,7 +717,7 @@ tAwaitGuard (ABS.AndGuard gl gr) cls = do
   tleft <- tAwaitGuard gl cls 
   tright <- tAwaitGuard gr cls
   return $ HS.Paren $ HS.InfixApp (HS.InfixApp (HS.Var $ symbolI ":&:")
-                                         (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$>")
+                                         (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<$!>")
                                          tleft)
                                        (HS.QVarOp $ HS.UnQual  $ HS.Symbol "<*>")
                                        tright

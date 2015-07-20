@@ -230,7 +230,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       myLocalNode <- newLocalNode trans initRemoteTable -- not needed to create the remote-table
 
       c <- newChan               -- in-memory channel
-      writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) undefined)) -- send the Main Block as the 1st created process
+      writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) 1)) -- send the Main Block as the 1st created process
       runProcess myLocalNode (CH.getSelfPid >>= \ pid -> loop c pid M.empty M.empty 1)
 
 

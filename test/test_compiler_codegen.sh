@@ -18,7 +18,7 @@ do
         # all examples should contain a main block
         $twd/../.cabal-sandbox/bin/a2h ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
         echo "${i})Compiling ${file%.*} with ghc"
-        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
+        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.10.1-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
         echo "${i})Executing ${file%.*}"
         ${file%.*}.out 1> ${file%.*}.stdout 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
         [ $? -eq 0 ] && cat ${file%.*}.stdout | grep -q "False" && exit
@@ -42,7 +42,7 @@ do
         $twd/../.cabal-sandbox/bin/a2h ${file} 2> ${file%.*}.stderr # no stdout, but redirect TRANSLATE ERRORS
         [ $? -ne 0 ] && echo "Translate error at $file check its .stderr" && continue
         echo "${i})Compiling ${file%.*} with ghc"
-        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
+        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.10.1-packages.conf.d  2> ${file%.*}.stderr 1> /dev/null # do not print ghc stdout, but redirect COMPILE ERRORS
         [ $? -ne 0 ] && echo "Compile error at $file check its .stderr" && continue
         echo "${i})Running ${file%.*}"
         ${file%.*}.out 1> ${file%.*}.stdout 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
@@ -66,7 +66,7 @@ do
         { echo "${i})Translating ${file%.*} to haskell" ; \
         $twd/../.cabal-sandbox/bin/a2h ${file} ; \
         echo "${i})Compiling ${file%.*} with ghc" ; \
-        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d ; }
+        ghc -w --make -O -threaded ${file%.*}.hs -o ${file%.*}.out -main-is $(basename ${file%.*}) -package-db $twd/../.cabal-sandbox/x86_64-linux-ghc-7.10.1-packages.conf.d ; }
         echo "${i})Running ${file%.*}"
         ${file%.*}.out 1> ${file%.*}.stdout 2> ${file%.*}.stderr  # do not print exe stdout, but redirect RUNTIME ERRORS
         if [ $? -eq 0 ]; then

@@ -37,14 +37,14 @@ module Lang.ABS.StdLib.Prelude
      -- ** Sequencing ABS statements
      (Prelude.>>=), (Prelude.=<<),
      -- ** Applicative-style for easier functional application of pure ABS expressions
-     pure, (<$>), (<*>)
+     pure, (<$!>), (<*>)
     )
         where
 
 import qualified Prelude as Prelude
 import Lang.ABS.Runtime.Base
 
-import Control.Applicative
+import Control.Applicative (pure, (<*>))
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -53,6 +53,11 @@ import qualified Data.Array.IArray as BArray
 import Data.Array.Unboxed (listArray)
 import Data.List (length)
 import Control.Monad.IO.Class (liftIO)
+
+#if __GLASGOW_HASKELL__ >= 710
+import Control.Monad ((<$!>))
+#endif
+
 #if __GLASGOW_HASKELL__ >= 780
 import Data.Either (isLeft, isRight)
 #else
@@ -64,6 +69,19 @@ isRight :: Prelude.Either a b -> Bool
 isRight (Prelude.Left  _) = Prelude.False
 isRight (Prelude.Right _) = Prelude.True
 #endif
+
+#if __GLASGOW_HASKELL__ < 710
+-- strict fmap (applicative), taken from base-4.8
+-- TODO: specialize
+{-# INLINE (<$!>) #-}
+(<$!>) :: Prelude.Monad m => (t -> b) -> m t -> m b
+f <$!> m = do
+  x <- m
+  let z = f x
+  z `seq` Prelude.return z
+#endif
+
+
 
 -- | ABS Number are either 'Int'egers or 'Rat'ionals
 class (Prelude.Num a) => Number a where
