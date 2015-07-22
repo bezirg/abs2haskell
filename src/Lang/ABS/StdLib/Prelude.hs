@@ -78,7 +78,7 @@ isRight (Prelude.Right _) = Prelude.True
 f <$!> m = do
   x <- m
   let z = f x
-  z `seq` Prelude.return z
+  z `Prelude.seq` Prelude.return z
 #endif
 
 
