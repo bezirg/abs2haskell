@@ -18,6 +18,7 @@ data Conf = Conf {
       keepAlive :: Bool -- ^ If enabled, the ABS-program will keep running even after the end of the main-block process
     , distributed :: Bool -- ^ Extends the runtime with distributed support, necessary when communicating between remote ABS programs. Entails certain added costs compared to the default parallel-only runtime. Implies --keep-alive.
     , port :: Maybe Int  -- ^ The port to listen for distributed communication. Implies --distributed
+    , ip :: Maybe String -- ^ The ip it should listen to. Implies --distributed
     , traceExceptions :: Bool -- ^ The COGs consume any uncaught exceptions in their processes. This option prints to the stdout a message of the uncaught exception when it happens. Used mostly for debugging
     } deriving (Show, Eq, Data, Typeable)
 
@@ -26,6 +27,7 @@ confOpt = Conf {
             keepAlive = def &= explicit &= name "keep-alive" &= name "k" &= help "If enabled, the ABS-program will keep running even after the end of the main-block process"
           , distributed = def &= help "Extends the runtime with distributed support, necessary when communicating between remote ABS programs. Entails certain added costs compared to the default parallel-only runtime. Implies --keep-alive."
           , port = Nothing &= explicit &= name "port" &= help "The port to listen for distributed communication. Implies --distributed"
+          , ip = Nothing &= explicit &= name "ip" &= help "The port to listen for distributed communication. Implies --distributed"
           , traceExceptions = def &= explicit &= name "trace-exceptions" &= name "t" &= help "The COGs consume any uncaught exceptions in their processes. This option prints to the stdout a message of the uncaught exception when it happens. Used mostly for debugging"
           }
           &= program "The ABS-Haskell runtime" 

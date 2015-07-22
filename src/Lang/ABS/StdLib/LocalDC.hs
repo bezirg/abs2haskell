@@ -22,10 +22,10 @@ import Control.Distributed.Static
 import Data.Rank1Typeable
 import Data.List ((++))
 
-data LocalDC = LocalDC{localDC_nid :: NodeId, localDC_port :: Int}
+data LocalDC = LocalDC{localDC_nid :: Fut NodeId, localDC_port :: Int}
              deriving (I__.Typeable, I__.Generic)
 
-__localDC port = LocalDC{localDC_port = port}
+__localDC port = LocalDC{localDC_port = port, localDC_nid = I__.NullFutureRef}
 
 instance I__.Binary LocalDC
 
@@ -52,11 +52,17 @@ instance I__.Root_ LocalDC where
         --        let __obj = I__.ObjectRef __ioref __thisCOG __counter
         --        I__.__init __obj
         --        return __obj
-        __init this@(I__.ObjectRef _ (I__.COG (_, pid)) _) = do
+        __init this@(I__.ObjectRef _ thisCOG@(I__.COG (_, pid)) _) = do
           -- the creator runs the init
              port <- localDC_port <$!> I__.readThis this
              d0 <- I__.liftIO getExecutablePath
-             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "-t"]) { env = Just [("FROM_PID", I__.show (B64.encode (encode pid)))] }))
+             __mvar <- I__.liftIO I__.newEmptyMVar
+             __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
+             I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
+             let __f = I__.FutureRef __mvar thisCOG __counter
+             I__.set 1 (\ v__ c__ -> c__{localDC_nid = v__}) __f this
+             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "--ip", "192.168.0.15", "-t"]) { env = Just [("TO_FUT", I__.show (B64.encode (encode __f)))
+                                                                                               ] }))
              return ()
 
  
@@ -74,11 +80,11 @@ instance IDC_ LocalDC where
                   <*> ((/) <$!> pure 1 <*> pure 2))
         spawns :: forall o. (I__.Root_ o) => Static (SerializableDict (I__.Obj o)) -> o -> I__.Obj LocalDC -> I__.ABS (I__.Obj o)
         spawns sdict smart this = do
-             println(pure "in spawn")
-             nid <- localDC_nid <$!> I__.readThis this
-             let epa = encodeEndPointAddress "192.168.0.15" "9001" 1
-             s <- I__.lift (I__.lift (call sdict (NodeId epa) (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
-             println(pure "spawn done")
+             fnid <- localDC_nid <$!> I__.readThis this
+             nid <- get fnid
+             println (pure "before spawn")
+             s <- I__.lift (I__.lift (call sdict nid (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
+             println(pure "after spawn")
              return s
 
 

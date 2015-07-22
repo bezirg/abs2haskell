@@ -19,41 +19,50 @@ module Lang.ABS.Runtime.Core
 import Lang.ABS.Runtime.Base
 import Lang.ABS.Runtime.Conf
 --import qualified Lang.ABS.StdLib.DC as DC (__remoteTable) -- the remotable methods table of DC
-import Data.List (foldl', find, splitAt)
-import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, insertLookupWithKey)
-import Control.Concurrent.MVar (putMVar, newEmptyMVar)
+
+-- shared memory
+import Data.IORef (newIORef, modifyIORef')
+import Control.Concurrent.MVar (readMVar, putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
+
+-- the ABS monad stack
 import qualified Control.Monad.Trans.State.Strict as S (runStateT, modify, get, put)
-import Control.Monad.Trans.Class
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield (..))
+
+-- utils
 import System.Exit (exitSuccess)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad (when, foldM, liftM)
+import Data.Maybe (isJust)
+import Data.List (foldl', find, splitAt)
+import qualified Data.Map.Strict as M (Map, empty, insertWith, updateLookupWithKey, update, findWithDefault, lookup, insertLookupWithKey)
+
+-- for exception handling of the COGs
 import Control.Exception (throw)
 import Control.Monad.Catch (catchAll)
+
+-- for distributed programming and communication = Cloud Haskell
 import qualified Control.Distributed.Process as CH
-import Control.Distributed.Process.Node
-import Network.Transport.TCP (createTransport, defaultTCPParameters, socketToEndPoint, encodeEndPointAddress)
-import Network.Transport (newEndPoint, address)
+import Control.Distributed.Process.Node -- for local node creation and run/fork local processes
+import Network.Transport.TCP (createTransport, defaultTCPParameters, encodeEndPointAddress)
 import Network.Socket (withSocketsDo)
 import Network.Info -- querying NIC IPs
+import Control.Distributed.Process.Internal.Types (nullProcessId) -- COG has a null pid on local (non-distributed) runtime
+
+-- for encoding the TO_FUT environment variable
 import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
-import qualified Data.Binary as Bin (decode)
-import Data.String (fromString)
-import Control.Monad (when, foldM, liftM)
-import Control.Distributed.Process.Serializable
-import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under a null COG-process
-import Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as C8
 import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.ByteString.Lazy as BS
-import Control.Distributed.Process.Closure
-import Data.IORef
+
+-- for serializing builtin closures (the spawn) and derisializing
 import qualified Control.Distributed.Static as Static
 import Data.Rank1Dynamic
 import Data.Rank1Typeable
-import Data.Binary
-import Control.Distributed.Process.Closure
+import Unsafe.Coerce (unsafeCoerce)
+import Data.Binary (encode,decode)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -64,27 +73,32 @@ import Control.Distributed.Process.Closure
 fwd_cog :: COG              -- ^ the _local-only_ channel (queue) of the COG process
         -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog thisCOG@(COG(c,pid)) = do
-  return ()
-  j <- CH.expect
+  CH.liftIO $ print pid
+  j <- CH.expect :: CH.Process Job
+  CH.liftIO $ print "received something"
   case j of
-    WakeupSignal v cog i -> do
+    WakeupSignal v cog futId -> do
+              CH.liftIO $ print "received wakeup"
               -- lookup future foreign table
-              -- putMVar to local future
+              foreign_map <- CH.liftIO $ readMVar fm                   
+              case M.lookup (cog,futId) foreign_map of
+                Just (AnyMVar m) -> CH.liftIO $ putMVar (unsafeCoerce m) v -- putMVar to local future
+                _ -> error "foreign table lookup fail"
               CH.liftIO $ writeChan c j
-    RemotJob (ObjectRef _ (COG (_,pid)) oid) f clos -> do
-              -- lookup object foreign table
+    RemotJob obj f clos -> do
+              CH.liftIO $ print ("received remotjob")
+              -- the only thing that it does is unclosure the clos
               unclos <- CH.unClosure clos
-              CH.liftIO $ writeChan c (LocalJob (ObjectRef undefined (COG (c,pid)) oid) f unclos)
-    InitJob obj -> do
-             __ioref <- CH.liftIO $ newIORef obj
-             let __obj = ObjectRef __ioref thisCOG 0
-             CH.liftIO $ writeChan c (LocalJob __obj NullFutureRef (__init __obj))
-    MachineUp remoteAddress -> do
-              myNodeAddress <- fmap CH.nodeAddress CH.getSelfNode
-              Right _ <- CH.liftIO $ socketToEndPoint myNodeAddress remoteAddress
-                                    True -- reuseaddr
-                                    (Just 10000000) -- 10secs timeout to establish connection
+              CH.liftIO $ writeChan c (LocalJob obj f unclos)
+    MachineUp remoteAddress futId -> do
+              CH.liftIO $ print remoteAddress
+              foreign_map <- CH.liftIO $ readMVar fm                   
+              case M.lookup (thisCOG,futId) foreign_map of
+                Just (AnyMVar m) -> CH.liftIO $ putMVar (unsafeCoerce m) (CH.NodeId remoteAddress)
+                _ -> error "foreign table lookup fail"
+
               CH.liftIO $ print "Machines connected"
+              CH.liftIO $ writeChan c (WakeupSignal (CH.NodeId remoteAddress) thisCOG futId)
               return ()
     _ -> error "this should not happen"
   fwd_cog thisCOG
@@ -137,8 +151,10 @@ spawnCOG = do
                     -- the job of the callee finished, send a wakeup signal to remote cog that "nourishes" the sleeping caller-process
                     Right fin -> do
                        case fut of
-                         (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
-                           CH.liftIO $ putMVar mvar fin
+                         (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> 
+                          if CH.processNodeId ftid == myNodeId
+                          then do 
+                           CH.liftIO $ putMVar mvar fin -- is local future, write to it
                            if ftid /= pid -- remote job finished, wakeup the remote cog
                               then do
                                 CH.liftIO $ writeChan fcog (WakeupSignal fin cog fid)
@@ -152,6 +168,9 @@ spawnCOG = do
                                                    sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
                                                    S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                 return sleepingOnFut'
+                           else do -- is remote future, remote-send to it
+                             lift $ CH.send ftid (WakeupSignal fin cog fid)
+                             return sleepingOnFut
                          NullFutureRef -> return sleepingOnFut
                     -- the process deliberately suspended (by calling suspend)
                     Left (Yield S cont) -> do
@@ -197,30 +216,26 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
              (error "An outside network interface was not found.")
              (show . ipv4) $ find (\ nic -> name nic == "wlp2s0") nics -- otherwise, eth0's IP
       Right trans <- createTransport myIp port' defaultTCPParameters
-      Right ep <- newEndPoint trans -- our outside point, HEAVYWEIGHT OPERATION
       myLocalNode <- newLocalNode trans (rtable (outsideRemoteTable)) -- outsideRemoteTable) -- new my-node
       c <- newChan            -- sharing in-memory channel between Forwarder and Cog
       fwdPid <- forkProcess myLocalNode (CH.getSelfPid >>= \ pid -> fwd_cog (COG (c,pid))) -- start the Forwarder process
       -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack
-      maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
+      maybeCreatorPidStr <- tryIOError (getEnv "TO_FUT" )
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) undefined)) -- send the Main Block as the 1st created process
+           writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right "" -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,nullProcessId $ CH.NodeId $ encodeEndPointAddress myIp port' 0)) undefined)) -- send the Main Block as the 1st created process
+           writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
-        Right creatorPidStr -> do -- there is a Creator PID; extract its NodeId
+        Right respToFutStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
-                    let creatorPid = Bin.decode (B64.decodeLenient (C8.pack creatorPidStr)) :: CH.ProcessId
+                    let (FutureRef _ (COG (_,creatorPid)) i) = decode (B64.decodeLenient (C8.pack respToFutStr)) :: Fut a
                     let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
-                    let myNodeAddress = address ep
-                    Right _ <- socketToEndPoint myNodeAddress creatorNodeAddress
-                              True -- reuseaddr
-                              (Just 10000000) -- 10secs timeout to establish connection
+                    let (CH.NodeId myNodeAddress) = localNodeId myLocalNode
                     runProcess myLocalNode (do
-                                             CH.send creatorPid (MachineUp myNodeAddress) -- send ack to creatorPid
-                                             loop c fwdPid M.empty M.empty 1) -- start the COG process
+                                             CH.send creatorPid (MachineUp myNodeAddress i) -- send ack to creatorPid
+                                             loop c fwdPid M.empty M.empty 1) -- start the COG process (this cog is probably not needed)
 
 
   -- LOCAL-ONLY (DEFAULT) (multicore) (1 COG Process)
@@ -404,3 +419,5 @@ spawnClosure dict objv = Static.closure decoder (encode objv)
 
 
 -- rtable1 = Static.registerStatic "$sendDict" (toDynamic (sendDict :: BinaryDict ANY -> CH.ProcessId -> ANY -> CH.Process ()))
+
+

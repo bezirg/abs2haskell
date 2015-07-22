@@ -1,27 +1,41 @@
 -- | All the types and datastructures used in the ABS-Haskell runtime
-{-# LANGUAGE ExistentialQuantification, Rank2Types, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable, ScopedTypeVariables, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification, EmptyDataDecls, MultiParamTypeClasses, StandaloneDeriving, DeriveDataTypeable, DeriveGeneric, ScopedTypeVariables #-}
 
 module Lang.ABS.Runtime.Base where
 
+import Lang.ABS.Runtime.Conf
 import Data.IORef (IORef)
-import Control.Concurrent.MVar (MVar)
+import Control.Concurrent.MVar (MVar,newMVar, modifyMVar_, readMVar)
 import Control.Concurrent.Chan (Chan)
-import qualified Data.Map.Strict as M (Map, fromList, lookup)
+import qualified Data.Map.Strict as M (Map, fromList, lookup, lookupGE, empty, insert)
 import qualified Data.Set as S (Set)
+
+-- for the ABS monad
 import Control.Monad.Trans.State.Strict (StateT)
 import Control.Monad.Coroutine
 import Control.Monad.Coroutine.SuspensionFunctors (Yield)
-import Data.Typeable
-import Control.Monad.Catch
+import Control.Distributed.Process.Closure
+import Control.Distributed.Static
 import qualified Control.Distributed.Process as CH
+
+
+-- for exceptions
+import Control.Monad.Catch
 import Control.Exception.Base (throwIO)
+
+-- for deriving binary,typeable=serializable
+import Data.Typeable
 import Data.Binary
-import GHC.Fingerprint ( Fingerprint(Fingerprint) )
-import Control.Distributed.Process.Serializable
-             ( fingerprint, Serializable, encodeFingerprint, decodeFingerprint )
-import Control.Applicative
-import Network.Transport (EndPointAddress)
 import GHC.Generics (Generic)
+
+-- for the foreign table trick and existential-wrapper manual binary instances
+import Control.Distributed.Process.Serializable (Serializable,fingerprint,encodeFingerprint,decodeFingerprint, showFingerprint)
+import Network.Transport (EndPointAddress)
+import GHC.Fingerprint (Fingerprint)
+import System.IO.Unsafe (unsafePerformIO)
+import Unsafe.Coerce (unsafeCoerce)
+import Network.Transport.TCP (encodeEndPointAddress)
+
 
 -- * Objects and Futures
 
@@ -168,11 +182,6 @@ data AwaitGuardCompiled = forall b. (Serializable b) => FutureLocalGuard (Fut b)
                           | AttrsGuard [Int] (ABS Bool)
                           | AwaitGuardCompiled :&: AwaitGuardCompiled
 
-
-
-
-
-
 -- * COG related
 
 -- | a COG is identified by its jobqueue+processid
@@ -190,8 +199,7 @@ instance Ord COG where
 data Job = forall o a . (Serializable a) => LocalJob (Obj o) (Fut a) (ABS a)
          | forall o a . (Serializable a) => RemotJob (Obj o) (Fut a) (CH.Closure (ABS a))
          | forall a . (Serializable a) => WakeupSignal a !COG !Int
-         | MachineUp EndPointAddress
-         | forall o . (Root_ o, Serializable o) => InitJob o
+         | MachineUp EndPointAddress !Int
          deriving Typeable
 
 -- ** COG-held datastructures
@@ -234,16 +242,40 @@ instance MonadMask CH.Process where
     mask = CH.mask
     -- uninterruptibleMask, not provided by CH
 
+deriving instance Typeable AwaitOn
+deriving instance Typeable Yield
+deriving instance Typeable Coroutine
+deriving instance Typeable StateT
 
 
--- | A future can be serialized.
 instance Binary (Fut a) where
-    put (FutureRef _ c i) = put c >> put i -- we ignore the mvar
-    put NullFutureRef = error "compiler error, this should not happen. MainFutureRef cannot be transmitted"
+    put (FutureRef m c@(COG (_,pid)) i) = do -- we ignore the mvar with the value, it is a proxy
+                          -- adds to the foreign table
+                          if CH.processNodeId pid == myNodeId
+                           then unsafePerformIO (modifyMVar_ fm (return . M.insert (c,i) (AnyMVar m)))  `seq` return ()
+                           else return ()
+                          put (0 :: Word8)
+                          put pid
+                          put i
+    put NullFutureRef = put (1 :: Word8)
     get = do
-      c <- get
-      i <- get                   -- TODO: here we have to look at the future-foreign-table
-      return (FutureRef undefined c i)
+      t <- get :: Get Word8
+      case t of
+        0 -> do
+            unsafePerformIO (print "decoding future") `seq` return ()
+            pid <- get
+            i <- get
+            let c = COG (undefined, pid)
+            if CH.processNodeId pid == myNodeId
+             then let m = unsafePerformIO (readMVar fm >>= return . M.lookupGE (c,i)) -- we lookup the table
+                  in case m of
+                  -- or use the safer Data.Typeable.cast, or Data.Typeable.eqT
+                  Just ((c',i'), AnyMVar v) -> return (FutureRef (unsafeCoerce v) c' i)
+                  _ -> error "foreign table lookup fail"
+
+             else return (FutureRef undefined c i)
+        1 -> return NullFutureRef
+        _ -> error "Binary Fut: cannot decode future-ref"
 
 instance Binary COG where
     put (COG (_, pid)) = put pid -- we ignore the chan
@@ -251,27 +283,34 @@ instance Binary COG where
       pid <- get                 -- TODO: here we put the associated chan of the forwarder
       return (COG (undefined, pid))
 
-
 instance Binary (Obj a) where
-    put (ObjectRef _ cog i) = do -- we ignore the ioref with the value, it is a proxy
-      put (0 :: Word8) >> put cog >> put i
-    put NullRef = put (1 :: Word8)
+    put (ObjectRef m c@(COG (_,pid)) i) = do -- we ignore the ioref with the value, it is a proxy
+      -- adds to the foreign table
+      if CH.processNodeId pid == myNodeId
+        then unsafePerformIO (modifyMVar_ fm (return . M.insert (c,i) (AnyIORef m)))  `seq` return ()
+        else return ()
+      unsafePerformIO (print "putted objectref") `seq` put (0 :: Word8)
+      put pid
+      put i
+    put NullRef = unsafePerformIO (print "putted nullref") `seq` put (1 :: Word8)
     get = do
       t <- get :: Get Word8
       case t of
         0 -> do
-            cog <- get
+            unsafePerformIO (print "decoding object") `seq` return ()
+            pid <- get
             i <- get
-            return (ObjectRef undefined cog i) -- TODO: here we have to look at the object-foreign-table
-        1 -> return NullRef
-        _ -> error "Binary Obj: cannot decode object-ref"
-
-
-deriving instance Typeable AwaitOn
-deriving instance Typeable Yield
-deriving instance Typeable Coroutine
-deriving instance Typeable StateT
-
+            unsafePerformIO (print "still ok") `seq` return ()
+            let c = COG (undefined, pid)
+            if CH.processNodeId pid == myNodeId
+               then let m = unsafePerformIO (readMVar fm >>= return . M.lookupGE (c,i)) -- we lookup the table
+                    in case m of
+                         -- or use the safer Data.Typeable.cast, or Data.Typeable.eqT
+                         Just ((c',i'), AnyIORef v) ->  unsafePerformIO (print "found foreign") `seq` return (ObjectRef (unsafeCoerce v :: IORef a) c' i)
+                         _ -> unsafePerformIO (print "foreign table lookup fail") `seq` error "mplo"
+               else unsafePerformIO (print "foreign object") `seq` return (ObjectRef undefined c i)
+        1 -> unsafePerformIO (print "is nullref") `seq` return NullRef
+        _ -> unsafePerformIO (print "Binary Obj: cannot decode object-ref") `seq` error "mplo"
 
 instance Binary Job where
     put (RemotJob o f c) = do
@@ -279,58 +318,65 @@ instance Binary Job where
                       put (encodeFingerprint$ fingerprint c) >> put c
                       put o
                       put f
-                      put c
     put (WakeupSignal a c i) = do
                       put (1 :: Word8) 
                       put (encodeFingerprint$ fingerprint a) >> put a
                       put c
                       put i
-    put (MachineUp nid) = do
+    put (MachineUp nid fut_id) = do
       put (2 :: Word8)
       put nid
-    put (InitJob o) = do
-                      put (3 :: Word8)
-                      put (encodeFingerprint$ fingerprint o) >> put o
-
+      put fut_id
     put (LocalJob _ _ _) = error "compiler error, LocalJob should not be transmitted."
     get = do
       t <- get :: Get Word8
       case t of
         0 -> do
+            unsafePerformIO (print "decoding remotjob") `seq` return ()
             fp<-get
+            unsafePerformIO (print ((showFingerprint (decodeFingerprint fp)) "")) `seq` return ()
             case M.lookup (decodeFingerprint fp) stable2 of
-                 Just (SomeGet2 someget) -> RemotJob <$> get <*> get <*> someget
-                 Nothing -> error "Binary remotjob: fingerprint unknown"
+                 Just (SomeGet2 someget) -> do
+                      unsafePerformIO (print $ typeRep someget) `seq` return ()
+                      c <- someget
+                      unsafePerformIO (print "done closure") `seq` return ()
+                      o <- get
+                      unsafePerformIO (print "done object") `seq` return()
+                      f <- get
+                      unsafePerformIO (print "done future") `seq` return ()
+                      return (RemotJob o f c)
+                 Nothing -> unsafePerformIO $ print "Binary remotjob: fingerprint unknown" `seq` error "mplo"
         1 -> do
+            unsafePerformIO (print "decoding wakeupsignal") `seq` return ()
             fp<-get
             case M.lookup (decodeFingerprint fp) stable of
-                 Just (SomeGet someget) -> WakeupSignal <$> someget <*> get <*> get
-                 Nothing -> error "Binary WakeUpsignal: fingerprint unknown"
-        2 -> MachineUp <$> get
-        3 -> do
-            fp <- get
-            case M.lookup (decodeFingerprint fp) stable3 of
-                 Just (SomeGet3 someget) -> InitJob <$> someget
-                 Nothing -> error "Binary InitJob: fingerprint unknown"
+                 Just (SomeGet someget) -> do
+                      unsafePerformIO (print "ok") `seq` return ()
+                      WakeupSignal <$> someget <*> get <*> get
+                 Nothing -> unsafePerformIO (print "Binary WakeUpsignal: fingerprint unknown") `seq` error "mplo"
+        2 -> MachineUp <$> get <*> get
         _ -> error "Binary Job: cannot decode job"
 
 stable2 :: M.Map Fingerprint SomeGet2
 stable2 = M.fromList
-    [ (mkSMapEntry (undefined :: CH.Closure (ABS Bool)))
-    , (mkSMapEntry (undefined :: CH.Closure (ABS [Int])))
-    , (mkSMapEntry (undefined :: CH.Closure (ABS [String])))
+    [ (mkSMapEntry (undefined :: Closure (ABS Bool)))
+    , (mkSMapEntry (undefined :: Closure (ABS ())))
+    , (mkSMapEntry (undefined :: Closure (ABS [Int])))
+    , (mkSMapEntry (undefined :: Closure (ABS [String])))
     ]
     where
-      mkSMapEntry :: forall a. Serializable a => a -> (Fingerprint,SomeGet2)
-      mkSMapEntry a = (fingerprint a,SomeGet2 (get :: Get (CH.Closure (ABS a))))
+      mkSMapEntry :: forall a. Serializable a => Closure (ABS a) -> (Fingerprint,SomeGet2)
+      mkSMapEntry a = (fingerprint a,SomeGet2 (get :: Get (Closure (ABS a))))
 
-data SomeGet2 = forall a. Serializable a => SomeGet2 (Get (CH.Closure (ABS a)))
+data SomeGet2 = forall a. Serializable a => SomeGet2 (Get (Closure (ABS a)))
 
 
 stable :: M.Map Fingerprint SomeGet
 stable = M.fromList
     [ (mkSMapEntry (undefined :: Bool))
     , (mkSMapEntry (undefined :: [Int]))
+    , (mkSMapEntry (undefined :: Int))
+    , (mkSMapEntry (undefined :: ()))
     , (mkSMapEntry (undefined :: [String]))
     ]
     where
@@ -338,18 +384,6 @@ stable = M.fromList
       mkSMapEntry a = (fingerprint a,SomeGet (get :: Get a))
       
 data SomeGet = forall a. Serializable a => SomeGet (Get a)
-
-
-stable3 :: M.Map Fingerprint SomeGet3
-stable3 = M.fromList
-    [ (mkSMapEntry (undefined :: Null))
-    ]
-    where
-      mkSMapEntry :: forall a. (Root_ a, Serializable a) => a -> (Fingerprint,SomeGet3)
-      mkSMapEntry a = (fingerprint a,SomeGet3 (get :: Get a))
-      
-data SomeGet3 = forall a. (Root_ a, Serializable a) => SomeGet3 (Get a)
-
 
 -- -- | any-futures can be serialized
 -- instance Binary AnyFut where
@@ -376,5 +410,18 @@ data SomeGet3 = forall a. (Root_ a, Serializable a) => SomeGet3 (Get a)
 -- TODO exception existential serialization
 instance Data.Binary.Binary SomeException where
     put _ = put "SomeException"
-    get = return (Control.Monad.Catch.SomeException PromiseRewriteException) -- stub
+    get = return (Control.Monad.Catch.SomeException PromiseRewriteException) -- stub , TODO: fix
 
+
+data AnyForeign = forall a. AnyMVar (MVar a)
+                | forall a. AnyIORef (IORef a)
+
+type ForeignMap = M.Map (COG,Int) AnyForeign
+
+myNodeId :: CH.NodeId
+myNodeId = CH.NodeId $ case (ip conf, port conf) of
+             (Just ip', Just port') -> (encodeEndPointAddress ip' (show port') 0)
+             _ -> encodeEndPointAddress "127.0.0.1" "9000" 0
+
+fm :: MVar ForeignMap
+fm = unsafePerformIO $ newMVar M.empty
