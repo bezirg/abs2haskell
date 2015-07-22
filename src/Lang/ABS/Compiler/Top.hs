@@ -92,7 +92,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                      ]
                       ++        -- the translated ABS imports
                       map tImport imports
-                     ) (let ?moduleName = mname in tDecls decls ++ tRemotable : tMain maybeMain)
+                     ) (let ?moduleName = mname in tDecls decls ++ tRemotable : tRemoteTable : tMain maybeMain)
 
 
 tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
@@ -143,13 +143,42 @@ tMain (ABS.JustBlock _ (ABS.Bloc block)) =
                                              (HS.UnGuardedRhs (HS.App 
                                                                      (HS.App (HS.Var (identI "main_is"))
                                                                             (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
-                                                                      (HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
+                                                                      (HS.App (HS.Var $ HS.UnQual $ HS.Ident "__rtable") $ HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
 
 -- $(remotable ['meth1, 'meth2...])
 tRemotable :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => HS.Decl
 tRemotable = let meths = maybe [] (filter (`notElem` [ABS.LIdent ((-1,-1),"getLoad"),ABS.LIdent ((-1,-1),"shutdown")]) . concat . M.elems . methods) (find (\ m -> moduleName m == ?moduleName) ?moduleTable)
              in HS.SpliceDecl HS.noLoc (HS.App (HS.Var $ identI "remotable") 
                                         (HS.List $ (map (\ (ABS.LIdent (_,mname)) -> HS.VarQuote $ HS.UnQual $ HS.Ident $ mname ++ "__remote") meths)))
+
+-- __rtable = I__.. __remoteTable
+--            I__.registerStatic "Print__rootDict" (I__.toDynamic (I__.RootDict :: I__.RootDict Print))
+--            I__.. I__.registerStatic "Obj Print__staticDict" (I__.toDynamic (I__.SerializableDict :: I__.SerializableDict (I__.Obj Print)))
+--            
+
+tRemoteTable :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => HS.Decl
+tRemoteTable = let clsss = maybe [] (filter (/= ABS.UIdent ((-1,-1),"DC")) . M.keys . classes) (find (\ m -> moduleName m == ?moduleName) ?moduleTable)
+               in HS.PatBind HS.noLoc (HS.PVar $ HS.Ident "__rtable") Nothing 
+                      (HS.UnGuardedRhs $ foldl (\ acc (ABS.UIdent (_, cname)) -> 
+                                                       HS.InfixApp (HS.InfixApp 
+                                                                      acc 
+                                                                      (HS.QVarOp $ symbolI ".")
+                                                                      (HS.App
+                                                                       (HS.App (HS.Var $ identI "registerStatic") (HS.Lit $ HS.String $ cname ++ "__rootDict"))
+                                                                       (HS.App (HS.Var $ identI "toDynamic") 
+                                                                        (HS.ExpTypeSig HS.noLoc (HS.Con $ identI "RootDict") 
+                                                                         (HS.TyApp (HS.TyCon $ identI "RootDict") (HS.TyCon $ HS.UnQual $ HS.Ident cname))))) 
+                                                                   )
+                                                         (HS.QVarOp $ symbolI ".")
+                                                         (HS.App
+                                                                       (HS.App (HS.Var $ identI "registerStatic") (HS.Lit $ HS.String $ "Obj " ++ cname ++ "__staticDict"))
+                                                                       (HS.App (HS.Var $ identI "toDynamic") 
+                                                                        (HS.ExpTypeSig HS.noLoc (HS.Con $ identI "SerializableDict") 
+                                                                         (HS.TyApp (HS.TyCon $ identI "SerializableDict") (HS.TyParen (HS.TyApp (HS.TyCon $ identI "Obj") $ HS.TyCon $ HS.UnQual $ HS.Ident cname))))))
+                                                  ) (HS.Var $ HS.UnQual $ HS.Ident "__remoteTable") clsss
+
+                      ) (HS.BDecls [])
+
 
 tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotDecl] -> [HS.Decl]
 tDecls = concatMap (\ (ABS.AnnDec _ d) -> tDecl d)

@@ -17,7 +17,7 @@ import Control.Monad.Coroutine.SuspensionFunctors (Yield)
 import Control.Distributed.Process.Closure
 import Control.Distributed.Static
 import qualified Control.Distributed.Process as CH
-
+import Control.Applicative -- for GHC <7.10
 
 -- for exceptions
 import Control.Monad.Catch

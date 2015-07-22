@@ -6,19 +6,42 @@ interface IPrint {
     Unit print(String b);
 }
 
-class Print implements IPrint {
+class Print1 implements IPrint {
     {
-      println("print is up");
+      println("print1 is up");
     }
     Unit print(String b) {
-        println(concatenate("remote has sent", b));
+        println(concatenate("print1 says", b));
+    }
+}
+
+class Print2 implements IPrint {
+    {
+      println("print2 is also up");
+    }
+    Unit print(String b) {
+        println(concatenate(concatenate("print2 says", b),"!!"));
+        this.localMethod(b);
+    }
+    Unit localMethod(String b) {
+        println(b);
+        println("in local method");
     }
 }
 
 
+
 {
   println("mplo");
-  IDC dc = new LocalDC(9001);
-  IPrint o = dc spawns Print();
+
+  IDC dc = new local LocalDC(9001); // local for now, to make it need no threadDelay
+
+  IPrint o = dc spawns Print1();
+
   o ! print("hello");
+
+  o = dc spawns Print2();
+
+  Fut<Unit> f = o ! print("hi there");
+  await f?;
 }

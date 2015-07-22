@@ -266,6 +266,8 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
               case p of
                 Right fin -> case fut of
                               (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
+                               if CH.processNodeId ftid == myNodeId
+                                then do 
                                  CH.liftIO $ putMVar mvar fin
                                  if ftid /= pid
                                    then do -- remote job finished, wakeup the remote cog
@@ -280,6 +282,9 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                                                          sleepingOnAttr' <- CH.liftIO $ updateWoken c sleepingOnAttr woken
                                                          S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
                                      return sleepingOnFut'
+                                else do -- is remote future, remote-send to it
+                                 lift $ CH.send ftid (WakeupSignal fin cog fid)
+                                 return sleepingOnFut
                               NullFutureRef -> CH.liftIO $ do
                                          if (distributed conf || isJust (port conf) || keepAlive conf)
                                            then do

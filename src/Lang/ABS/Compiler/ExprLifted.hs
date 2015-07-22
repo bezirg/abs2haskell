@@ -634,7 +634,7 @@ tNewOrSpawns newOrSpawns qtids args = do
 -- | shorthand generator for method calls, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
 tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
-  (_,_,_,_, isInit,_,_) <- ask
+  (_,_,_,_, isInit,_,isStandaloneRhs) <- ask
   if (isInit && syncOrAsync == "^.")
     then error "Synchronous method calls are not allowed inside init block"
     else do
@@ -659,7 +659,7 @@ tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
 
           return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
                (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PAsPat (HS.Ident "__wrap") $ HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PAsPat (HS.Ident "__obj") $ HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PParen (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PWildCard, HS.PVar $ HS.Ident "__pid"]]), HS.PWildCard]) ])] 
-                 (HS.If (HS.InfixApp (HS.App (HS.Var $ identI "processNodeId") (HS.Var $ HS.UnQual $ HS.Ident "__pid")) (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ identI "myNodeId")) (HS.App (HS.Var (identI "join")) (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))  (HS.Do [HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__args") tArgsRemote,HS.Qualifier (HS.App (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Symbol "^@") (HS.Var $ HS.UnQual $ HS.Ident "this")) (HS.Var $ HS.UnQual $ HS.Ident "__obj"))  (HS.Paren (HS.App (HS.SpliceExp (HS.ParenSplice (HS.App (HS.Var $ identI "mkClosure") (HS.VarQuote $ HS.UnQual $ HS.Ident $ mname ++ "__remote")))) (HS.Var $ HS.UnQual $ HS.Ident "__args")))) ])))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) texp))))
+                 (HS.If (HS.InfixApp (HS.App (HS.Var $ identI "processNodeId") (HS.Var $ HS.UnQual $ HS.Ident "__pid")) (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ identI "myNodeId")) (HS.App (HS.Var (identI "join")) (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))  (HS.Do [HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__args") tArgsRemote,HS.Qualifier (HS.App (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Symbol (if isStandaloneRhs then "^@@" else "^@")) (HS.Var $ HS.UnQual $ HS.Ident "this")) (HS.Var $ HS.UnQual $ HS.Ident "__obj"))  (HS.Paren (HS.App (HS.SpliceExp (HS.ParenSplice (HS.App (HS.Var $ identI "mkClosure") (HS.VarQuote $ HS.UnQual $ HS.Ident $ mname ++ "__remote")))) (HS.Var $ HS.UnQual $ HS.Ident "__args")))) ])))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) texp))))
 
 
 -- | shorthand generator for non-method calls, because sync and async are similar

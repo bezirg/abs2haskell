@@ -12,10 +12,6 @@ import Lang.ABS.Runtime.Prim
 import Lang.ABS.StdLib
 import qualified Data.Binary as B__
 import LocalDC hiding (main)
-import qualified Control.Distributed.Static as Static
-import Data.Rank1Dynamic
-import Prelude ((.))
-import Control.Concurrent (threadDelay)
  
 class (I__.Root_ a) => IPrint_ a where
          
@@ -64,7 +60,9 @@ instance B__.Binary IPrint where
                    Just (SomeGet_IPrint someget) -> IPrint <$!> someget
                    Nothing -> I__.error "Binary IPrint: fingerprint unknown"
 stable_IPrint
-  = I__.fromList [(mkSMapEntry (I__.undefined :: I__.Obj Print))]
+  = I__.fromList
+      [(mkSMapEntry (I__.undefined :: I__.Obj Print2)),
+       (mkSMapEntry (I__.undefined :: I__.Obj Print1))]
   where  
         mkSMapEntry ::
                     forall a . (IPrint_ a, I__.Serializable a) =>
@@ -77,44 +75,102 @@ data SomeGet_IPrint = forall a . (IPrint_ a, I__.Serializable a) =>
                         SomeGet_IPrint (B__.Get (I__.Obj a))
 print__remote (b, (IPrint this)) = print b this
  
-data Print = Print{}
-           deriving (I__.Typeable, I__.Generic)
-__print = Print{}
+data Print1 = Print1{}
+            deriving (I__.Typeable, I__.Generic)
+__print1 = Print1{}
  
-instance I__.Root_ Print where
-        __init this = do println (pure "print is up")
+instance I__.Root_ Print1 where
+        __init this = do println (pure "print1 is up")
  
-instance B__.Binary Print
+instance B__.Binary Print1
  
-instance IPrint_ Print where
+instance IPrint_ Print1 where
         print b this
           = do println
-                 (((pure concatenate <*> pure "remote has sent") <*> (pure b)))
+                 (((pure concatenate <*> pure "print1 says") <*> (pure b)))
+ 
+data Print2 = Print2{}
+            deriving (I__.Typeable, I__.Generic)
+__print2 = Print2{}
+ 
+instance I__.Root_ Print2 where
+        __init this = do println (pure "print2 is also up")
+          where localMethod b this
+                  = do println (pure b)
+                       println (pure "in local method")
+ 
+instance B__.Binary Print2
+ 
+instance IPrint_ Print2 where
+        print b this
+          = do println
+                 (((pure concatenate <*>
+                      (((pure concatenate <*> pure "print2 says") <*> (pure b))))
+                     <*> pure "!!"))
+               (I__.join (this ^. this <$!> (pure localMethod <*> (pure b))))
+               return ()
+          where localMethod b this
+                  = do println (pure b)
+                       println (pure "in local method")
  
 I__.remotable ['print__remote]
+__rtable
+  = __remoteTable I__..
+      I__.registerStatic "Print1__rootDict"
+        (I__.toDynamic (I__.RootDict :: I__.RootDict Print1))
+      I__..
+      I__.registerStatic "Obj Print1__staticDict"
+        (I__.toDynamic
+           (I__.SerializableDict :: I__.SerializableDict (I__.Obj Print1)))
+      I__..
+      I__.registerStatic "Print2__rootDict"
+        (I__.toDynamic (I__.RootDict :: I__.RootDict Print2))
+      I__..
+      I__.registerStatic "Obj Print2__staticDict"
+        (I__.toDynamic
+           (I__.SerializableDict :: I__.SerializableDict (I__.Obj Print2)))
 mainABS this
   = do println (pure "mplo")
        dc :: I__.IORef IDC <- I__.newRef
-                                (IDC <$!> (I__.join (I__.new <$!> (pure __localDC <*> pure 9001))))
-       I__.liftIO (threadDelay 100000)
+                                (IDC <$!>
+                                   (I__.join
+                                      (I__.new_local <$!>
+                                         (pure __localDC <*> pure 9001) <*> pure this)))
        o :: I__.IORef IPrint <- I__.newRef
                                   (IPrint <$!>
                                      I__.join
                                        ((\ (IDC __dc) ->
-                                           (I__.join (spawns <$!> (pure __print))) __dc)
+                                           (I__.join (spawns <$!> (pure __print1))) __dc)
                                           <$!> ((I__.up <$!> I__.readRef dc))))
        (I__.join
           ((\ __wrap@(IPrint __obj@(I__.ObjectRef _ (I__.COG (_, __pid)) _))
               ->
               if I__.processNodeId __pid == I__.myNodeId then
-                I__.join (this ^! __obj <$!> (pure print <*> pure "hello")) else
+                I__.join (this ^!! __obj <$!> (pure print <*> pure "hello")) else
                 do __args <- (,) <$!> pure "hello" <*> pure __wrap
-                   (^@) this __obj ($( I__.mkClosure 'print__remote ) __args))
+                   (^@@) this __obj ($( I__.mkClosure 'print__remote ) __args))
              <$!> ((I__.up <$!> I__.readRef o))))
-       return ()
-main = I__.main_is mainABS (__remoteTable (rtable I__.initRemoteTable))
-
-
-rtable :: Static.RemoteTable -> Static.RemoteTable
-rtable = Static.registerStatic "Print__rootDict" (toDynamic (I__.RootDict :: I__.RootDict Print))
-       . Static.registerStatic "Obj Print__staticDict" (toDynamic (I__.SerializableDict :: I__.SerializableDict (I__.Obj Print)))
+       I__.writeRef o
+         (IPrint <$!>
+            I__.join
+              ((\ (IDC __dc) -> (I__.join (spawns <$!> (pure __print2))) __dc)
+                 <$!> ((I__.up <$!> I__.readRef dc))))
+       f :: I__.IORef (Fut Unit) <- I__.newRef
+                                      (I__.join
+                                         ((\ __wrap@(IPrint
+                                                       __obj@(I__.ObjectRef _ (I__.COG (_, __pid))
+                                                                _))
+                                             ->
+                                             if I__.processNodeId __pid == I__.myNodeId then
+                                               I__.join
+                                                 (this ^! __obj <$!>
+                                                    (pure print <*> pure "hi there"))
+                                               else
+                                               do __args <- (,) <$!> pure "hi there" <*> pure __wrap
+                                                  (^@) this __obj
+                                                    ($( I__.mkClosure 'print__remote ) __args))
+                                            <$!> ((I__.up <$!> I__.readRef o))))
+       I__.join
+         (await <$!>
+            (I__.FutureLocalGuard <$!> ((I__.readRef f))) <*> pure this)
+main = I__.main_is mainABS (__rtable I__.initRemoteTable)
