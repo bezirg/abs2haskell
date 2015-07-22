@@ -332,8 +332,8 @@ updateWoken ch m ls = liftM fst $ foldM (\ (m, alreadyDeleted) (j, mo) -> do
                                                   in left ++ tail right
 
 {-# INLINE new #-}
-new :: (Root_ a) => a -> Obj creator -> ABS (Obj a)
-new smart _this = do 
+new :: (Root_ a) => a -> ABS (Obj a)
+new smart = do 
   new_cog@(COG (chan, _)) <- lift $ lift spawnCOG
   ioref <- CH.liftIO $ newIORef smart
   let obj = ObjectRef ioref new_cog 0
@@ -399,25 +399,5 @@ spawnClosure dict objv = Static.closure decoder (encode objv)
    where
     decoder :: Static.Static (BS.ByteString -> CH.Process (Obj a))
     decoder = (spawnDictStatic `Static.staticApply` dict) `Static.staticCompose` (rootDecodeDictStatic `Static.staticApply` dict)
-
-
---remotable ['new]
-
--- test :: RootDict a -> a -> CH.Process ()
--- test RootDict x = return ()
-
-
--- data BinaryDict a where
---   BinaryDict :: Serializable a => BinaryDict a
---   deriving Typeable
-
--- sendDict :: BinaryDict a -> CH.ProcessId -> a -> CH.Process ()
--- sendDict BinaryDict = CH.send
-
--- sendDictStatic :: Static.Static (BinaryDict a -> CH.ProcessId -> a -> CH.Process ())
--- sendDictStatic = Static.staticLabel "$sendDict"
-
-
--- rtable1 = Static.registerStatic "$sendDict" (toDynamic (sendDict :: BinaryDict ANY -> CH.ProcessId -> ANY -> CH.Process ()))
 
 

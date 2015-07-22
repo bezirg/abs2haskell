@@ -11,7 +11,7 @@ class Print implements IPrint {
       println("print is up");
     }
     Unit print(String b) {
-        println(concatenate("remote send", b));
+        println(concatenate("remote has sent", b));
     }
 }
 
@@ -20,5 +20,5 @@ class Print implements IPrint {
   println("mplo");
   IDC dc = new LocalDC(9001);
   IPrint o = dc spawns Print();
-  //o ! print("hello");
+  o ! print("hello");
 }

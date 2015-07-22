@@ -31,7 +31,7 @@ import Control.Concurrent.MVar (newMVar)
 class (Root_ a) => IDC_ a where
         shutdown :: Obj a -> ABS Unit
         getLoad :: Obj a -> ABS (Triple Rat Rat Rat)
-        spawns :: (Root_ o) => Static (SerializableDict (Obj o)) -> o -> Obj a -> ABS (Obj o)
+        spawns :: (Root_ o) => o -> Obj a -> ABS (Obj o)
  
 -- | An existential-type wrapper for DC-derived objects (used for typing and subtyping)
 data IDC = forall a . (IDC_ a) => IDC (Obj a)

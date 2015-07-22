@@ -4,7 +4,7 @@ module Lang.ABS.Runtime.Prim
      -- * Basic ABS primitives
      skip, suspend, await, while, get, pro_get, pro_give, pro_new, pro_isempty, ifthenM, ifthenelseM, null
      -- * The async, async-optimized and sync calls
-     ,(^!),(^!!), (^.)
+     ,(^!),(^!!), (^.), (^@)
      -- * The failure model
     ,throw, catches, finally, Exception, assert
     )
@@ -25,6 +25,7 @@ import Control.Monad.Coroutine.SuspensionFunctors (yield)
 import qualified Control.Monad.Catch
 import qualified Control.Exception (fromException, evaluate, AssertionFailed (..))
 import qualified Data.Set as S (insert, toList, empty)
+import qualified Control.Distributed.Process as CH
 import Control.Distributed.Process.Serializable
 
 skip :: ABS ()
@@ -216,7 +217,20 @@ null = NullRef
 {-# INLINE (^.) #-}
 -- | The synchronous wrapper that makes the method call
 (^.) :: Obj caller -> Obj callee -> (Obj callee -> ABS res) -> ABS res
-(^.) this@(ObjectRef _ thisCOG _) obj@(ObjectRef _ otherCOG _) mth = if (not (thisCOG == otherCOG)) 
+(^.) _this@(ObjectRef _ thisCOG _) obj@(ObjectRef _ otherCOG _) mth = if (not (thisCOG == otherCOG)) 
                                                                      then error "Sync Call on a different COG detected"
                                                                      else mth obj
 (^.) _ NullRef _ = error "sync call to null"
+
+
+{-# INLINE (^@) #-}
+-- | The remote asynchronous wrapper to the method call
+(^@) :: Serializable res => Obj caller -> Obj callee -> CH.Closure (ABS res) -> ABS (Fut res)
+(^@) _this@(ObjectRef _ thisCOG _) obj@(ObjectRef _ (COG (_,remotePid)) _) clos = do
+  __mvar <- liftIO newEmptyMVar
+  __astate@(AState{aCounter = __counter}) <- lift S.get
+  lift (S.put (__astate{aCounter = __counter + 1}))
+  let __f = FutureRef __mvar thisCOG __counter
+  lift (lift (remotePid `CH.send` (RemotJob obj __f clos)))
+  return __f                  
+(^@) _ NullRef _ = error "remote-async call to null"

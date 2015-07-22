@@ -32,6 +32,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                               ,HS.Ident "FlexibleContexts" -- for some type inference of methods
                                               ,HS.Ident "DeriveDataTypeable" -- for defining ABS exceptions (exceptions are dynamically typed in haskell)
                                               ,HS.Ident "DeriveGeneric" -- for deriving Binary instances for object records
+                                              ,HS.Ident "TemplateHaskell" -- for cloud-haskell automatic closures boilerplate
                                               ]
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
                      ] 
@@ -91,7 +92,7 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                      ]
                       ++        -- the translated ABS imports
                       map tImport imports
-                     ) (let ?moduleName = mname in tDecls decls ++ tMain maybeMain)
+                     ) (let ?moduleName = mname in tDecls decls ++ tRemotable : tMain maybeMain)
 
 
 tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
@@ -143,6 +144,12 @@ tMain (ABS.JustBlock _ (ABS.Bloc block)) =
                                                                      (HS.App (HS.Var (identI "main_is"))
                                                                             (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
                                                                       (HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
+
+-- $(remotable ['meth1, 'meth2...])
+tRemotable :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => HS.Decl
+tRemotable = let meths = maybe [] (filter (`notElem` [ABS.LIdent ((-1,-1),"getLoad"),ABS.LIdent ((-1,-1),"shutdown")]) . concat . M.elems . methods) (find (\ m -> moduleName m == ?moduleName) ?moduleTable)
+             in HS.SpliceDecl HS.noLoc (HS.App (HS.Var $ identI "remotable") 
+                                        (HS.List $ (map (\ (ABS.LIdent (_,mname)) -> HS.VarQuote $ HS.UnQual $ HS.Ident $ mname ++ "__remote") meths)))
 
 tDecls :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotDecl] -> [HS.Decl]
 tDecls = concatMap (\ (ABS.AnnDec _ d) -> tDecl d)
@@ -339,7 +346,7 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
 
 
        : generateSubs tname (filter (\ (ABS.QTyp qids) -> qids /= [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")])  extends) 
-
+       ++ (map (tMethRemote tname) ms)
 
 
     where
@@ -357,6 +364,15 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                   (tType tReturn))
                 )
                 (map (\ (ABS.Par typ _) -> tType typ) pars ++ [(HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))]))
+
+    -- method_signature :: args -> Obj a (THIS) -> ABS result
+    tMethRemote :: String -> ABS.AnnotMethSignat -> HS.Decl
+    tMethRemote ityp (ABS.AnnMethSig _ann (ABS.MethSig _tReturn (ABS.LIdent (_mpos,mname)) pars))  = 
+        HS.FunBind [HS.Match HS.noLoc (HS.Ident (mname ++ "__remote")) 
+                    [HS.PTuple HS.Boxed $ (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) pars ++ [HS.PParen (HS.PApp (HS.UnQual $ HS.Ident ityp) [HS.PVar (HS.Ident "this")])])]
+                    Nothing
+                    (HS.UnGuardedRhs $ HS.App (foldl (\ acc (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.App acc (HS.Var $ HS.UnQual $ HS.Ident pid)) (HS.Var $ HS.UnQual $ HS.Ident mname) pars) (HS.Var $ HS.UnQual $ HS.Ident "this"))
+                    (HS.BDecls [])]
 
     collectImplementingClasses :: [ABS.UIdent]
     collectImplementingClasses = 

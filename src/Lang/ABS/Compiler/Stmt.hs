@@ -281,6 +281,7 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
 liftInterf :: ABS.LIdent -> ABS.EffExp -> StmtM (HS.Exp -> HS.Exp)
 liftInterf ident exp@(ABS.New _ _) = liftInterf' ident exp
 liftInterf ident exp@(ABS.NewLocal _ _) = liftInterf' ident exp
+liftInterf ident exp@(ABS.Spawns _ _ _) = liftInterf' ident exp
 liftInterf ident exp = return id
 liftInterf' ident@(ABS.LIdent (p,var)) exp =  do
   fscope <- funScope

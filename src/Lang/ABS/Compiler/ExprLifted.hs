@@ -18,7 +18,7 @@ import Control.Monad.Trans.Reader (ask, runReader, withReader)
 import Data.List (nub, findIndices)
 import qualified Data.Map as M
 import Data.Foldable (foldlM, find)
-import Control.Monad (liftM,when)
+import Control.Monad (liftM,when,ap)
 
 -- | Translates a pure expression in the statement world
 --
@@ -547,9 +547,9 @@ tPureExp' (ABS.EThis (ABS.LIdent (_,ident))) _ = return $ HS.App (HS.Var $ HS.Un
 
 -- | This is the "statement-lifted" version of 'tEffExp'
 tEffExp' :: (?moduleTable::ModuleTable, ?moduleName::ABS.QType) => ABS.EffExp -> ExprLiftedM HS.Exp
-tEffExp' (ABS.New (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new" qtids pexps 
+tEffExp' (ABS.New (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrSpawns "new" qtids pexps 
 tEffExp' (ABS.New _ _) = error "Not valid class name"
-tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewOrNewLocal "new_local" qtids pexps
+tEffExp' (ABS.NewLocal (ABS.TSimple (ABS.QTyp qtids)) pexps) = tNewLocal qtids pexps
 tEffExp' (ABS.NewLocal _ _) = error "Not valid class name"
 
 
@@ -589,13 +589,14 @@ tEffExp' (ABS.ProEmpty pexp) = do
 
 tEffExp' ABS.ProNew = return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pro_new") (HS.Var $ HS.UnQual $ HS.Ident "this")
 
-tEffExp' (ABS.Spawns dc cls pargs) = do
+tEffExp' (ABS.Spawns dc (ABS.TSimple (ABS.QTyp qtids)) pargs) = do
+  tspawns <-tNewOrSpawns "spawns" qtids pargs
   tdc <- tPureExp' dc []         -- the callee dc
-  return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "spawns") tdc
+  return $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Lambda HS.noLoc [HS.PParen (HS.PApp (HS.UnQual $ HS.Ident "IDC") [HS.PVar $ HS.Ident "__dc"])] 
+                                         (HS.App tspawns (HS.Var $ HS.UnQual $ HS.Ident "__dc"))) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") tdc
 
--- | shorthand generator, because new and new local are similar
-tNewOrNewLocal :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
-tNewOrNewLocal newOrNewLocal qtids args = do 
+tNewLocal :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tNewLocal qtids args = do 
   targs <- foldlM
            (\ acc pexp -> do
               texp <- tPureExp' pexp []
@@ -607,9 +608,28 @@ tNewOrNewLocal newOrNewLocal qtids args = do
                       then HS.UnQual
                       else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
                    (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids)))))) args -- wrap with the class-constructor function
-  return $ HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Var $ identI newOrNewLocal) 
+  return $ HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Var $ identI "new_local") 
              (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
              (HS.InfixApp (HS.Paren targs) (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this")))
+
+-- | shorthand generator, because new and spawns are similar
+tNewOrSpawns :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> [ABS.QTypeSegment] -> [ABS.PureExp] -> ExprLiftedM HS.Exp
+tNewOrSpawns newOrSpawns qtids args = do 
+  targs <- foldlM
+           (\ acc pexp -> do
+              texp <- tPureExp' pexp []
+              return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") texp)
+           (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var  
+                  ((let mids = init qtids
+                    in
+                      if null mids
+                      then HS.UnQual
+                      else HS.Qual (HS.ModuleName $ joinQualTypeIds mids))
+                   (HS.Ident $ "__" ++ headToLower ( (\ (ABS.QTypeSegmen (ABS.UIdent (_,cid))) -> cid) (last qtids)))))) args -- wrap with the class-constructor function
+  return $ HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp (HS.Var $ (if newOrSpawns == "new" then identI else HS.UnQual . HS.Ident) newOrSpawns) 
+             (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
+             (HS.Paren targs)
+
 
 -- | shorthand generator for method calls, because sync and async are similar
 tSyncOrAsync :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => String -> ABS.PureExp -> ABS.LIdent -> [ABS.PureExp] -> ExprLiftedM HS.Exp
@@ -630,9 +650,16 @@ tSyncOrAsync syncOrAsync pexp method@(ABS.LIdent (mpos,mname)) args = do
                      return $ HS.InfixApp acc (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") targ)
                   (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident $ mname))
                   args)
-          return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
-               (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PVar (HS.Ident "__obj")])] 
-                 (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) texp))))))
+          tArgsRemote <- let finalArg = return $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "__wrap") 
+                        in if length args == 0 
+                           then finalArg
+                           else foldlM (\ acc arg -> do 
+                                  targ <- tPureExp' arg []
+                                  return $ acc . HS.InfixApp targ (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>")) (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Symbol $ replicate (length args) ',') (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>")))) args `ap` finalArg
+
+          return (HS.Paren (HS.App (HS.Var (identI "join")) (HS.Paren 
+               (HS.InfixApp (HS.Paren (HS.Lambda HS.noLoc [HS.PAsPat (HS.Ident "__wrap") $ HS.PParen (HS.PApp (HS.UnQual (HS.Ident iname)) [HS.PAsPat (HS.Ident "__obj") $ HS.PParen (HS.PApp (identI "ObjectRef") [HS.PWildCard, HS.PParen (HS.PApp (identI "COG") [HS.PTuple HS.Boxed [HS.PWildCard, HS.PVar $ HS.Ident "__pid"]]), HS.PWildCard]) ])] 
+                 (HS.If (HS.InfixApp (HS.App (HS.Var $ identI "processNodeId") (HS.Var $ HS.UnQual $ HS.Ident "__pid")) (HS.QVarOp $ HS.UnQual $ HS.Symbol "==") (HS.Var $ identI "myNodeId")) (HS.App (HS.Var (identI "join")) (HS.InfixApp (HS.InfixApp (HS.Var (HS.UnQual (HS.Ident "this"))) (HS.QVarOp (HS.UnQual (HS.Symbol syncOrAsync))) (HS.Var (HS.UnQual (HS.Ident "__obj")))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Paren tapp)))  (HS.Do [HS.Generator HS.noLoc (HS.PVar $ HS.Ident "__args") tArgsRemote,HS.Qualifier (HS.App (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Symbol "^@") (HS.Var $ HS.UnQual $ HS.Ident "this")) (HS.Var $ HS.UnQual $ HS.Ident "__obj"))  (HS.Paren (HS.App (HS.SpliceExp (HS.ParenSplice (HS.App (HS.Var $ identI "mkClosure") (HS.VarQuote $ HS.UnQual $ HS.Ident $ mname ++ "__remote")))) (HS.Var $ HS.UnQual $ HS.Ident "__args")))) ])))) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) texp))))
 
 
 -- | shorthand generator for non-method calls, because sync and async are similar

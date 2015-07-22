@@ -41,7 +41,7 @@ module Lang.ABS.Compiler.Include
      -- | Haskell's unary (-) has the same repr as the binary (-) subtract. When we have to lift code, we cannot use (-),
      -- because Haskell defaults to 'subtract'. Thus, instead, we explicitly lift and call the 'negate' function.
      Prelude.negate,
-     module Control.Distributed.Process.Serializable, Data.Map.Strict.lookup, Data.Map.Strict.fromList
+     module Control.Distributed.Process.Serializable, Data.Map.Strict.lookup, Data.Map.Strict.fromList, processNodeId, send,remotable,mkClosure
     )
  where
 
@@ -58,6 +58,8 @@ import qualified Control.Monad.Catch
 import qualified Control.Exception.Base (PatternMatchFail (..), throw)
 import Control.Applicative
 import Lang.ABS.Runtime.Base
+import Control.Distributed.Process (processNodeId, send)
+import Control.Distributed.Process.Closure (remotable, mkClosure)
 import Control.Distributed.Process.Node (initRemoteTable)
 import qualified GHC.Generics (Generic)
 import qualified Data.Binary (Binary)

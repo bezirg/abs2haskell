@@ -78,12 +78,12 @@ instance IDC_ LocalDC where
           = do (pure ((,,)) <*> ((/) <$!> pure 1 <*> pure 2) <*>
                   ((/) <$!> pure 1 <*> pure 2)
                   <*> ((/) <$!> pure 1 <*> pure 2))
-        spawns :: forall o. (I__.Root_ o) => Static (SerializableDict (I__.Obj o)) -> o -> I__.Obj LocalDC -> I__.ABS (I__.Obj o)
-        spawns sdict smart this = do
+        spawns :: forall o. (I__.Root_ o) => o -> I__.Obj LocalDC -> I__.ABS (I__.Obj o)
+        spawns smart this = do
              fnid <- localDC_nid <$!> I__.readThis this
              nid <- get fnid
              println (pure "before spawn")
-             s <- I__.lift (I__.lift (call sdict nid (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
+             s <- I__.lift (I__.lift (call' nid (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
              println(pure "after spawn")
              return s
 
