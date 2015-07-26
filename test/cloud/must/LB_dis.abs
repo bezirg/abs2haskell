@@ -98,7 +98,7 @@ class C implements Client {
  Int cs = 50000;
  Client c;
  while (cs>0) {
-     c = new C();
+     c = new local C();
      b ! forwardReq(c, 4);
      // should wait for a while
      cs=cs-1;

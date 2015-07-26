@@ -32,7 +32,9 @@ import Data.Maybe (fromMaybe)
 import Control.Concurrent (myThreadId)
 import Network.Transport.TCP (encodeEndPointAddress)
 import Data.IORef (newIORef)
+import qualified Data.ByteString.Lazy as BS (toStrict)
 import qualified Data.ByteString.Base64.Lazy as B64
+import qualified Data.ByteString.Char8 as C8
 import qualified Data.Binary as B__
 import Control.Distributed.Process.Closure
 import Control.Distributed.Static
@@ -107,7 +109,7 @@ instance I__.Root_ NebulaDC where
                               myTempl
                               newCpu
                               newMem
-                              (I__.show (B64.encode (B__.encode __f))) -- FROM_PID
+                              (C8.unpack (BS.toStrict (B64.encode (B__.encode __f)))) -- FROM_PID
                               myRpcServer
                               myRpcProxy
                               mySession
