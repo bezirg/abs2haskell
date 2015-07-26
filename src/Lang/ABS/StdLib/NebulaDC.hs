@@ -7,7 +7,7 @@
 -- More about the open-source OpenNebula project at <http://opennebula.org>
 {-# LANGUAGE NoImplicitPrelude,
   ExistentialQuantification, MultiParamTypeClasses,
-  PatternSignatures, DeriveDataTypeable, DeriveGeneric #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric, InstanceSigs #-}
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
@@ -18,9 +18,8 @@ import Lang.ABS.Runtime.Prim
 import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.StdLib
 import OpenNebula hiding (main)
-import Control.Distributed.Process (NodeId(..))
+import Control.Distributed.Process (NodeId)
 import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under a null COG-process
---import Network.Transport.TCP (encodeEndPointAddress)
 import System.IO (readFile)
 import Data.List (words)
 import Prelude (Double(..), (++), elem, fmap)
@@ -33,12 +32,18 @@ import Data.Maybe (fromMaybe)
 import Control.Concurrent (myThreadId)
 import Network.Transport.TCP (encodeEndPointAddress)
 import Data.IORef (newIORef)
+import qualified Data.ByteString.Base64.Lazy as B64
+import qualified Data.Binary as B__
+import Control.Distributed.Process.Closure
+import Control.Distributed.Static
+import Data.Rank1Typeable
+
 
 -- * Internals
 
 data NebulaDC = NebulaDC{
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
-                         nebulaDC_nodeId :: Maybe NodeId, nebulaDC_vmId :: Int}
+                         nebulaDC_nid :: Fut NodeId, nebulaDC_vmId :: Int}
               deriving (I__.Typeable, I__.Generic)
 
 __nebulaDC cpu memory
@@ -86,17 +91,30 @@ instance I__.Root_ NebulaDC where
             
             -- ADDED
             -- I__.error "Local DC objects cannot be created (new local)"
-        -- REMOVED: init block
-        --__init this = return ()
-        -- ADDED: init block
-        __init this = do
+        __init this@(I__.ObjectRef _ thisCOG@(I__.COG (_, pid)) _) = do
           NebulaDC { nebulaDC_cpu = newCpu, nebulaDC_memory = newMem } <- I__.readThis this
+
+          -- create the ACK future  
+          __mvar <- I__.liftIO I__.newEmptyMVar
+          __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
+          I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
+          let __f = I__.FutureRef __mvar thisCOG __counter
+          I__.set 1 (\ v__ c__ -> c__{nebulaDC_nid = v__}) __f this
+
+
           myProgName <- I__.liftIO getProgName
-          let maybeNewTempl = cloneSlaveTemplate myTempl newCpu newMem ("from-Pid-stub") myRpcServer myRpcProxy mySession myProgName
+          let maybeNewTempl = cloneSlaveTemplate 
+                              myTempl
+                              newCpu
+                              newMem
+                              (I__.show (B64.encode (B__.encode __f))) -- FROM_PID
+                              myRpcServer
+                              myRpcProxy
+                              mySession
+                              myProgName
           (success, vmId, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_allocate (fromJust maybeNewTempl)))
           ifthenM (pure (not success)) (I__.error "Allocating VM failed")
           I__.set 4 (\ v c -> c{nebulaDC_vmId=v}) vmId this
-
  
 instance I__.Sub (I__.Obj NebulaDC) I__.Root where
         up = I__.Root
@@ -120,14 +138,16 @@ instance IDC_ NebulaDC where
                    return ()
         getLoad this = do 
                    NebulaDC { nebulaDC_vmId = thisVmId } <- I__.readThis this
-                   -- only works when called on this dc (thisDC)
-                   -- otherwise raises a not-implemented-yet error
-                   -- if (thisVmId == myVmId)
-                      -- then do
                    (s1: s5: s15: _) <- I__.liftIO (words <$!> (readFile "/proc/loadavg"))
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
-                   -- else I__.error "TODO: remote checking the load of the system is not implemented yet"
-        spawns this obj = I__.undefined
+        spawns :: forall o. (I__.Root_ o) => o -> I__.Obj NebulaDC -> I__.ABS (I__.Obj o)
+        spawns smart this = do
+             fnid <- nebulaDC_nid <$!> I__.readThis this
+             nid <- get fnid
+             println (pure "before spawn")
+             s <- I__.lift (I__.lift (call' nid (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
+             println(pure "after spawn")
+             return s
 
 {-# NOINLINE myTyp #-}
 {-# NOINLINE myCreatorPid #-}
@@ -146,12 +166,12 @@ myVmId = fromMaybe
          (-1)                   -- signals erroneous extraction of VM ID
          (templateVmId myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
 
-{-# NONLINE myVmIP #-}
-myVmIP = if "--distributed" `Prelude.elem` myArgs
-         then fromMaybe
-                  "127.0.0.1"
-                  (templateVmIP myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
-         else "127.0.0.1"
+-- {-# NONLINE myVmIP #-}
+-- myVmIP = if "--distributed" `Prelude.elem` myArgs
+--          then fromMaybe
+--                   "127.0.0.1"
+--                   (templateVmIP myTempl) -- it has to be top-level (global), so it can be used by other parts of the ABS translated code
+--          else "127.0.0.1"
 
 {-# NOINLINE thisDC #-}
 thisDC = IDC (I__.ObjectRef (unsafePerformIO (newIORef (
@@ -159,8 +179,8 @@ thisDC = IDC (I__.ObjectRef (unsafePerformIO (newIORef (
                                                                  nebulaDC_cpu = -1, -- TODO
                                                                  nebulaDC_memory = -1, -- TODO
                                                                  nebulaDC_load = -1, -- it's for sim purposes
-                                                                 nebulaDC_nodeId = Nothing, -- TODO
+                                                                 nebulaDC_nid = I__.NullFutureRef, -- TODO
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
-              (I__.COG (I__.undefined,(nullProcessId (NodeId (encodeEndPointAddress myVmIP "9000" 0)))))         -- no processid (ForwarderCOG ID) associated with the DC object
+              (I__.COG (I__.undefined,nullProcessId I__.myNodeId))         -- no processid (ForwarderCOG ID) associated with the DC object
               (-2))                   -- a stub object-id of the DC object

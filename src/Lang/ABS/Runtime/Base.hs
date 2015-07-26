@@ -35,7 +35,8 @@ import GHC.Fingerprint (Fingerprint)
 import System.IO.Unsafe (unsafePerformIO)
 import Unsafe.Coerce (unsafeCoerce)
 import Network.Transport.TCP (encodeEndPointAddress)
-
+import Network.Info -- querying NIC IPs
+import Data.List (find)
 
 -- * Objects and Futures
 
@@ -262,7 +263,7 @@ instance Binary (Fut a) where
       t <- get :: Get Word8
       case t of
         0 -> do
-            unsafePerformIO (print "decoding future") `seq` return ()
+            --unsafePerformIO (print "decoding future") `seq` return ()
             pid <- get
             i <- get
             let c = COG (undefined, pid)
@@ -289,27 +290,32 @@ instance Binary (Obj a) where
       if CH.processNodeId pid == myNodeId
         then unsafePerformIO (modifyMVar_ fm (return . M.insert (c,i) (AnyIORef m)))  `seq` return ()
         else return ()
-      unsafePerformIO (print "putted objectref") `seq` put (0 :: Word8)
+      -- unsafePerformIO (print "putted objectref") `seq`
+      put (0 :: Word8)
       put pid
       put i
-    put NullRef = unsafePerformIO (print "putted nullref") `seq` put (1 :: Word8)
+    put NullRef = -- unsafePerformIO (print "putted nullref") `seq`
+                  put (1 :: Word8)
     get = do
       t <- get :: Get Word8
       case t of
         0 -> do
-            unsafePerformIO (print "decoding object") `seq` return ()
+            -- unsafePerformIO (print "decoding object") `seq` return ()
             pid <- get
             i <- get
-            unsafePerformIO (print "still ok") `seq` return ()
+            -- unsafePerformIO (print "still ok") `seq` return ()
             let c = COG (undefined, pid)
             if CH.processNodeId pid == myNodeId
                then let m = unsafePerformIO (readMVar fm >>= return . M.lookupGE (c,i)) -- we lookup the table
                     in case m of
                          -- or use the safer Data.Typeable.cast, or Data.Typeable.eqT
-                         Just ((c',i'), AnyIORef v) ->  unsafePerformIO (print "found foreign") `seq` return (ObjectRef (unsafeCoerce v :: IORef a) c' i)
+                         Just ((c',i'), AnyIORef v) ->  -- unsafePerformIO (print "found foreign") `seq`
+                                                       return (ObjectRef (unsafeCoerce v :: IORef a) c' i)
                          _ -> unsafePerformIO (print "foreign table lookup fail") `seq` error "mplo"
-               else unsafePerformIO (print "foreign object") `seq` return (ObjectRef undefined c i)
-        1 -> unsafePerformIO (print "is nullref") `seq` return NullRef
+               else -- unsafePerformIO (print "foreign object") `seq` 
+                    return (ObjectRef undefined c i)
+        1 -> -- unsafePerformIO (print "is nullref") `seq`
+            return NullRef
         _ -> unsafePerformIO (print "Binary Obj: cannot decode object-ref") `seq` error "mplo"
 
 instance Binary Job where
@@ -332,26 +338,26 @@ instance Binary Job where
       t <- get :: Get Word8
       case t of
         0 -> do
-            unsafePerformIO (print "decoding remotjob") `seq` return ()
+            --unsafePerformIO (print "decoding remotjob") `seq` return ()
             fp<-get
-            unsafePerformIO (print ((showFingerprint (decodeFingerprint fp)) "")) `seq` return ()
+            -- unsafePerformIO (print ((showFingerprint (decodeFingerprint fp)) "")) `seq` return ()
             case M.lookup (decodeFingerprint fp) stable2 of
                  Just (SomeGet2 someget) -> do
-                      unsafePerformIO (print $ typeRep someget) `seq` return ()
+                      -- unsafePerformIO (print $ typeRep someget) `seq` return ()
                       c <- someget
-                      unsafePerformIO (print "done closure") `seq` return ()
+                      -- unsafePerformIO (print "done closure") `seq` return ()
                       o <- get
-                      unsafePerformIO (print "done object") `seq` return()
+                      -- unsafePerformIO (print "done object") `seq` return()
                       f <- get
-                      unsafePerformIO (print "done future") `seq` return ()
+                      -- unsafePerformIO (print "done future") `seq` return ()
                       return (RemotJob o f c)
                  Nothing -> unsafePerformIO $ print "Binary remotjob: fingerprint unknown" `seq` error "mplo"
         1 -> do
-            unsafePerformIO (print "decoding wakeupsignal") `seq` return ()
+            -- unsafePerformIO (print "decoding wakeupsignal") `seq` return ()
             fp<-get
             case M.lookup (decodeFingerprint fp) stable of
                  Just (SomeGet someget) -> do
-                      unsafePerformIO (print "ok") `seq` return ()
+                      -- unsafePerformIO (print "ok") `seq` return ()
                       WakeupSignal <$> someget <*> get <*> get
                  Nothing -> unsafePerformIO (print "Binary WakeUpsignal: fingerprint unknown") `seq` error "mplo"
         2 -> MachineUp <$> get <*> get
@@ -418,10 +424,21 @@ data AnyForeign = forall a. AnyMVar (MVar a)
 
 type ForeignMap = M.Map (COG,Int) AnyForeign
 
+{-# NOINLINE myIP #-}
+myIP :: String
+myIP = case ip conf of
+         Just ip' -> ip'
+         _ -> let nics = unsafePerformIO getNetworkInterfaces
+             in case find (\ nic -> name nic == "eth0") nics of
+                  Just nic -> show (ipv4 nic)
+                  _ -> case find (\ nic -> name nic == "wlp2s0") nics of
+                        Just nic -> show (ipv4 nic)
+                        _ -> "127.0.0.1"
+
 myNodeId :: CH.NodeId
-myNodeId = CH.NodeId $ case (ip conf, port conf) of
-             (Just ip', Just port') -> (encodeEndPointAddress ip' (show port') 0)
-             _ -> encodeEndPointAddress "127.0.0.1" "9000" 0
+myNodeId = CH.NodeId $ encodeEndPointAddress myIP (case port conf of
+                                                      Just port' -> show port'
+                                                      _ ->  "9000") 0
 
 fm :: MVar ForeignMap
 fm = unsafePerformIO $ newMVar M.empty

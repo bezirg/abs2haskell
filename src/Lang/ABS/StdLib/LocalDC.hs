@@ -14,11 +14,12 @@ import System.Process hiding (main)
 import System.Environment (getExecutablePath)
 import Data.Binary (encode)
 import qualified Data.ByteString.Base64.Lazy as B64
-import Control.Distributed.Process
+import Control.Distributed.Process (NodeId)
 import Control.Distributed.Process.Closure
 import Control.Distributed.Static
 import Data.Rank1Typeable
 import Data.List ((++))
+import qualified Data.Binary as B__
 
 data LocalDC = LocalDC{localDC_nid :: Fut NodeId, localDC_port :: Int}
              deriving (I__.Typeable, I__.Generic)
@@ -37,7 +38,7 @@ instance I__.Root_ LocalDC where
              I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
              let __f = I__.FutureRef __mvar thisCOG __counter
              I__.set 1 (\ v__ c__ -> c__{localDC_nid = v__}) __f this
-             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "--ip", "192.168.0.15", "-t"]) { env = Just [("TO_FUT", I__.show (B64.encode (encode __f)))
+             I__.liftIO (createProcess ((proc d0 ["--port", I__.show port, "--ip", I__.myIP, "-t"]) { env = Just [("FROM_PID", I__.show (B64.encode (B__.encode __f)))
                                                                                                ] }))
              return ()
 

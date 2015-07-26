@@ -47,10 +47,9 @@ import qualified Control.Distributed.Process as CH
 import Control.Distributed.Process.Node -- for local node creation and run/fork local processes
 import Network.Transport.TCP (createTransport, defaultTCPParameters, encodeEndPointAddress)
 import Network.Socket (withSocketsDo)
-import Network.Info -- querying NIC IPs
 import Control.Distributed.Process.Internal.Types (nullProcessId) -- COG has a null pid on local (non-distributed) runtime
 
--- for encoding the TO_FUT environment variable
+-- for encoding the FROM_PID environment variable
 import System.Environment (getEnv)
 import System.IO.Error (tryIOError)
 import qualified Data.ByteString.Lazy.Char8 as C8
@@ -73,12 +72,12 @@ import Data.Binary (encode,decode)
 fwd_cog :: COG              -- ^ the _local-only_ channel (queue) of the COG process
         -> CH.Process ()          -- ^ is itself a CH process
 fwd_cog thisCOG@(COG(c,pid)) = do
-  CH.liftIO $ print pid
+  -- CH.liftIO $ print pid
   j <- CH.expect :: CH.Process Job
-  CH.liftIO $ print "received something"
+  -- CH.liftIO $ print "received something"
   case j of
     WakeupSignal v cog futId -> do
-              CH.liftIO $ print "received wakeup"
+              -- CH.liftIO $ print "received wakeup"
               -- lookup future foreign table
               foreign_map <- CH.liftIO $ readMVar fm                   
               case M.lookup (cog,futId) foreign_map of
@@ -86,12 +85,12 @@ fwd_cog thisCOG@(COG(c,pid)) = do
                 _ -> error "foreign table lookup fail"
               CH.liftIO $ writeChan c j
     RemotJob obj f clos -> do
-              CH.liftIO $ print ("received remotjob")
+              -- CH.liftIO $ print ("received remotjob")
               -- the only thing that it does is unclosure the clos
               unclos <- CH.unClosure clos
               CH.liftIO $ writeChan c (LocalJob obj f unclos)
     MachineUp remoteAddress futId -> do
-              CH.liftIO $ print remoteAddress
+              -- CH.liftIO $ print remoteAddress
               foreign_map <- CH.liftIO $ readMVar fm                   
               case M.lookup (thisCOG,futId) foreign_map of
                 Just (AnyMVar m) -> CH.liftIO $ putMVar (unsafeCoerce m) (CH.NodeId remoteAddress)
@@ -211,16 +210,12 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
   if (distributed conf || isJust (port conf))
     then do
-      nics <- getNetworkInterfaces -- which is the lan IP? it is under eth0 nic
-      let myIp = maybe 
-             (error "An outside network interface was not found.")
-             (show . ipv4) $ find (\ nic -> name nic == "wlp2s0") nics -- otherwise, eth0's IP
-      Right trans <- createTransport myIp port' defaultTCPParameters
+      Right trans <- createTransport myIP port' defaultTCPParameters
       myLocalNode <- newLocalNode trans (rtable (outsideRemoteTable)) -- outsideRemoteTable) -- new my-node
       c <- newChan            -- sharing in-memory channel between Forwarder and Cog
       fwdPid <- forkProcess myLocalNode (CH.getSelfPid >>= \ pid -> fwd_cog (COG (c,pid))) -- start the Forwarder process
       -- Was this Node-VM created by another (remote) VM? then connect with this *CREATOR* node and answer back with an ack
-      maybeCreatorPidStr <- tryIOError (getEnv "TO_FUT" )
+      maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
