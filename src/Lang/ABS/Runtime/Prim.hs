@@ -44,7 +44,7 @@ await g@(FutureFieldGuard i tg) this  = do
     (FutureRef mvar _ _) -> do
              empty <- liftIO $ isEmptyMVar mvar
              when empty $ do
-               yield (FF fut i)
+               yield (FF fut i this)
                await g this
     NullFutureRef -> do
              yield (A this [i]) -- only awaits on one attribute to be field with a real future, not a nullfutureref
@@ -84,7 +84,7 @@ await g@(PromiseFieldGuard i tg) this@(ObjectRef _ hereCOG _)  = do
       Just scogs -> do
                  let scogs' = S.insert hereCOG scogs
                  liftIO $ putMVar regsvar (Just scogs')
-                 yield (FF (proToFut p) i)
+                 yield (FF (proToFut p) i this)
                  await g this
 
 await (left :&: rest) this = do
@@ -197,14 +197,14 @@ null = NullRef
        __astate@(AState{aCounter = __counter}) <- lift S.get
        lift (S.put (__astate{aCounter = __counter + 1}))
        let __f = FutureRef __mvar thisCOG __counter
-       liftIO (writeChan chan (LocalJob obj __f (mth obj)))
+       liftIO (writeChan chan (LocalJob __f (mth obj)))
        return __f
 (^!) _ NullRef _ = error "async call to null"
 
 {-# INLINE (^!!) #-}
 -- | Optimized wrapper where we throw away the result. The transcompiler checks if the future returned is not stored to a variable.
 (^!!) :: Obj caller -> Obj callee -> (Obj callee -> ABS res) -> ABS ()
-(^!!) _this (obj@(ObjectRef _ (COG (chan, _)) _)) mth = liftIO (writeChan chan (LocalJob obj NullFutureRef (mth obj)))
+(^!!) _this (obj@(ObjectRef _ (COG (chan, _)) _)) mth = liftIO (writeChan chan (LocalJob NullFutureRef (mth obj)))
 (^!!) _ NullRef _ = error "async call to null"
 
 

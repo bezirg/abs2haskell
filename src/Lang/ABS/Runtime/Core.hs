@@ -60,7 +60,7 @@ spawnCOG = do
            let (maybeWoken, sleepOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepOnFut
            sleepOnAttr' <- maybe (return sleepOnAttr) (updateWoken c sleepOnAttr) maybeWoken -- put the woken back to the enabled queue
            loop c pid sleepOnFut' sleepOnAttr' counter
-         LocalJob obj fut coroutine -> do
+         LocalJob fut coroutine -> do
            (p, (AState {aCounter = counter', aSleepingO = sleepOnAttr', aSleepingF = sleepOnFut'})) <- S.runStateT (resume coroutine `catchAll` (\ someEx -> do
                                                  lift $ when (traceExceptions conf) $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
                                                  return $ Right $ throw someEx)) (AState {aCounter = counter, aSleepingO = sleepOnAttr, aSleepingF = sleepOnFut})
@@ -80,20 +80,20 @@ spawnCOG = do
                                      return (sleepOnAttr'', sleepOnFut'')
                               NullFutureRef -> return (sleepOnAttr', sleepOnFut')
              Left (Yield S cont) -> do
-                       writeChan c (LocalJob obj fut cont) 
+                       writeChan c (LocalJob fut cont) 
                        return (sleepOnAttr', sleepOnFut')
              Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
-                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepOnFut')
-             Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
+                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob fut cont, Nothing)] sleepOnFut')
+             Left (Yield (FF f@(FutureRef _ cog i) fid obj) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepOnAttr'
-                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
+                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
+                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
                        return (sleepOnAttr'', sleepOnFut'')
              Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
-                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
+                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
                                               
            loop c pid sleepOnFut'' sleepOnAttr'' counter'
 
@@ -104,7 +104,7 @@ main_is mainABS = do
   -- DISTRIBUTED (1 COG Process + 1 Forwarder Process)
   c <- newChan               -- in-memory channel
   pid <- myThreadId
-  writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c, pid)) 1)) -- send the Main Block as the 1st created process
+  writeChan c (LocalJob NullFutureRef (mainABS $ ObjectRef undefined (COG (c, pid)) 1)) -- send the Main Block as the 1st created process
   loop c pid M.empty M.empty 1
 
    where
@@ -115,7 +115,7 @@ main_is mainABS = do
            let (maybeWoken, sleepOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepOnFut
            sleepOnAttr' <- maybe (return sleepOnAttr) (updateWoken c sleepOnAttr) maybeWoken -- put the woken back to the enabled queue
            loop c pid sleepOnFut' sleepOnAttr' counter
-         LocalJob obj fut coroutine -> do
+         LocalJob fut coroutine -> do
            (p, (AState {aCounter = counter', aSleepingO = sleepOnAttr', aSleepingF = sleepOnFut'})) <- S.runStateT (resume coroutine `catchAll` (\ someEx -> do
                                                  lift $ when (traceExceptions conf) $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
                                                  return $ Right $ throw someEx)) (AState {aCounter = counter, aSleepingO = sleepOnAttr, aSleepingF = sleepOnFut})
@@ -143,20 +143,20 @@ main_is mainABS = do
                                             print "Main COG has exited with success"
                                             exitSuccess
              Left (Yield S cont) -> do
-                       writeChan c (LocalJob obj fut cont) 
+                       writeChan c (LocalJob fut cont) 
                        return (sleepOnAttr', sleepOnFut')
              Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
-                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepOnFut')
-             Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
+                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob fut cont, Nothing)] sleepOnFut')
+             Left (Yield (FF f@(FutureRef _ cog i) fid obj) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
                        let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepOnAttr'
-                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
+                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
+                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
                        return (sleepOnAttr'', sleepOnFut'')
              Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
-                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
+                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
                                               
            loop c pid sleepOnFut'' sleepOnAttr'' counter'
 
@@ -184,7 +184,7 @@ new smart = do
   new_cog@(COG (chan, _)) <- lift $ lift spawnCOG
   ioref <- liftIO $ newIORef smart
   let obj = ObjectRef ioref new_cog 0
-  liftIO $ writeChan chan (LocalJob obj NullFutureRef (__init obj))
+  liftIO $ writeChan chan (LocalJob NullFutureRef (__init obj))
   return obj
 
 {-# INLINE new_local #-}

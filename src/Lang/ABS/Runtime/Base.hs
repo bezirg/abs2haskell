@@ -147,7 +147,7 @@ data AState = AState {
 -- The running process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
 data AwaitOn = S -- suspend is called
              | forall f. FL (Fut f) -- await on a local future
-             | forall f. FF (Fut f) !Int -- await on field future
+             | forall f o. FF (Fut f) !Int (Obj o) -- await on field future
              | forall o. Root_ o => A (Obj o) [Int] -- await on object's fields
 
 
@@ -173,7 +173,7 @@ instance Ord COG where
     COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
-data Job = forall o a . LocalJob (Obj o) (Fut a) (ABS a)
+data Job = forall a . LocalJob (Fut a) (ABS a)
          | forall a . WakeupSignal a !COG !Int
 
 -- ** COG-held datastructures
