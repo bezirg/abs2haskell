@@ -53,73 +53,49 @@ spawnCOG = do
            loop c myPid sleepingOnFut sleepingOnAttr 1
   return $ COG (c, pid)
     where
-      -- COG loop definition
-      loop c pid sleepingOnFut sleepingOnAttr counter = do
-        -- on each iteration, it listens for next job on the input job queue
-        nextJob <- readChan c
-        case nextJob of
-          -- wake signals are transmitted (implicitly) from a COG to another COG to wakeup some of the latter's sleeping process
-          WakeupSignal v cog i -> do
-             let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepingOnFut
-             -- put the woken back to the enabled queue
-             sleepingOnAttr' <- maybe (return sleepingOnAttr) (updateWoken c sleepingOnAttr) maybeWoken
-             loop c pid sleepingOnFut'' sleepingOnAttr' counter
-          -- run-jobs are issued by the user *explicitly by async method-calls* to do *ACTUAL ABS COMPUTE-WORK*
-          LocalJob obj fut coroutine -> do
-             (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''})) <- S.runStateT (do
-              -- the cog catches any exception and lazily records it into the future-box (mvar)
-              p <- resume coroutine `catchAll` (\ someEx -> do
+     loop c pid sleepOnFut sleepOnAttr counter = do
+       nextJob <- readChan c
+       case nextJob of
+         WakeupSignal v cog i -> do
+           let (maybeWoken, sleepOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepOnFut
+           sleepOnAttr' <- maybe (return sleepOnAttr) (updateWoken c sleepOnAttr) maybeWoken -- put the woken back to the enabled queue
+           loop c pid sleepOnFut' sleepOnAttr' counter
+         LocalJob obj fut coroutine -> do
+           (p, (AState {aCounter = counter', aSleepingO = sleepOnAttr', aSleepingF = sleepOnFut'})) <- S.runStateT (resume coroutine `catchAll` (\ someEx -> do
                                                  lift $ when (traceExceptions conf) $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
-                                                 return $ Right $ throw someEx)
-              case p of
-                    -- the job of the callee finished, send a wakeup signal to remote cog that "nourishes" the sleeping caller-process
-                    Right fin -> do
-                       case fut of
-                         (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
-                           lift $ putMVar mvar fin -- is local future, write to it
-                           if ftid /= pid -- remote job finished, wakeup the remote cog
-                              then do
-                                lift $ writeChan fcog (WakeupSignal fin cog fid)
-                                return sleepingOnFut
-                              else do
-                                -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
-                                -- because it adds an extra iteration
-                                let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepingOnFut
-                                -- put the woken back to the enabled queue
-                                maybe (return ()) (\ woken -> do
-                                                   sleepingOnAttr' <- lift $ updateWoken c sleepingOnAttr woken
-                                                   S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
-                                return sleepingOnFut'
-                         NullFutureRef -> return sleepingOnFut
-                    -- the process deliberately suspended (by calling suspend)
-                    Left (Yield S cont) -> do
-                           lift $ writeChan c (LocalJob obj fut cont) -- reschedule its continuation at the end of the job-queue
-                           return sleepingOnFut
-                    -- the process deliberately decided to await on a *LOCAL* future to finish (by calling await f?;)
-                    Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
-                           return (M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepingOnFut) -- update sleepingf-table
-                    -- the process deliberately decided to await on a *FIELD* future to finish (by calling await f?;)
-                    Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
+                                                 return $ Right $ throw someEx)) (AState {aCounter = counter, aSleepingO = sleepOnAttr, aSleepingF = sleepOnFut})
+           (sleepOnAttr'', sleepOnFut'') <- case p of
+             Right fin -> case fut of
+                              (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
+                                 putMVar mvar fin
+                                 if ftid /= pid
+                                   then do -- remote job finished, wakeup the remote cog
+                                     writeChan fcog (WakeupSignal fin cog fid)
+                                     return (sleepOnAttr', sleepOnFut')
+                                   else do
+                                     -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
+                                     -- because it adds an extra iteration
+                                     let (maybeWoken, sleepOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepOnFut'
+                                     sleepOnAttr'' <- maybe (return sleepOnAttr') (updateWoken c sleepOnAttr') maybeWoken -- put the woken back to the enabled queue
+                                     return (sleepOnAttr'', sleepOnFut'')
+                              NullFutureRef -> return (sleepOnAttr', sleepOnFut')
+             Left (Yield S cont) -> do
+                       writeChan c (LocalJob obj fut cont) 
+                       return (sleepOnAttr', sleepOnFut')
+             Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
+                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepOnFut')
+             Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
-                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
-                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
-
-                       
+                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepOnAttr'
+                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
-                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
-                       return sleepingOnFut' -- update sleepingf-table                          
-                    -- the process deliberately decided to await on a this.field to change (by calling await (this.field==v);)
-                    Left (Yield (A o@(ObjectRef _ _ oid)  fields) cont) -> do
-                           -- update sleepingo-table
-                           let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepingOnAttr fields
-                           S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
-                           return sleepingOnFut
-                                                    )  (AState {aCounter = counter,
-                                                                aSleepingO = sleepingOnAttr})
-             loop c pid sleepingOnFut'' sleepingOnAttr'' counter''
-
+                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
+                       return (sleepOnAttr'', sleepOnFut'')
+             Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
+                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
+                                              
+           loop c pid sleepOnFut'' sleepOnAttr'' counter'
 
 -- | ABS main-block thread (COG-like thread)
 main_is :: (Obj Null -> ABS ()) -- ^ a main-block monadic action (a fully-applied method with a null this-context that returns "Unit")
@@ -132,67 +108,57 @@ main_is mainABS = do
   loop c pid M.empty M.empty 1
 
    where
-     loop c pid sleepingOnFut sleepingOnAttr counter = do
+     loop c pid sleepOnFut sleepOnAttr counter = do
        nextJob <- readChan c
        case nextJob of
          WakeupSignal v cog i -> do
-           let (maybeWoken, sleepingOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepingOnFut
-           sleepingOnAttr' <- maybe (return sleepingOnAttr) (updateWoken c sleepingOnAttr) maybeWoken -- put the woken back to the enabled queue
-           loop c pid sleepingOnFut'' sleepingOnAttr' counter
+           let (maybeWoken, sleepOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,i) sleepOnFut
+           sleepOnAttr' <- maybe (return sleepOnAttr) (updateWoken c sleepOnAttr) maybeWoken -- put the woken back to the enabled queue
+           loop c pid sleepOnFut' sleepOnAttr' counter
          LocalJob obj fut coroutine -> do
-           (sleepingOnFut'', (AState {aCounter = counter'', aSleepingO = sleepingOnAttr''})) <- S.runStateT (do
-              p <- resume coroutine `catchAll` (\ someEx -> do
+           (p, (AState {aCounter = counter', aSleepingO = sleepOnAttr', aSleepingF = sleepOnFut'})) <- S.runStateT (resume coroutine `catchAll` (\ someEx -> do
                                                  lift $ when (traceExceptions conf) $ print $ "Process died upon Uncaught-Exception: " ++ show someEx 
-                                                 return $ Right $ throw someEx) 
-              case p of
-                Right fin -> case fut of
+                                                 return $ Right $ throw someEx)) (AState {aCounter = counter, aSleepingO = sleepOnAttr, aSleepingF = sleepOnFut})
+           (sleepOnAttr'', sleepOnFut'') <- case p of
+             Right fin -> case fut of
                               (FutureRef mvar cog@(COG (fcog, ftid)) fid) -> do
-                                 lift $ putMVar mvar fin
+                                 putMVar mvar fin
                                  if ftid /= pid
                                    then do -- remote job finished, wakeup the remote cog
-                                     lift $ writeChan fcog (WakeupSignal fin cog fid)
-                                     return sleepingOnFut
+                                     writeChan fcog (WakeupSignal fin cog fid)
+                                     return (sleepOnAttr', sleepOnFut')
                                    else do
                                      -- OPTIMIZATION: don't send a *superfluous* wakeup signal from->to the same COG, 
                                      -- because it adds an extra iteration
-                                     let (maybeWoken, sleepingOnFut') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepingOnFut
-                                     -- put the woken back to the enabled queue
-                                     maybe (return ()) (\ woken -> do
-                                                         sleepingOnAttr' <- lift $ updateWoken c sleepingOnAttr woken
-                                                         S.modify (\ astate -> astate {aSleepingO = sleepingOnAttr'})) maybeWoken
-                                     return sleepingOnFut'
+                                     let (maybeWoken, sleepOnFut'') = M.updateLookupWithKey (\ _k _v -> Nothing) (cog,fid) sleepOnFut'
+                                     sleepOnAttr'' <- maybe (return sleepOnAttr') (updateWoken c sleepOnAttr') maybeWoken -- put the woken back to the enabled queue
+                                     return (sleepOnAttr'', sleepOnFut'')
                               NullFutureRef -> 
                                          if keepAlive conf
                                            then do
-                                             lift $ print $ "main finished" ++ show pid
-                                             return sleepingOnFut
+                                             print $ "main finished" ++ show pid
+                                             return (sleepOnAttr', sleepOnFut')
                                            -- exit early otherwise
                                            else do
-                                            lift $ print "Main COG has exited with success"
-                                            lift $ exitSuccess
-                Left (Yield S cont) -> do
-                       lift $ writeChan c (LocalJob obj fut cont) 
-                       return sleepingOnFut
-                Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
-                       return (M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepingOnFut)
-                Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
+                                            print "Main COG has exited with success"
+                                            exitSuccess
+             Left (Yield S cont) -> do
+                       writeChan c (LocalJob obj fut cont) 
+                       return (sleepOnAttr', sleepOnFut')
+             Left (Yield (FL f@(FutureRef _ cog i)) cont) -> do
+                       return (sleepOnAttr', M.insertWith (++) (cog,i) [(LocalJob obj fut cont, Nothing)] sleepOnFut')
+             Left (Yield (FF f@(FutureRef _ cog i) fid) cont) -> do
                        -- updating both suspended tables
                        let ObjectRef _ _ oid = obj
-                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepingOnAttr
-                       let (mFutEntry, sleepingOnFut') = M.insertLookupWithKey (\ _k p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepingOnFut
-
-                       
+                       let lengthOnAttr = length $ M.findWithDefault [] (oid, fid) sleepOnAttr'
+                       let (mFutEntry, sleepOnFut'') = M.insertLookupWithKey (\ _ p n -> p ++ n) (cog,i) [(LocalJob obj fut cont, Just ((oid,fid),lengthOnAttr))] sleepOnFut'
                        let lengthOnFut = maybe 0 length mFutEntry
-                       let sleepingOnAttr' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepingOnAttr
-                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
-                       return sleepingOnFut' -- update sleepingf-table                          
-                Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
-                       let sleepingOnAttr' = foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepingOnAttr fields
-                       S.modify $ \ astate -> astate {aSleepingO = sleepingOnAttr'}
-                       return sleepingOnFut
-                                              ) (AState {aCounter = counter,
-                                                         aSleepingO = sleepingOnAttr})
-           loop c pid sleepingOnFut'' sleepingOnAttr'' counter''
+                       let sleepOnAttr'' = M.insertWith (++) (oid,fid) [(LocalJob obj fut cont, Just ((cog,i),lengthOnFut))] sleepOnAttr'
+                       return (sleepOnAttr'', sleepOnFut'')
+             Left (Yield (A o@(ObjectRef _ _ oid) fields) cont) -> do
+                       return (foldl' (\ m i -> M.insertWith (++) (oid,i) [(LocalJob obj fut cont,Nothing)] m) sleepOnAttr' fields, sleepOnFut')
+                                              
+           loop c pid sleepOnFut'' sleepOnAttr'' counter'
 
 
 
