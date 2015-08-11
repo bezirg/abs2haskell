@@ -89,15 +89,15 @@ fwd_cog thisCOG@(COG(c,pid)) = do
               -- the only thing that it does is unclosure the clos
               unclos <- CH.unClosure clos
               CH.liftIO $ writeChan c (LocalJob obj f unclos)
-    MachineUp remoteAddress futId -> do
+    MachineUp remoteMainFwdPid futId -> do
               -- CH.liftIO $ print remoteAddress
               foreign_map <- CH.liftIO $ readMVar fm                   
               case M.lookup (thisCOG,futId) foreign_map of
-                Just (AnyMVar m) -> CH.liftIO $ putMVar (unsafeCoerce m) (CH.NodeId remoteAddress)
+                Just (AnyMVar m) -> CH.liftIO $ putMVar (unsafeCoerce m) (remoteMainFwdPid)
                 _ -> error "foreign table lookup fail"
 
               CH.liftIO $ print "Machines connected"
-              CH.liftIO $ writeChan c (WakeupSignal (CH.NodeId remoteAddress) thisCOG futId)
+              CH.liftIO $ writeChan c (WakeupSignal remoteMainFwdPid thisCOG futId)
               return ()
     _ -> error "this should not happen"
   fwd_cog thisCOG
@@ -227,10 +227,9 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
                     -- try to establish TCP connection with the creator
                     let (FutureRef _ (COG (_,creatorPid)) i) = decode (B64.decodeLenient (C8.pack respToFutStr)) :: Fut a
                     let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
-                    let (CH.NodeId myNodeAddress) = localNodeId myLocalNode
                     runProcess myLocalNode (do
-                                             CH.send creatorPid (MachineUp myNodeAddress i) -- send ack to creatorPid
-                                             loop c fwdPid M.empty M.empty 1) -- start the COG process (this cog is probably not needed)
+                                             CH.send creatorPid (MachineUp fwdPid i) -- send ack to creatorPid
+                                             loop c fwdPid M.empty M.empty 1) -- start the COG process (this cog is needed, because it runs dc's methods)
 
 
   -- LOCAL-ONLY (DEFAULT) (multicore) (1 COG Process)

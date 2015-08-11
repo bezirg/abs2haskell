@@ -138,7 +138,7 @@ instance IDC_ NebulaDC where
                    NebulaDC { nebulaDC_vmId = thisVmId } <- I__.readThis this
                    (True, _, errCode) <- I__.liftIO (xmlrpc myRpcServer mySession (Just myRpcProxy) (vm_action "cancel" thisVmId))
                    return ()
-        getLoad this = do 
+        load this = do 
                    NebulaDC { nebulaDC_vmId = thisVmId } <- I__.readThis this
                    (s1: s5: s15: _) <- I__.liftIO (words <$!> (readFile "/proc/loadavg"))
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))

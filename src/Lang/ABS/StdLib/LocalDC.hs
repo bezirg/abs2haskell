@@ -51,7 +51,7 @@ instance I__.Sub (I__.Obj LocalDC) IDC where
  
 instance IDC_ LocalDC where
         shutdown this = return ()
-        getLoad this
+        load this
           = do (pure ((,,)) <*> ((/) <$!> pure 1 <*> pure 2) <*>
                   ((/) <$!> pure 1 <*> pure 2)
                   <*> ((/) <$!> pure 1 <*> pure 2))

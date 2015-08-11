@@ -35,6 +35,9 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                               ,HS.Ident "TemplateHaskell" -- for cloud-haskell automatic closures boilerplate
                                               ]
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
+                     -- -fwarn-missing-methods:  for making error the missing ABS class methods
+                     -- -fno-ignore-asserts:  for not ignoring asserts (which is the default in Haskell)
+                     -- all other warnings are ignored
                      ] 
                      Nothing 
                      (Just $ (case maybeMain of

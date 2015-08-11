@@ -200,7 +200,7 @@ instance Ord COG where
 data Job = forall o a . (Serializable a) => LocalJob (Obj o) (Fut a) (ABS a)
          | forall o a . (Serializable a) => RemotJob (Obj o) (Fut a) (CH.Closure (ABS a))
          | forall a . (Serializable a) => WakeupSignal a !COG !Int
-         | MachineUp EndPointAddress !Int
+         | MachineUp CH.ProcessId !Int
          deriving Typeable
 
 -- ** COG-held datastructures
@@ -367,6 +367,7 @@ stable2 :: M.Map Fingerprint SomeGet2
 stable2 = M.fromList
     [ (mkSMapEntry (undefined :: Closure (ABS Bool)))
     , (mkSMapEntry (undefined :: Closure (ABS ())))
+    , (mkSMapEntry (undefined :: Closure (ABS (Rational,Rational,Rational)))) -- for load
     , (mkSMapEntry (undefined :: Closure (ABS [Int])))
     , (mkSMapEntry (undefined :: Closure (ABS [String])))
     ]
@@ -382,6 +383,7 @@ stable = M.fromList
     [ (mkSMapEntry (undefined :: Bool))
     , (mkSMapEntry (undefined :: [Int]))
     , (mkSMapEntry (undefined :: Int))
+    , (mkSMapEntry (undefined :: (Rational,Rational,Rational))) -- for load
     , (mkSMapEntry (undefined :: ()))
     , (mkSMapEntry (undefined :: [String]))
     ]
