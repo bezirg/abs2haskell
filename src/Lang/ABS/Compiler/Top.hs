@@ -31,8 +31,6 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                               ,HS.Ident "PatternSignatures" -- for inlining type annotations
                                               ,HS.Ident "FlexibleContexts" -- for some type inference of methods
                                               ,HS.Ident "DeriveDataTypeable" -- for defining ABS exceptions (exceptions are dynamically typed in haskell)
-                                              ,HS.Ident "DeriveGeneric" -- for deriving Binary instances for object records
-                                              ,HS.Ident "TemplateHaskell" -- for cloud-haskell automatic closures boilerplate
                                               ]
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"
                      -- -fwarn-missing-methods:  for making error the missing ABS class methods
@@ -84,18 +82,10 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                      HS.importAs = Nothing,
                                      HS.importSpecs = Nothing
                                     } 
-                     ,HS.ImportDecl {HS.importLoc = HS.noLoc, 
-                                     HS.importModule = HS.ModuleName "Data.Binary", 
-                                     HS.importSrc = False, 
-                                     HS.importQualified = True,
-                                     HS.importPkg = Nothing,
-                                     HS.importAs = Just (HS.ModuleName "B__"),
-                                     HS.importSpecs = Nothing
-                                    } 
                      ]
                       ++        -- the translated ABS imports
                       map tImport imports
-                     ) (let ?moduleName = mname in tDecls decls ++ tRemotable : tRemoteTable : tMain maybeMain)
+                     ) (let ?moduleName = mname in tDecls decls ++ tMain maybeMain)
 
 
 tExport :: (?moduleTable::ModuleTable) => ABS.QType -> ABS.Export -> [HS.ExportSpec]
@@ -143,10 +133,9 @@ tMain (ABS.JustBlock _ (ABS.Bloc block)) =
                                                                ) (HS.BDecls [])]
                                       :
                                       [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "main")) Nothing 
-                                             (HS.UnGuardedRhs (HS.App 
-                                                                     (HS.App (HS.Var (identI "main_is"))
-                                                                            (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
-                                                                      (HS.App (HS.Var $ HS.UnQual $ HS.Ident "__rtable") $ HS.Var (identI "initRemoteTable") ))) (HS.BDecls [])]
+                                             (HS.UnGuardedRhs (HS.App (HS.Var (identI "main_is"))
+                                                                     (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
+                                             ) (HS.BDecls [])]
 
 -- $(remotable ['meth1, 'meth2...])
 tRemotable :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => HS.Decl
@@ -254,10 +243,8 @@ tDecl (ABS.DataParDecl (ABS.UIdent (_,tid)) tyvars constrs) = let
            (map (\case
                  ABS.SinglConstrIdent (ABS.UIdent (_,cid)) -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
                  ABS.ParamConstrIdent (ABS.UIdent (_,cid)) args -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
-           (if hasEx then [(identI "Typeable",[]), (identI "Generic",[])] else [(identI "Eq", []), (identI "Show", []), (identI "Typeable",[]), (identI "Generic",[])])
+           (if hasEx then [(identI "Typeable",[])] else [(identI "Eq", []), (identI "Show", [])])
          
-        -- create an empty instance of Binary (derived by generic)
-        :HS.InstDecl HS.noLoc (map (\ (ABS.UIdent (_,varid)) -> HS.ClassA (identB "Binary") [HS.TyVar $ HS.Ident $ headToLower varid]) tyvars) (identB "Binary") [HS.TyParen (foldl HS.TyApp (HS.TyCon $ HS.UnQual $ HS.Ident $ tid) (map (\ (ABS.UIdent (_,varid)) -> HS.TyVar $ HS.Ident $ headToLower varid) tyvars))] []
         :
         if hasEx                
         -- then manual Eq instance
@@ -359,26 +346,8 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                                      HS.Match HS.noLoc (HS.Ident "compare")
                                      [HS.PWildCard, HS.PWildCard] Nothing (HS.UnGuardedRhs $ HS.Con $ identI "GT") (HS.BDecls [])
                                     ]]
-       -- instance B__.Binary I where
-       : HS.InstDecl HS.noLoc [] (identB "Binary") [HS.TyCon $ HS.UnQual $ HS.Ident tname]
-           [HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident "put")
-                                       [HS.PApp (HS.UnQual $ HS.Ident tname) [HS.PVar $ HS.Ident "x"]] Nothing 
-                                         (HS.UnGuardedRhs $ HS.Do [HS.Qualifier (HS.App (HS.Var $ identB "put") (HS.App (HS.Var $ identI "encodeFingerprint") (HS.App (HS.Var $ identI "fingerprint") (HS.Var $ HS.UnQual $ HS.Ident "x")))),
-                                                                   HS.Qualifier (HS.App (HS.Var $ identB "put") (HS.Var $ HS.UnQual $ HS.Ident "x"))]) (HS.BDecls [])]
-           ,HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident "get") [] Nothing
-                                       (HS.UnGuardedRhs $ HS.Do [HS.Generator HS.noLoc (HS.PVar $ HS.Ident "fp") (HS.Var $ identB "get"),
-                                                                 HS.Qualifier (HS.Case (HS.App (HS.App (HS.Var $ identI "lookup") (HS.App (HS.Var $ identI "decodeFingerprint") (HS.Var $ HS.UnQual $ HS.Ident "fp"))) (HS.Var $ HS.UnQual $ HS.Ident $ "stable_" ++ tname))
-                                                                                 [HS.Alt HS.noLoc (HS.PApp (HS.UnQual $ HS.Ident "Just") [HS.PParen (HS.PApp (HS.UnQual $ HS.Ident $ "SomeGet_" ++ tname) [HS.PVar $ HS.Ident "someget"])]) (HS.UnGuardedAlt (HS.InfixApp (HS.Con $ HS.UnQual $ HS.Ident tname) (HS.QVarOp (HS.UnQual (HS.Symbol "<$!>"))) (HS.Var $ HS.UnQual $ HS.Ident "someget"))) (HS.BDecls [])
-                                                                                 ,HS.Alt HS.noLoc (HS.PApp (HS.UnQual $ HS.Ident "Nothing") []) (HS.UnGuardedAlt (HS.App (HS.Var $ identI "error") (HS.Lit $ HS.String $ "Binary " ++ tname ++ ": fingerprint unknown"))) (HS.BDecls [])
-                                                                                 ])]) (HS.BDecls [])]
-           ]
-
-       : HS.PatBind HS.noLoc (HS.PVar (HS.Ident $ "stable_" ++ tname)) Nothing (HS.UnGuardedRhs (HS.App (HS.Var (identI "fromList")) (HS.List $map (\ (ABS.UIdent (_,cname)) -> HS.Paren (HS.App (HS.Var (HS.UnQual (HS.Ident "mkSMapEntry"))) (HS.Paren (HS.ExpTypeSig HS.noLoc (HS.Var $ identI "undefined") (HS.TyApp (HS.TyCon (identI "Obj")) (HS.TyCon (HS.UnQual (HS.Ident cname)))))))) collectImplementingClasses))) (HS.BDecls [HS.TypeSig HS.noLoc [HS.Ident "mkSMapEntry"] (HS.TyForall (Just [HS.UnkindedVar (HS.Ident "a")]) [HS.ClassA (HS.UnQual (HS.Ident $ tname ++ "_")) [HS.TyVar (HS.Ident "a")],HS.ClassA (identI "Serializable") [HS.TyVar (HS.Ident "a")]] (HS.TyFun (HS.TyApp (HS.TyCon (identI "Obj")) (HS.TyVar (HS.Ident "a"))) (HS.TyTuple HS.Boxed [HS.TyCon (identI "Fingerprint"),HS.TyCon (HS.UnQual (HS.Ident $ "SomeGet_" ++ tname ))]))) , HS.FunBind [HS.Match HS.noLoc (HS.Ident "mkSMapEntry") [HS.PVar (HS.Ident "a")] Nothing (HS.UnGuardedRhs (HS.Tuple HS.Boxed [HS.App (HS.Var (identI "fingerprint")) (HS.Var (HS.UnQual (HS.Ident "a"))),HS.App (HS.Con (HS.UnQual (HS.Ident $ "SomeGet_" ++ tname))) (HS.Paren (HS.ExpTypeSig HS.noLoc (HS.Var (identB "get")) (HS.TyApp (HS.TyCon (identB "Get")) (HS.TyParen (HS.TyApp (HS.TyCon (identI "Obj")) (HS.TyVar (HS.Ident "a")))))))])) (HS.BDecls [])]])
-       : HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident $ "SomeGet_" ++ tname) [] [HS.QualConDecl HS.noLoc [HS.UnkindedVar (HS.Ident "a")] [HS.ClassA (HS.UnQual (HS.Ident $ tname ++ "_")) [HS.TyVar (HS.Ident "a")],HS.ClassA (identI "Serializable") [HS.TyVar (HS.Ident "a")]] (HS.ConDecl (HS.Ident $ "SomeGet_" ++ tname) [HS.UnBangedTy $ HS.TyParen (HS.TyApp (HS.TyCon (identB "Get")) (HS.TyParen (HS.TyApp (HS.TyCon (identI "Obj")) (HS.TyVar (HS.Ident "a")))))])] []
-
 
        : generateSubs tname (filter (\ (ABS.QTyp qids) -> qids /= [ABS.QTypeSegmen $ ABS.UIdent (p,"I__.Root")])  extends) 
-       ++ (map (tMethRemote tname) ms)
 
 
     where
@@ -444,7 +413,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                                                                                                      HS.TyCon (HS.UnQual (HS.Ident ident)) -> (if ident `elem` ["Int", "Bool", "Rational", "Unit"] then HS.BangedTy else HS.UnBangedTy) (tType t)
                                                                                                                 -- TODO: unpack the pairs+triples
                                                                                                                      _ -> HS.UnBangedTy (tType t)
-                                                                                                               )) (M.toAscList allFields))]  [(identI "Typeable",[]), (identI "Generic", [])]
+                                                                                                               )) (M.toAscList allFields))]  []
         :
 
         -- the smart constructor
@@ -506,8 +475,6 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                                 else []
                ) 
               )
-       -- the empty Binary instance (deriving binary through generic)
-       : HS.InstDecl HS.noLoc [] (identB "Binary") [HS.TyCon $ HS.UnQual $ HS.Ident $ clsName] []
 
        :
        -- create the typeclass-instances

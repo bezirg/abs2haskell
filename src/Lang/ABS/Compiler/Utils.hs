@@ -8,7 +8,6 @@ module Lang.ABS.Compiler.Utils
     ,joinQualTypeIds
     ,joinTTypeIds
     ,identI
-    ,identB
     ,symbolI
     ,headToLower, typOfConstrType
     -- * AST Queries/collecting
@@ -49,12 +48,6 @@ joinTTypeIds qtids = concat $ intersperse "." $ map (\ (ABS.TTypeSegmen (ABS.UId
 -- | create Include-qualified Haskell *identifiers* for the generated stub code to *not clash* with ABS user-written code
 identI :: String -> HS.QName
 identI str = HS.Qual (HS.ModuleName "I__") (HS.Ident str)
-
--- | create Include-qualified Haskell *identifiers* for the Binary generated stub code to *not clash* with ABS user-written code
--- and I__ include code
-identB :: String -> HS.QName
-identB str = HS.Qual (HS.ModuleName "B__") (HS.Ident str)
-
 
 -- | create Include-qualified Haskell *symbols* for the generated stub code to *not clash* with ABS user-written code
 symbolI :: String -> HS.QName

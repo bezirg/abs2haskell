@@ -8,10 +8,8 @@
 
 module Lang.ABS.Compiler.Include 
     (
-     -- * Typeable and Binary (through Generic) must be automatically derived on all datatypes and classes
-     -- typeable must be derived for newly-created ABS exceptions so as to be Haskell-compatible
-     Data.Typeable.Typeable, GHC.Generics.Generic, Data.Binary.Binary,
-     Prelude.error,
+     Data.Typeable.Typeable,    -- for the deriving of runtime exceptions
+     Prelude.error,             -- for non-runtime/development errors
      -- * lifting State operations and IO operations (for both threads and cloudhaskell) to the ABS monad
      Control.Monad.Trans.Class.lift, Control.Monad.IO.Class.liftIO,
 
@@ -35,13 +33,12 @@ module Lang.ABS.Compiler.Include
      O.Ord, O.Ordering (..), O.compare,
 
      empty_fut, empty_pro,
-     initRemoteTable,
      -- * Haskell's 'negate' (-) unary function used in lifted code
      
      -- | Haskell's unary (-) has the same repr as the binary (-) subtract. When we have to lift code, we cannot use (-),
      -- because Haskell defaults to 'subtract'. Thus, instead, we explicitly lift and call the 'negate' function.
      Prelude.negate,
-     module Control.Distributed.Process.Serializable, Data.Map.Strict.lookup, Data.Map.Strict.fromList, processNodeId, send,remotable,mkClosure, (Prelude..), toDynamic, registerStatic
+     Data.Map.Strict.lookup, Data.Map.Strict.fromList, (Prelude..), 
     )
  where
 
@@ -56,18 +53,9 @@ import qualified Control.Monad.Trans.State.Strict as S
 import qualified Data.Typeable
 import qualified Control.Monad.Catch
 import qualified Control.Exception.Base (PatternMatchFail (..), throw)
-import Control.Applicative
 import Lang.ABS.Runtime.Base
-import Control.Distributed.Process (processNodeId, send)
-import Control.Distributed.Process.Closure (remotable, mkClosure)
-import Control.Distributed.Process.Node (initRemoteTable)
-import qualified GHC.Generics (Generic)
-import qualified Data.Binary (Binary)
 import qualified Data.Map.Strict (lookup, fromList)
-import Control.Distributed.Process.Serializable
-import Control.Distributed.Static (registerStatic)
 import qualified Data.Ord as O
-import Data.Rank1Dynamic (toDynamic)
 
 -- | this is like a Control.Exception.Handler, but is only for running pure code. Used together with caseEx
 data PHandler a = forall e . Control.Monad.Catch.Exception e => PHandler (e -> Maybe a)
@@ -102,11 +90,11 @@ readRef r = liftIO $ readIORef r
 
 -- for easier code generation
 empty_fut :: (Root_ o) => Obj o -> ABS (Fut a)
-empty_fut (ObjectRef _ hereCOG _) = FutureRef <$> liftIO newEmptyMVar <*> pure hereCOG <*> pure (-10 :: Int)
+empty_fut (ObjectRef _ hereCOG _) = liftIO $ FutureRef <$> newEmptyMVar <*> pure hereCOG <*> pure (-10 :: Int)
 
 -- for easier code generation
 empty_pro :: (Root_ o) => Obj o -> ABS (Promise a)
-empty_pro (ObjectRef _ hereCOG _) = PromiseRef <$> liftIO newEmptyMVar <*> liftIO newEmptyMVar <*> pure hereCOG <*> pure (-11 :: Int)
+empty_pro (ObjectRef _ hereCOG _) = liftIO $ PromiseRef <$> newEmptyMVar <*> newEmptyMVar <*> pure hereCOG <*> pure (-11 :: Int)
 
 -- | A way to de-reference an object-ref from the heap and read its attributes
 --
