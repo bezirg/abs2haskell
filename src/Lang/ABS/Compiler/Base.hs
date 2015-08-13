@@ -2,6 +2,7 @@
 module Lang.ABS.Compiler.Base where
 
 import qualified Lang.ABS.Compiler.BNFC.AbsABS as ABS
+import qualified Language.Haskell.Exts.Syntax as HS (Exp)
 import qualified Data.Map as M (Map)
 import Control.Monad.Trans.Reader (Reader, ReaderT)
 import Control.Monad.Trans.State (State)
@@ -58,6 +59,7 @@ type ExprLiftedM = Reader (ScopeTable -- current functional scope (introduced by
                     ,Bool -- is init block? then it cannot use await and/or synchronous calls
                     ,[ABS.LIdent] -- a list of visible methods (exluding non-methods); needed by exprlifted thismethcalls
                     ,Bool         -- if is standalone RHS, no lhs (for optimizing async call)
+                    ,Maybe HS.Exp -- rest statements for sync continuation passing
                     )
 
 -- ^ The translation monad of ABS (monadic) statements, inside the ABS object-layer

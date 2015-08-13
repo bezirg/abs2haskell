@@ -50,14 +50,6 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                                      HS.importAs = Just $ HS.ModuleName "I__",
                                      HS.importSpecs = Nothing
                                     }
-                      ,HS.ImportDecl {HS.importLoc = HS.noLoc, 
-                                     HS.importModule = HS.ModuleName "Lang.ABS.Runtime.Core", 
-                                     HS.importSrc = False, 
-                                     HS.importQualified = True,
-                                     HS.importPkg = Nothing,
-                                     HS.importAs = Just $ HS.ModuleName "I__",
-                                     HS.importSpecs = Nothing
-                                    }
                      ,HS.ImportDecl {HS.importLoc = HS.noLoc, 
                                      HS.importModule = HS.ModuleName "Lang.ABS.Compiler.Include", 
                                      HS.importSrc = False, 
@@ -117,13 +109,13 @@ tImport' m (ABS.AnyTyIden ident@(ABS.UIdent (_,var))) = case find (\ (ModuleInfo
                                                                                        else [HS.IThingAll $ HS.Ident var] -- compromise since ABS cannot distinguish type constructors to data constructors
                                                      Nothing -> [HS.IThingAll $ HS.Ident var]
 
--- | Creates the mainABS wrapper i.e. main = main_is mainABS
+-- | Creates the mainABS wrapper i.e. main = main_is' mainABS
 -- only if the module has a main block and is declared as main source file in the conf
 tMain :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.MaybeBlock -> [HS.Decl]
 tMain ABS.NoBlock = []
 tMain (ABS.JustBlock _ (ABS.Bloc block)) = 
        -- main can only return with: return Unit;
-       HS.FunBind [HS.Match HS.noLoc (HS.Ident "mainABS") [HS.PVar $ HS.Ident "this"] Nothing (HS.UnGuardedRhs $ tBlockWithReturn block
+       HS.FunBind [HS.Match HS.noLoc (HS.Ident "mainABS'") [HS.PVar $ HS.Ident "this", HS.PVar $ HS.Ident "return'"] Nothing (HS.UnGuardedRhs $ tBlockWithReturn block
                                                                       ("Top") -- class-name
                                                                       M.empty -- class-scope -- (error "No context for this")
                                                                       M.empty -- empty method params
@@ -133,8 +125,8 @@ tMain (ABS.JustBlock _ (ABS.Bloc block)) =
                                                                ) (HS.BDecls [])]
                                       :
                                       [HS.PatBind HS.noLoc (HS.PVar (HS.Ident "main")) Nothing 
-                                             (HS.UnGuardedRhs (HS.App (HS.Var (identI "main_is"))
-                                                                     (HS.Var (HS.UnQual (HS.Ident "mainABS")) ))
+                                             (HS.UnGuardedRhs (HS.App (HS.Var $ HS.UnQual $ HS.Ident "main_is'")
+                                                                     (HS.Var (HS.UnQual (HS.Ident "mainABS'")) ))
                                              ) (HS.BDecls [])]
 
 -- $(remotable ['meth1, 'meth2...])
@@ -351,7 +343,7 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
 
 
     where
-    -- method_signature :: args -> Obj a (THIS) -> ABS result
+    -- method_signature :: args -> Obj a (THIS) -> (res -> ABS ()) -> ABS ()
     tMethSig :: String -> ABS.AnnotMethSignat -> HS.ClassDecl
     tMethSig ityp (ABS.AnnMethSig _ann (ABS.MethSig tReturn (ABS.LIdent (mpos,mname)) pars))  = 
         if mname == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null pars))
@@ -360,9 +352,9 @@ tDecl (ABS.ExtendsDecl iid@(ABS.UIdent (p,tname)) extends ms) = HS.ClassDecl
                ((foldr  -- function application is right-associative
                  (\ tpar acc -> HS.TyFun tpar acc)
                  -- the this objectref passed as input to the method
-                 (HS.TyApp ((HS.TyCon $ identI "ABS") 
-                                   )
-                  (tType tReturn))
+                 -- (res -> ABS ()) -> ABS ()
+                 (HS.TyFun (HS.TyParen $ HS.TyFun (tType tReturn) (HS.TyApp (HS.TyCon $ identI "ABS") (HS.TyCon $ HS.Special $ HS.UnitCon)))
+                        (HS.TyApp (HS.TyCon $ identI "ABS") (HS.TyCon $ HS.Special $ HS.UnitCon)))
                 )
                 (map (\ (ABS.Par typ _) -> tType typ) pars ++ [(HS.TyApp (HS.TyCon $ identI "Obj") (HS.TyVar $ HS.Ident "a"))]))
 
@@ -427,7 +419,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
                            ABS.FieldClassBody t (ABS.LIdent (p,fid)) ->  
                                if isInterface t 
                                then HS.App (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident fid] acc)
-                                         (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.TSimple (ABS.QTyp qsegs)) -> joinQualTypeIds qsegs) t) $ (HS.Var $ HS.UnQual $ HS.Ident "null"))
+                                         (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ (\ (ABS.TSimple (ABS.QTyp qsegs)) -> joinQualTypeIds qsegs) t) $ (HS.Var $ HS.UnQual $ HS.Ident "null'"))
                                else case t of
                                       -- it is an unitialized future (abs allows this)
                                       ABS.TGen (ABS.QTyp [ABS.QTypeSegmen (ABS.UIdent (_,"Fut"))])  _ -> 
@@ -504,7 +496,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
              if mident == "run" && (tReturn /= ABS.TSimple (ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((-1,-1), "Unit")]) || not (null mparams))
              then errorPos mpos "run should have zero parameters and return type Unit"
              else  -- the underline non-method implementation
-                 HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) ((map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams) ++ [HS.PVar $ HS.Ident "this"])
+                 HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) ((map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams) ++ [HS.PVar $ HS.Ident "this", HS.PVar $ HS.Ident "return'"])
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
                                              (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
@@ -521,9 +513,12 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
 
          -- treat it as a special instance method, since it disallows await and synchronous calls
          tInitDecl interfName (ABS.MethClassBody _ (ABS.LIdent (_,mident)) mparams (ABS.Bloc block)) = 
-             let HS.Do tinit = tInitBlockWithReturn block clsName allFields (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
+             let tinit = tInitBlockWithReturn 
+                         (if isJust mRun
+                          then block ++ [ABS.AnnStm [] $ ABS.SExp $ ABS.ExpE $ ABS.ThisAsyncMethCall (ABS.LIdent ((1,1), "run")) []]
+                          else block) clsName allFields (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 
                                                        M.insertWith (const $ const $ errorPos p $ "Parameter " ++ show pident ++ " is already defined") pident ptyp acc) M.empty  mparams) [] interfName methsList
-             in HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this"]) Nothing (HS.UnGuardedRhs $ HS.Do $ if isJust mRun then tinit++ [HS.Qualifier (HS.App (HS.Paren (HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "this") (HS.QVarOp (HS.UnQual (HS.Symbol "^!!")))  (HS.Var $ HS.UnQual $ HS.Ident "this"))) (HS.Var $ HS.UnQual $ HS.Ident "run"))] else tinit)  (HS.BDecls (map (tNonMethDecl interfName) nonMethods))]
+             in HS.InsDecl $ HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar $ HS.Ident "this", HS.PVar $ HS.Ident "return'"]) Nothing (HS.UnGuardedRhs $ tinit)  (HS.BDecls (map (tNonMethDecl interfName) nonMethods))]
 
          tInitDecl _ _ = error "Second parsing error: Syntactic error, no field declaration accepted here"
 
@@ -533,7 +528,7 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
              then errorPos mpos "run should have zero parameters and return type Unit"
              else  -- the underline non-method implementation
                  HS.InsDecl $ 
-                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar (HS.Ident "this")] )
+                      HS.FunBind [HS.Match HS.noLoc (HS.Ident mident) (map (\ (ABS.Par _ (ABS.LIdent (_,pid))) -> HS.PVar (HS.Ident pid)) mparams ++ [HS.PVar (HS.Ident "this"), HS.PVar (HS.Ident "return'")] )
                                     Nothing (HS.UnGuardedRhs $ tBlockWithReturn block clsName allFields 
                                              -- method scoping of input arguments
                                              (foldl (\ acc (ABS.Par ptyp pident@(ABS.LIdent (p,_))) -> 

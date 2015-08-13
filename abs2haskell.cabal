@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.8.9
+version:               1.9.7
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -24,7 +24,6 @@ library
                       transformers>=0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
-                      monad-coroutine>=0.9.0.1,
                       -- for lifting exceptions to ABS monad
                       exceptions>=0.6.1,
                       cmdargs,
@@ -36,8 +35,6 @@ library
                      -- the ABS-Haskell runtime system
                      -- declarations of data structures used in the Runtime
                      Lang.ABS.Runtime.Base,
-                     -- the logic of the main thread and each COG thread of the ABS-Runtime
-                     Lang.ABS.Runtime.Core,
                      -- runtime building-blocks reflecting the primitives of the ABS language (its keywords/statements)
                      Lang.ABS.Runtime.Prim,
                      -- compiler generates Haskell-code that depends on this wrapper module of helper functions 

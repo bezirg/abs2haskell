@@ -19,50 +19,230 @@ import qualified Data.Map as M
 
 -- | Translating a method block or main block that can return
 tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> [ABS.LIdent] -> HS.Exp
-tBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = evalState (runReaderT 
-                                                                                  (tBlock stmts True)
-                                                                                  (clsScope, mthScope, interfName, cls, False, meths))
-                                                                       scopes
+tBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = 
+    let stmts' = if null stmts
+                 then [ABS.AnnStm [] $ ABS.SReturn $ ABS.ExpP $ ABS.ESinglConstr $ ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((1,1), "Unit")]]
+                 else case last stmts of
+                   ABS.AnnStm _ (ABS.SReturn _) -> stmts
+                   _ -> stmts ++ [ABS.AnnStm [] $ ABS.SReturn $ ABS.ExpP $ ABS.ESinglConstr $ ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((1,1), "Unit")]]
+    in evalState (runReaderT 
+                  (tBlock stmts' True)
+                  (clsScope, mthScope, interfName, cls, False, meths))
+    scopes
 
 -- | Translating an init block
 --
 -- can always return (with: return Unit),
 -- can not run await and/or sync calls
 tInitBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> [ABS.LIdent] -> HS.Exp
-tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = evalState (runReaderT 
-                                                                                      (tBlock stmts True)
-                                                                                      (clsScope, mthScope, interfName, cls, True, meths))
-                                                                           scopes
+tInitBlockWithReturn stmts cls clsScope mthScope scopes interfName meths = 
+    let stmts' = if null stmts
+                 then [ABS.AnnStm [] $ ABS.SReturn $ ABS.ExpP $ ABS.ESinglConstr $ ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((1,1), "Unit")]]
+                 else case last stmts of
+                   ABS.AnnStm _ (ABS.SReturn _) -> stmts
+                   _ -> stmts ++ [ABS.AnnStm [] $ ABS.SReturn $ ABS.ExpP $ ABS.ESinglConstr $ ABS.QTyp [ABS.QTypeSegmen $ ABS.UIdent ((1,1), "Unit")]]
+    in evalState (runReaderT 
+                  (tBlock stmts' True)
+                  (clsScope, mthScope, interfName, cls, True, meths))
+    scopes
 
 -- | Translating any block . This functions pushes a new scope to the 'StmtM' scopes-stack-state.
 tBlock :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM HS.Exp
-tBlock stmts canReturn | null stmts = return $ HS.Do [HS.Qualifier eReturnUnit]
-                       | otherwise = do
+tBlock stmts canReturn = do
   ts <- mapReaderT (withState (M.empty:)) $ tStmts stmts canReturn -- add the new scope level
   lift $ modify tail     -- remove the added scope level, after executing
-  return $ HS.Do $ ts  ++
-                         -- if the last stmt is a dec or assignment, then add a return (R ())
-                         -- 
-                       (case (\ (ABS.AnnStm _ s) -> s) $ last stmts of
-                          ABS.SDec _ _ -> [HS.Qualifier eReturnUnit]
-                          ABS.SAss _ _ -> [HS.Qualifier eReturnUnit]
-                          ABS.SExp _ ->  [HS.Qualifier eReturnUnit] -- although an expression has a value, we throw it away, since it must explicitly be returned
-                          ABS.SFieldAss _ _ -> [HS.Qualifier eReturnUnit]
-                          ABS.SDecAss _ _ _ ->  [HS.Qualifier eReturnUnit]
-                          ABS.SWhile _ _ -> [HS.Qualifier eReturnUnit]
-                          _ -> []
-                       )
+  return $ case ts of
+             [] -> eReturnUnit
+             _ -> HS.Do $ case last ts of
+                           (HS.Generator _ _ _) -> ts ++  [HS.Qualifier eReturnUnit]
+                           _ -> ts
       where
         eReturnUnit :: HS.Exp
-        eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "return")
-                             (HS.Con $ HS.Special $ HS.UnitCon)) -- return ()
+        eReturnUnit = (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure")
+                             (HS.Con $ HS.Special $ HS.UnitCon)) -- pure ()
 
 
 -- | Translating a bunch of ABS statements
 tStmts :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> Bool -> StmtM [HS.Stmt]
-tStmts ((ABS.AnnStm _ (ABS.SReturn e)):[]) True = tStmt (ABS.SExp e)
+
+tStmts [] _canReturn = return []
+tStmts ((ABS.AnnStm _ (ABS.SReturn (ABS.ExpE eexp@(ABS.SyncMethCall _ _ _)))):[]) True = do
+  texp <- tEffExpStmt eexp False (Just (HS.Var $ HS.UnQual $ HS.Ident "return'"))
+  return [HS.Qualifier $ texp]
+tStmts ((ABS.AnnStm _ (ABS.SReturn (ABS.ExpE eexp@(ABS.ThisSyncMethCall _ _)))):[]) True = do
+  texp <- tEffExpStmt eexp False (Just (HS.Var $ HS.UnQual $ HS.Ident "return'"))
+  return [HS.Qualifier $ texp]
+tStmts ((ABS.AnnStm _ (ABS.SReturn e)):[]) True = do
+  texp <- case e of  -- TODO: have to force to WHNF
+           ABS.ExpE eexp -> tEffExpStmt eexp False Nothing
+           ABS.ExpP texp -> tPureExpStmt texp
+  return [HS.Qualifier $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "return'") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp]
 tStmts (ABS.AnnStm _ (ABS.SReturn _):_) _ = error "Return must be the last statement"
-tStmts [] _canReturn = return $ []
+
+
+tStmts (ABS.AnnStm _ (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) (ABS.ExpE eexp@(ABS.SyncMethCall _ _ _))) : rest) canReturn = do
+  addToScope ident typ -- add to scope, but it's lazy monad, otherwise use Monad.State.Strict
+  fscope <- funScope -- so we have to force to WHNF with a lookup
+  case M.lookup ident fscope of -- has to be a lookup and not a member, to force to WHNF
+      Just _ -> do
+        tafter <- tStmts rest canReturn
+        texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+                   (HS.Do $ (HS.Generator HS.noLoc 
+                                 (case typ of
+                                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                    ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp)))
+                                 (HS.App (HS.Var $ identI "newRefP") (HS.Var $ HS.UnQual $ HS.Ident "res'"))) : tafter))
+        return [HS.Qualifier $ texp]                          
+tStmts (ABS.AnnStm _ (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) (ABS.ExpE eexp@(ABS.ThisSyncMethCall _ _))) : rest) canReturn = do
+  addToScope ident typ -- add to scope, but it's lazy monad, otherwise use Monad.State.Strict
+  fscope <- funScope -- so we have to force to WHNF with a lookup
+  case M.lookup ident fscope of -- has to be a lookup and not a member, to force to WHNF
+      Just _ -> do
+        tafter <- tStmts rest canReturn
+        texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+                   (HS.Do $ (HS.Generator HS.noLoc 
+                                 (case typ of
+                                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
+                                    ptyp -> HS.PatTypeSig HS.noLoc (HS.PVar $ HS.Ident var)  (HS.TyApp (HS.TyCon $ identI "IORef") (tType ptyp)))
+                                 (HS.App (HS.Var $ identI "newRefP") (HS.Var $ HS.UnQual $ HS.Ident "res'"))) : tafter))
+        return [HS.Qualifier $ texp]                          
+
+tStmts (ABS.AnnStm as (ABS.SAss ident@(ABS.LIdent (p,var)) exp@(ABS.ExpE eexp@(ABS.SyncMethCall _ _ _))) : rest) canReturn = do
+  fscope <- funScope
+  (cscope,_,_,_,_,_) <- ask
+  case M.lookup ident fscope of
+      Just _ -> do
+        tafter <- tStmts rest canReturn
+        texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+          (HS.Do $
+            (HS.Qualifier $ HS.App (HS.App (HS.Var $ identI "writeRefP") (HS.Var $ HS.UnQual $ HS.Ident var)) (HS.Var $ HS.UnQual $ HS.Ident "res'"))
+            : tafter))
+        return [HS.Qualifier $ texp]
+      Nothing -> 
+        case M.lookup ident cscope of -- maybe it is in the class scope
+          Just _t -> tStmts ((ABS.AnnStm as (ABS.SFieldAss ident exp)) :rest) canReturn -- then normalize it to a field ass
+          Nothing -> errorPos p (var ++ " not in scope or cannot modify the variable")
+
+
+tStmts (ABS.AnnStm as (ABS.SAss ident@(ABS.LIdent (p,var)) exp@(ABS.ExpE eexp@(ABS.ThisSyncMethCall _ _))) : rest) canReturn = do
+  fscope <- funScope
+  (cscope,_,_,_,_,_) <- ask
+  case M.lookup ident fscope of
+      Just _ -> do
+        tafter <- tStmts rest canReturn
+        texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+          (HS.Do $
+            (HS.Qualifier $ HS.App (HS.App (HS.Var $ identI "writeRefP") (HS.Var $ HS.UnQual $ HS.Ident var)) (HS.Var $ HS.UnQual $ HS.Ident "res'"))
+            : tafter))
+        return [HS.Qualifier $ texp]
+      Nothing -> 
+        case M.lookup ident cscope of -- maybe it is in the class scope
+          Just _t -> tStmts ((ABS.AnnStm as (ABS.SFieldAss ident exp)) :rest) canReturn -- then normalize it to a field ass
+          Nothing -> errorPos p (var ++ " not in scope or cannot modify the variable")
+
+tStmts (ABS.AnnStm as (ABS.SFieldAss ident@(ABS.LIdent (p,var)) (ABS.ExpE eexp@(ABS.SyncMethCall _ _ _))) : rest) canReturn = do
+  (clsScope, _, _, cls,_,_) <- ask
+  tafter <- tStmts rest canReturn
+  texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+        (HS.Do $                         
+               (HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ 
+                          (HS.App (HS.App
+                                 (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "set'") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
+                                 (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "v__", HS.PVar $ HS.Ident "c__"] $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "c__") [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower cls ++ "_" ++ var) (HS.Var $ HS.UnQual $ HS.Ident "v__")]))
+                             (HS.Var $ HS.UnQual $ HS.Ident "res'"))
+                           (HS.Var (HS.UnQual $ HS.Ident "this")))))
+               : tafter)) -- paren are necessary here
+  return [HS.Qualifier $ texp]
+
+tStmts (ABS.AnnStm _ (ABS.SFieldAss ident@(ABS.LIdent (_,var)) (ABS.ExpE eexp@(ABS.ThisSyncMethCall _ _))) : rest) canReturn = do
+  (clsScope, _, _, cls,_,_) <- ask
+  tafter <- tStmts rest canReturn
+  texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "res'"] $
+        (HS.Do $                         
+               (HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ 
+                          (HS.App (HS.App
+                                 (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "set'") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
+                                 (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "v__", HS.PVar $ HS.Ident "c__"] $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "c__") [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower cls ++ "_" ++ var) (HS.Var $ HS.UnQual $ HS.Ident "v__")]))
+                             (HS.Var $ HS.UnQual $ HS.Ident "res'"))
+                           (HS.Var (HS.UnQual $ HS.Ident "this")))))
+               : tafter)) -- paren are necessary here
+  return [HS.Qualifier $ texp]
+
+tStmts (ABS.AnnStm _ (ABS.SExp (ABS.ExpE eexp@(ABS.SyncMethCall _ _ _))) : rest) canReturn = do
+  tafter <- tStmts rest canReturn
+  texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PWildCard] $ (HS.Do $ tafter))                         
+  return [HS.Qualifier $ texp]
+
+tStmts (ABS.AnnStm _ (ABS.SExp (ABS.ExpE eexp@(ABS.ThisSyncMethCall _ _))) : rest) canReturn = do
+  tafter <- tStmts rest canReturn
+  texp <- tEffExpStmt eexp False (Just $ HS.Lambda HS.noLoc [HS.PWildCard] $ (HS.Do $ tafter))                         
+  return [HS.Qualifier $ texp]
+
+
+
+tStmts (ABS.AnnStm _ (ABS.SAwait g) : rest) canReturn = do
+  (_,_,_, cls,isInit,_) <- ask
+  if isInit 
+   then error "Await statements not allowed inside init block"
+   else do
+     texp <- runExpr (tAwaitGuard g cls) False Nothing
+     tafter <- tStmts rest canReturn
+     return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
+                     (HS.Paren $ HS.InfixApp 
+                            (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "await'") (HS.Var $ HS.UnQual $ HS.Ident "this"))
+                               (HS.Do tafter))
+                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") texp)]
+
+tStmts (ABS.AnnStm _ ABS.SSuspend : rest) canReturn = do
+  tafter <- tStmts rest canReturn
+  return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "suspend'") (HS.Var $ HS.UnQual $ HS.Ident "this")) (HS.Do tafter)]
+
+tStmts (ABS.AnnStm _ (ABS.SIf pexp stm): rest) canReturn  = do
+  texp <- tPureExpStmt pexp
+  tthen <- tBlock ((case stm of
+                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
+                     stmt -> [stmt]) ++ 
+                   [ABS.AnnStm [] $ ABS.SExp $ ABS.ExpP $ ABS.EVar $ ABS.LIdent ((1,1), "return'")]
+                  )
+                  False
+  tafter <- tStmts rest canReturn
+  return [HS.Qualifier $ HS.App (HS.App 
+                                       (HS.App (HS.Var $ HS.UnQual $ HS.Ident "ifthenM'") texp)
+                                       (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "return'"] tthen))
+          (HS.Do tafter)]
+
+tStmts (ABS.AnnStm _ (ABS.SIfElse pexp stm_then stm_else) : rest) canReturn = do
+  texp <- tPureExpStmt pexp
+  tthen <- tBlock ((case stm_then of
+                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
+                     stmt -> [stmt]) ++
+                   [ABS.AnnStm [] $ ABS.SExp $ ABS.ExpP $ ABS.EVar $ ABS.LIdent ((1,1), "return'")]
+                  ) False
+  telse <- tBlock ((case stm_else of
+                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
+                     stmt -> [stmt]) ++
+                   [ABS.AnnStm [] $ ABS.SExp $ ABS.ExpP $ ABS.EVar $ ABS.LIdent ((1,1), "return'")])
+                  False
+  tafter <- tStmts rest canReturn
+  return [HS.Qualifier $ HS.App (HS.App
+                                (HS.App
+                                       (HS.App (HS.Var $ HS.UnQual $ HS.Ident "ifthenelseM'") texp)
+                               (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "return'"] tthen))
+                          (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "return'"] telse))
+         (HS.Do tafter)]
+
+tStmts (ABS.AnnStm _ (ABS.SWhile pexp stm) : rest) canReturn = do
+  texp <- tPureExpStmt pexp
+  tblock <- tBlock ((case stm of
+                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
+                     stmt -> [stmt]) ++
+                   [ABS.AnnStm [] $ ABS.SExp $ ABS.ExpP $ ABS.EVar $ ABS.LIdent ((1,1), "return'")]) False
+  tafter <- tStmts rest canReturn
+  return [HS.Qualifier $ HS.App (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while'") texp) 
+                                       (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "return'"] tblock)) (HS.Do tafter)]              
+
+
+tStmts (ABS.AnnStm _ ABS.SSkip : rest) canReturn = tStmts rest canReturn -- ignore skip
 tStmts (ABS.AnnStm _ stmt:rest) canReturn = do
     s <- tStmt stmt
     r <- tStmts rest canReturn
@@ -84,25 +264,12 @@ tStmt :: (?moduleTable::ModuleTable,?moduleName::ABS.QType) => ABS.Stm -> StmtM 
 --     texp <- runExpr $ tNonSyncOrAsync "^!!" method args
 --     return $ [HS.Qualifier texp]
 
+tStmt (ABS.SExp (ABS.ExpP (ABS.EVar (ABS.LIdent (_,"return'"))))) = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "return'")] -- tying-the-knot for if/while
 tStmt (ABS.SExp pexp) = do
   texp <- case pexp of  -- TODO: have to force to WHNF
-           ABS.ExpE eexp -> tEffExpStmt eexp True
+           ABS.ExpE eexp -> tEffExpStmt eexp True Nothing
            ABS.ExpP texp -> tPureExpStmt texp
   return [HS.Qualifier texp]
-
-tStmt ABS.SSuspend = return [HS.Qualifier (HS.Var $ HS.UnQual $ HS.Ident "suspend")]
-
-tStmt (ABS.SAwait g) = do
-  (_,_,_, cls,isInit,_) <- ask
-  if isInit 
-   then error "Await statements not allowed inside init block"
-   else do
-     texp <- runExpr (tAwaitGuard g cls) False
-     return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
-                     (HS.Paren $ HS.InfixApp 
-                            (HS.Var $ HS.UnQual $ HS.Ident "await")
-                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
-                            (HS.InfixApp texp (HS.QVarOp $ HS.UnQual $ HS.Symbol "<*>") (HS.App (HS.Var $ HS.UnQual $ HS.Ident "pure") (HS.Var $ HS.UnQual $ HS.Ident "this"))))]
 
 tStmt (ABS.SBlock stmts) = do
   tblock <- tBlock stmts False
@@ -111,45 +278,20 @@ tStmt (ABS.SBlock stmts) = do
 tStmt (ABS.SThrow pexp) = do
   texp <- tPureExpStmt pexp
   return [HS.Qualifier (HS.App 
-                              (HS.Var (HS.UnQual $ HS.Ident "throw"))
+                              (HS.Var (HS.UnQual $ HS.Ident "throw'"))
                               texp
                        )]  -- takes a pureexp to throw
 
-tStmt (ABS.SSkip) = return [HS.Qualifier $ HS.Var $ HS.UnQual $ HS.Ident "skip"]
-
-tStmt (ABS.SIf pexp stm) = do
-  texp <- tPureExpStmt pexp
-  tblock <- tBlock [stm] False
-  return [HS.Qualifier $ HS.App 
-                (HS.App (HS.Var $ HS.UnQual $ HS.Ident "ifthenM") texp)
-                tblock]
-
-tStmt (ABS.SIfElse pexp stm_then stm_else) = do
-  texp <- tPureExpStmt pexp
-  tthen <- tBlock [stm_then] False
-  telse <- tBlock [stm_else] False
-  return [HS.Qualifier $ (HS.App
-                                (HS.App
-                                       (HS.App (HS.Var $ HS.UnQual $ HS.Ident "ifthenelseM") texp)
-                               tthen)
-                          telse)]
 
 tStmt (ABS.SAssert pexp) = do
   texp <- tPureExpStmt pexp
-  return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "assert") 
+  return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "assert'") 
                           texp)]
 
 tStmt (ABS.SPrint pexp) = do
   texp <- tPureExpStmt pexp
   return [HS.Qualifier (HS.App (HS.Var $ HS.UnQual $ HS.Ident "println") 
                           texp)]
-
-tStmt (ABS.SWhile pexp stm) = do
-  texp <- tPureExpStmt pexp
-  tblock <- tBlock (case stm of
-                     ABS.AnnStm _ (ABS.SBlock stmts) ->  stmts 
-                     stmt -> [stmt]) False
-  return [HS.Qualifier $ HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "while") texp) tblock]              
 
 tStmt (ABS.SDec typ ident@(ABS.LIdent (p,var))) = -- just rewrites it to Interface x=null, adds also to current scope
     if isInterface typ 
@@ -180,7 +322,7 @@ tStmt (ABS.SDecAss typ ident@(ABS.LIdent (_,var)) exp) = do
       Just _ -> do
         texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False Nothing
         return [HS.Generator HS.noLoc 
                 (case typ of
                    ABS.TUnderscore -> (HS.PVar $ HS.Ident var) -- infer the type
@@ -194,7 +336,7 @@ tStmt (ABS.SAss ident@(ABS.LIdent (p,var)) exp) = do
       Just _ -> do
         texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False Nothing
         return [HS.Qualifier $ HS.App
                 -- lhs
                 (HS.App (HS.Var $ identI "writeRef") (HS.Var $ HS.UnQual $ HS.Ident var))
@@ -214,10 +356,10 @@ tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
   (clsScope, _, _, cls,_,_) <- ask
   texp <- case exp of
            ABS.ExpP pexp -> tPureExpStmt pexp
-           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False
+           ABS.ExpE eexp -> liftInterf ident eexp `ap` tEffExpStmt eexp False Nothing
 
   return [HS.Qualifier (HS.Paren $ HS.App (HS.Var $ identI "join") $ HS.Paren $ HS.InfixApp 
-                          (HS.App (HS.App (HS.Var $ identI $ "set") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
+                          (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "set'") (HS.Lit $ HS.Int $ toInteger $ M.findIndex ident clsScope))
                                  (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "v__", HS.PVar $ HS.Ident "c__"] $ HS.RecUpdate (HS.Var $ HS.UnQual $ HS.Ident "c__") [HS.FieldUpdate (HS.UnQual $ HS.Ident $ headToLower cls ++ "_" ++ var) (HS.Var $ HS.UnQual $ HS.Ident "v__")]))
                           (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>")
                           (HS.InfixApp   
@@ -231,7 +373,7 @@ tStmt (ABS.SFieldAss ident@(ABS.LIdent (_,var)) exp) = do
 tStmt (ABS.SGive pro val) = do
   tpro <- tPureExpStmt pro
   tval <- tPureExpStmt val
-  return [HS.Qualifier $ HS.App (HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "pro_give")
+  return [HS.Qualifier $ HS.App (HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident $ "pro_give'")
                                        (HS.Paren tpro))
                           tval] -- paren are necessary here
   
@@ -241,7 +383,7 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
            ABS.NoFinally -> return id
            ABS.JustFinally fstm -> do
                          tblock <- tBlock [fstm] False 
-                         return $ \ try_catch -> HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "finally")  try_catch) tblock
+                         return $ \ try_catch -> HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "finally'")  try_catch) tblock
                                    
   ttry <- tBlock [try_stm] False
   tbranches <- mapM (\ (ABS.CatchBranc pat cstm) -> do
@@ -272,7 +414,7 @@ tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
              -- (optionally) wrap the try-catch in a finally block
              (tfin
               (HS.App
-                     (HS.App (HS.Var (HS.UnQual $ HS.Ident "catches"))
+                     (HS.App (HS.Var (HS.UnQual $ HS.Ident "catches'"))
                         ttry)
                      (HS.List tbranches)))]
 

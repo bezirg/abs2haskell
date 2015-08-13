@@ -1,5 +1,5 @@
 -- | All the types and datastructures used in the ABS-Haskell runtime
-{-# LANGUAGE ExistentialQuantification, EmptyDataDecls, MultiParamTypeClasses #-}
+{-# LANGUAGE ExistentialQuantification, EmptyDataDecls, MultiParamTypeClasses, DeriveDataTypeable #-}
 
 module Lang.ABS.Runtime.Base where
 
@@ -12,8 +12,6 @@ import qualified Data.Set as S (Set)
 
 -- for the ABS monad
 import Control.Monad.Trans.State.Strict (StateT)
-import Control.Monad.Coroutine
-import Control.Monad.Coroutine.SuspensionFunctors (Yield)
 
 -- for exceptions
 import qualified Control.Monad.Catch
@@ -77,8 +75,8 @@ instance Sub Root Root where
 -- NOTE: Although not directly exposed to the ABS user, it may potentially name-clash with a user-written "Root_" interface or class
 -- All objects must be serializable (not only their references, but object records too, when we call new)
 class Root_ a where
-    __init :: Obj a -> ABS () 
-    __init _ = return ()       -- default implementation of init
+    __init :: Obj a -> (() -> ABS ()) -> ABS () 
+    __init _ ret = ret ()       -- default implementation of init
 
 -- | The root-type of all objects
 --
@@ -133,7 +131,7 @@ instance (Root_ a) => Sub (Obj a) Root where
 -- 2. a reader configuration "AConf" that holds references to this-object and this-cog
 -- 3. the state of the current COG "AState" to modify the COG-state-internals
 -- 4. the Process monad (for remotely communicating messages between actors and doing other IO operations) 
-type ABS = Coroutine (Yield AwaitOn) (StateT AState IO)
+type ABS = StateT AState IO
 
 -- | Every ABS monad (computation) holds a state AState
 data AState = AState {
@@ -173,7 +171,7 @@ instance Ord COG where
     COG (_c1,p1) `compare` COG (_c2,p2) = p1 `compare` p2
 
 -- | Incoming jobs to the COG thread
-data Job = forall a . LocalJob (Fut a) (ABS a)
+data Job = LocalJob (ABS ())
          | forall a . WakeupSignal a !COG !Int
 
 -- ** COG-held datastructures

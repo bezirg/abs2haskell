@@ -27,7 +27,7 @@ module Lang.ABS.Compiler.Include
      Control.Monad.Catch.fromException,
 
      -- * For creating local variable (by the ABS user). It is the same as the above IORef-operations, but lifted for operating in the ABS-monad.
-     newRef, readRef, writeRef, IORef,  -- this should remain in MonadIO monad for polymorphic (IO-fimported) code generation
+     newRef, newRefP, readRef, writeRef, writeRefP, IORef,  -- this should remain in MonadIO monad for polymorphic (IO-fimported) code generation
 
      -- * For generating Ord instances for interface-wrappers
      O.Ord, O.Ordering (..), O.compare,
@@ -74,33 +74,51 @@ caseEx e handlers = foldr tryHandler (Control.Exception.Base.throw $ Control.Exc
 -- These are kept abstract (MonadIO), because we may have to interface with foreign code of IO
 -- TODO: maybe SPECIALIZE
 
+{-# INLINE newRef #-}
 newRef :: MonadIO m => m a -> m (IORef a)
 newRef v = do
   res <- v
   liftIO $ newIORef res
 
+{-# INLINE newRefP #-}
+newRefP :: MonadIO m => a -> m (IORef a)
+newRefP = liftIO . newIORef
 
+{-# INLINE writeRef #-}
 writeRef :: MonadIO m => IORef a -> m a -> m ()
 writeRef r v = do
   res <- v
   liftIO $ writeIORef r res
 
+{-# INLINE writeRefP #-}
+writeRefP :: MonadIO m => IORef a -> a -> m ()
+writeRefP r v = liftIO $ writeIORef r v
+
+{-# INLINE readRef #-}
 readRef :: MonadIO m => IORef a -> m a
 readRef r = liftIO $ readIORef r
 
 -- for easier code generation
+{-# INLINE empty_fut #-}
 empty_fut :: (Root_ o) => Obj o -> ABS (Fut a)
-empty_fut (ObjectRef _ hereCOG _) = liftIO $ FutureRef <$> newEmptyMVar <*> pure hereCOG <*> pure (-10 :: Int)
+empty_fut (ObjectRef _ hereCOG _) = do
+  mvar <- liftIO newEmptyMVar
+  return $ FutureRef mvar hereCOG (-10 :: Int)
 
 -- for easier code generation
+{-# INLINE empty_pro #-}
 empty_pro :: (Root_ o) => Obj o -> ABS (Promise a)
-empty_pro (ObjectRef _ hereCOG _) = liftIO $ PromiseRef <$> newEmptyMVar <*> newEmptyMVar <*> pure hereCOG <*> pure (-11 :: Int)
+empty_pro (ObjectRef _ hereCOG _) = do
+  mvar1 <- liftIO $ newEmptyMVar
+  mvar2 <- liftIO $ newEmptyMVar
+  return $ PromiseRef mvar1 mvar2 hereCOG (-11 :: Int)
 
 -- | A way to de-reference an object-ref from the heap and read its attributes
 --
 -- _NOTE_: assumes the compiler is correct and __only__ passes the _this_ last formal-parameter of the method
+{-# INLINE readThis #-}
 readThis :: (Root_ o) => Obj o -> ABS o
-readThis (ObjectRef ioref _ _) = liftIO $ readIORef ioref
+readThis (ObjectRef ioref _ _) = lift $ readIORef ioref
 readThis NullRef = error "Compile Error: this should not happen. Inform the developers"
 
 
