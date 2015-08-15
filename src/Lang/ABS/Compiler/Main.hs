@@ -30,10 +30,10 @@ main = do
      let ?moduleTable = concatMap firstPass asts :: ModuleTable -- executes 1st-pass of all modules to collect info
      mapM_ (\ (fp, ast) -> mapM_ (ppHaskellFile fp) (tProg ast)) asts     -- calls the program-translator on each AST and prettyprints its Haskell output
      -- maybe create the bash script
-     when (createScript ?conf || smp ?conf) $ do
+     when (createScript ?conf) $ do
        let scriptPath = (maybe "." id $ outputDir ?conf) </> "compile_main_module"
        let default_main = takeBaseName $ last (srcFiles conf)
-       writeFile scriptPath $ "#!/usr/bin/env bash\nif [[ $# -eq 0 ]]; then main=" ++ default_main ++ "; else main=$1; fi\n ghc -w --make -O " ++ (if smp ?conf then "-threaded" else "") ++ " ${main}.hs ${@:2} -main-is $main -o run && echo 'Compiled. Run the program with ./run';"
+       writeFile scriptPath $ "#!/usr/bin/env bash\nif [[ $# -eq 0 ]]; then main=" ++ default_main ++ "; else main=$1; fi\n ghc -w --make -O " ++ (if scanForNew (map snd asts) then "-threaded -with-rtsopts=\"-N\"" else "") ++ " ${main}.hs ${@:2} -main-is $main -o run && echo 'Compiled. Run the program with ./run';"
        -- make it executable (chmod +x)
        p <- getPermissions scriptPath
        setPermissions scriptPath (p {executable = True})
@@ -91,6 +91,40 @@ firstPass (fp, (ABS.Prog moduls)) = map firstPass' moduls
       collectMethods :: [ABS.AnnotMethSignat] -> [ABS.LIdent]
       collectMethods = map (\ (ABS.AnnMethSig _ (ABS.MethSig _ ident _)) -> ident)
 
+scanForNew :: [ABS.Program] -> Bool
+scanForNew [] = False
+scanForNew (p:ps) = scanForNew' p || scanForNew ps
+    where scanForNew' (ABS.Prog ms) = or (map scanForNewM ms)
+          scanForNewM (ABS.Modul _ _ _ decls mb) = scanForNewMB mb || or (map scanForNewD decls)
+          scanForNewD (ABS.AnnDec _ decl) = case decl of
+                                              ABS.ClassDecl _ bl mb br -> scanForNewMB mb || or (map scanForNewCB (bl++br)) 
+                                              ABS.ClassParamDecl _ _ bl mb br -> scanForNewMB mb || or (map scanForNewCB (bl++br)) 
+                                              ABS.ClassImplements _ _ bl mb br -> scanForNewMB mb || or (map scanForNewCB (bl++br)) 
+                                              ABS.ClassParamImplements _ _ _ bl mb br -> scanForNewMB mb || or (map scanForNewCB (bl++br))
+                                              _ -> False
+          scanForNewCB (ABS.MethClassBody _ _ _ b) = scanForNewB b
+          scanForNewCB _ = False
+          scanForNewMB (ABS.JustBlock _ b) = scanForNewB b
+          scanForNewMB _ = False
+          scanForNewB (ABS.Bloc stmts) = or $ map scanForNewS stmts
+          scanForNewS (ABS.AnnStm _ stm) = case stm of
+                                                      ABS.SExp e -> scanForNewE e
+                                                      ABS.SBlock as -> or $ map scanForNewS as
+                                                      ABS.SWhile _ a -> scanForNewS a
+                                                      ABS.SReturn e -> scanForNewE e
+                                                      ABS.SAss _ e -> scanForNewE e
+                                                      ABS.SFieldAss _ e -> scanForNewE e
+                                                      ABS.SDecAss _ _ e -> scanForNewE e
+                                                      ABS.SIf _ a -> scanForNewS a
+                                                      ABS.SIfElse _ al ar -> scanForNewS al || scanForNewS ar
+                                                      ABS.STryCatchFinally a branches mfinally -> scanForNewS a || or (map scanForNewCatchBranch branches) || scanForNewCatchFinally mfinally
+                                                      _ -> False
+          scanForNewE (ABS.ExpE (ABS.New _ _)) = True
+          scanForNewE (ABS.ExpE (ABS.Spawns _ _ _)) = True
+          scanForNewE _ = False
+          scanForNewCatchBranch (ABS.CatchBranc _ a) = scanForNewS a
+          scanForNewCatchFinally (ABS.JustFinally a) = scanForNewS a
+          scanForNewCatchFinally _ = False
 
 -- | parse whole ABS src directories
 --

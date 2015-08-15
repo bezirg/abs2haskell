@@ -25,7 +25,7 @@ import qualified Control.Exception (fromException, evaluate, AssertionFailed (..
 import qualified Data.Set as S (insert, toList, empty)
 import Data.List (foldl', splitAt)
 import Control.Monad (when, foldM, liftM)
-import Control.Concurrent (forkIO, myThreadId, runInUnboundThread)
+import Control.Concurrent (forkIO, myThreadId) --, runInUnboundThread)
 import Data.IORef (newIORef, modifyIORef')
 import System.Exit (exitSuccess)
 

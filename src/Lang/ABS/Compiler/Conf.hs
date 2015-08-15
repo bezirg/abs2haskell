@@ -14,7 +14,6 @@ data Conf = Conf {
     , dumpAST :: Bool            -- ^ A flag to dump the parsed AST in a ModuleName.ast file
     , outputDir :: Maybe FilePath      -- ^ In which directory to put all the Haskell translated files (.hs files)
     , createScript :: Bool             -- ^ creates a bash script for easier invoking the ghc Haskell compiler
-    , smp :: Bool                  -- ^ Enables inside the created script the parallel (multicore/SMP) runtime system of Haskell. Otherwise you can enable it manually when later calling the Haskell compiler. Implies --create-script.
     } deriving (Show, Eq, Data, Typeable)
 
 confOpt :: Conf
@@ -22,8 +21,7 @@ confOpt = Conf {
             srcFiles = def &= args &= typ "FILES/DIRS"
           , outputDir = def &= name "output-dir" &= name "d" &= explicit &= typDir &= help "In which directory to put all the Haskell translated files (.hs files)"
           , dumpAST = def &= name "dump-ast" &= name "a" &= explicit &= help "A flag to dump the parsed AST in a ModuleName.ast file"
-          , createScript = def &= name "create-script" &= name "c" &= explicit &= help "If given, creates a bash script for easier invoking the ghc Haskell compiler"
-          , smp = def &= name "smp" &= name "s" &= explicit &= help "Implies create-script. Enables in the script, the parallel (multicore/SMP) runtime system of Haskell. Otherwise you can enable it manually when later calling the Haskell compiler"
+          , createScript = def &= name "create-script" &= name "c" &= explicit &= help "If given, creates a bash script for easier invoking the ghc Haskell compiler."
           }
           &= program "abs2haskell" 
           &= help "a transcompiler from the ABS language to Haskell" 
