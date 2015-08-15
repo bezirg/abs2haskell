@@ -140,23 +140,14 @@ data AState = AState {
     , aSleepingF :: FutureMap   -- ^ suspended-processes currently sleeping for some future
     } 
 
--- | The yield result of the a currently-executing coroutine after calling 'suspend' or 'await'
---
--- The running process yields that it awaits on 1 item (left-to-right of the compound awaitguard)
-data AwaitOn = S -- suspend is called
-             | forall f. FL (Fut f) -- await on a local future
-             | forall f o. FF (Fut f) !Int (Obj o) -- await on field future
-             | forall o. Root_ o => A (Obj o) [Int] -- await on object's fields
-
 
 -- | The single parameter to an await statement;
--- a recursive-datatype that can await on multiple items
-data AwaitGuardCompiled = forall b. FutureLocalGuard (Fut b)
-                          | forall b. FutureFieldGuard !Int (ABS (Fut b))
-                          | forall b. PromiseLocalGuard (Promise b)
-                          | forall b. PromiseFieldGuard !Int (ABS (Promise b))
+-- a non-recursive-datatype that can await on a future , promise or expression
+data AwaitGuardCompiled b = FutureLocalGuard (Fut b)
+                          | FutureFieldGuard !Int (ABS (Fut b))
+                          | PromiseLocalGuard (Promise b)
+                          | PromiseFieldGuard !Int (ABS (Promise b))
                           | AttrsGuard [Int] (ABS Bool)
-                          | AwaitGuardCompiled :&: AwaitGuardCompiled
 
 -- * COG related
 

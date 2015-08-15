@@ -56,7 +56,7 @@ suspend'  :: Obj a -> ABS () -> ABS ()
 suspend' this@(ObjectRef _ (COG (thisChan,_)) _) k = lift (writeChan thisChan (LocalJob k)) >> back__ this
 
 {-# INLINE await' #-}
-await'  :: Obj a -> ABS () -> AwaitGuardCompiled -> ABS ()
+await'  :: Obj a -> ABS () -> AwaitGuardCompiled b -> ABS ()
 await' this k (FutureLocalGuard (FutureRef mvar cog i)) = do
    empty <- lift $ isEmptyMVar mvar
    if empty
@@ -126,8 +126,6 @@ await' this@(ObjectRef _ hereCOG oid) k g@(PromiseFieldGuard i tg)  = do
                                 sleepOnAttr' = M.insertWith (++) (oid,i) [(LocalJob $ await' this k g, Just ((cog,fid),lengthOnFut))] sleepOnAttr
                            in AState counter sleepOnAttr' sleepOnFut') >> back__ this
    else k
-
-await' this k (left :&: rest) = await' this (await' this k rest) left 
 
 while' :: ABS Bool -> (ABS () -> ABS ()) -> ABS () -> ABS ()
 while' predAction loopAction k = do

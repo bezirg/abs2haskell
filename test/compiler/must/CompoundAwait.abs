@@ -1,0 +1,27 @@
+module CompoundAwait;
+
+interface I {
+    Unit start();
+}
+
+class C() implements I {
+    Int x = 4;
+    Unit start() {
+        Int y = 3;
+        Fut<Unit> f1 = this ! dec();
+        Fut<Unit> f2 = this ! dec();
+        await f1? & x==y-1 & f2? & f1? & y==x+1;
+        println(toString(True));
+    }
+    Unit dec() {
+        x = x-1;
+    }
+}
+
+{
+  I o1 = new local C();
+  I o2 = new C();
+  Fut<Unit> f1 = o1 ! start();
+  Fut<Unit> f2 = o2 ! start();
+  await f1? & f2?;
+}

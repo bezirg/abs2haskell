@@ -16,6 +16,9 @@ import Control.Monad (ap)
 import Lang.ABS.Compiler.ExprLifted
 import Lang.ABS.Compiler.Expr (tPattern, tType)
 import qualified Data.Map as M
+import Data.List (nub)
+import Data.Foldable (foldlM)
+import Control.Monad (liftM)
 
 -- | Translating a method block or main block that can return
 tBlockWithReturn :: (?moduleTable :: ModuleTable,?moduleName::ABS.QType) => [ABS.AnnotStm] -> String -> ScopeTable -> ScopeTable -> [ScopeTable] -> String -> [ABS.LIdent] -> HS.Exp
@@ -185,13 +188,45 @@ tStmts (ABS.AnnStm _ (ABS.SAwait g) : rest) canReturn = do
   if isInit 
    then error "Await statements not allowed inside init block"
    else do
-     texp <- runExpr (tAwaitGuard g cls) False Nothing
-     tafter <- tStmts rest canReturn
-     return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
+
+     let (fs,as) = splitGuard g
+     -- OPTIMIZATION by nubbing same futures
+     let nfs = nub fs -- TODO: the nubbing could be better e.g. FutGuard "f" == FutFieldGuard "f" iff no other local f
+     -- the ordering of fs does not matter that much: semantically is equivalent, and at runtime yields to the final same result
+     tfs <- mapM (\ g -> runExpr (tAwaitGuard g cls) False Nothing) nfs
+     tas <- if length as > 0
+           then liftM Just $ runExpr (tAwaitGuard (foldl1 (\ (ABS.ExpGuard acc) (ABS.ExpGuard exp) -> -- trick to comb all attrsguards: & -> &&
+                                                               ABS.ExpGuard $ acc `ABS.EAnd` exp) as) cls) False Nothing
+           else return Nothing
+
+     tafter <- tStmts rest canReturn -- TODO: maybe? scope bug here because tafter is run before the await, turning a futurefield to futurelocal
+
+     return [HS.Qualifier $ foldr (\ texp tacc -> do
+              (HS.App (HS.Var (identI "join")) 
                      (HS.Paren $ HS.InfixApp 
                             (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "await'") (HS.Var $ HS.UnQual $ HS.Ident "this"))
-                               (HS.Do tafter))
-                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") texp)]
+                               tacc)
+                            (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") texp))
+              ) (HS.Do tafter) (tfs ++ maybe [] return tas)]
+
+     -- texp <- runExpr (tAwaitGuard g cls) False Nothing
+     -- return $ [HS.Qualifier $ HS.App (HS.Var (identI "join")) 
+     --                 (HS.Paren $ HS.InfixApp 
+     --                        (HS.App (HS.App (HS.Var $ HS.UnQual $ HS.Ident "await'") (HS.Var $ HS.UnQual $ HS.Ident "this"))
+     --                           (HS.Do tafter))
+     --                        (HS.QVarOp $ HS.UnQual $ HS.Symbol "<$!>") texp)]
+     where
+       splitGuard g = splitGuard' g ([],[])
+       splitGuard' g (fs,as)= case g of
+                                ABS.FutFieldGuard _ -> (g:fs,as)
+                                ABS.FutGuard _ -> (g:fs,as)
+                                ABS.ProGuard _ -> (g:fs,as)
+                                ABS.ProFieldGuard _ -> (g:fs,as)
+                                ABS.ExpGuard _ -> (fs,g:as)
+                                ABS.AndGuard gl gr -> let 
+                                         (fsl,asl) = splitGuard gl
+                                         (fsr,asr) = splitGuard gr 
+                                    in (fsl++fs++fsr,asl++as++asr)
 
 tStmts (ABS.AnnStm _ ABS.SSuspend : rest) canReturn = do
   tafter <- tStmts rest canReturn
