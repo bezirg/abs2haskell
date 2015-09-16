@@ -25,7 +25,7 @@ import qualified Control.Exception (fromException, evaluate, AssertionFailed (..
 import qualified Data.Set as S (insert, toList, empty)
 import Data.List (foldl', splitAt)
 import Control.Monad (when, foldM, liftM)
-import Control.Concurrent (forkIO, myThreadId) --, runInUnboundThread)
+import Control.Concurrent (forkIO, forkOn, myThreadId) --, runInUnboundThread)
 import Data.IORef (newIORef, modifyIORef')
 import System.Exit (exitSuccess)
 
@@ -287,6 +287,17 @@ new' smart = lift $ do
   let obj = ObjectRef ioref (COG (c,pid)) 0
   writeChan c $ LocalJob $ __init obj $ \ () -> back__ obj
   return obj
+
+-- {-# INLINE newon' #-}
+-- newon' :: (Root_ a) => Int -> a -> ABS (Obj a)
+-- newon' cpu smart = lift $ do 
+--   c <- newChan
+--   pid <- forkOn cpu $ myThreadId >>= \ myPid -> S.evalStateT (back__ $ ObjectRef undefined (COG (c,myPid)) 0) (AState 1 M.empty M.empty)
+--   ioref <- newIORef smart
+--   let obj = ObjectRef ioref (COG (c,pid)) 0
+--   writeChan c $ LocalJob $ __init obj $ \ () -> back__ obj
+--   return obj
+
 
 -- -- | Each COG is a thread or a process
 -- spawnCOG__ :: IO COG -- ^ it returns the created COG-thread ProcessId. This is used to update the location of the 1st created object

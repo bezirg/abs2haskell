@@ -33,7 +33,7 @@ main = do
      when (createScript ?conf) $ do
        let scriptPath = (maybe "." id $ outputDir ?conf) </> "compile_main_module"
        let default_main = takeBaseName $ last (srcFiles conf)
-       writeFile scriptPath $ "#!/usr/bin/env bash\nif [[ $# -eq 0 ]]; then main=" ++ default_main ++ "; else main=$1; fi\n ghc -w --make -O " ++ (if scanForNew (map snd asts) then "-threaded -with-rtsopts=\"-N\"" else "") ++ " ${main}.hs ${@:2} -main-is $main -o run && echo 'Compiled. Run the program with ./run';"
+       writeFile scriptPath $ "#!/usr/bin/env bash\nif [[ $# -eq 0 ]]; then main=" ++ default_main ++ "; else main=$1; fi\n ghc -w --make -O " ++ (if scanForNew (map snd asts) then "-threaded -with-rtsopts=\"-N -qm\"" else "") ++ " ${main}.hs ${@:2} -main-is $main -o run && echo 'Compiled. Run the program with ./run';"
        -- make it executable (chmod +x)
        p <- getPermissions scriptPath
        setPermissions scriptPath (p {executable = True})

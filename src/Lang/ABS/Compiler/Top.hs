@@ -234,7 +234,8 @@ tDecl (ABS.DataParDecl (ABS.UIdent (_,tid)) tyvars constrs) = let
         HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident tid) (map (\ (ABS.UIdent (_,varid)) -> HS.UnkindedVar $ HS.Ident $ headToLower $  varid) tyvars)
            (map (\case
                  ABS.SinglConstrIdent (ABS.UIdent (_,cid)) -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) []) -- no constructor arguments
-                 ABS.ParamConstrIdent (ABS.UIdent (_,cid)) args -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.UnBangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
+                                                                                                                          -- TODO: maybe only allow Banged Int,Double,... like the class-datatype
+                 ABS.ParamConstrIdent (ABS.UIdent (_,cid)) args -> HS.QualConDecl HS.noLoc [] [] (HS.ConDecl (HS.Ident cid) (map (HS.BangedTy . tTypeOrTyVar tyvars . typOfConstrType) args))) constrs)
            (if hasEx then [(identI "Typeable",[])] else [(identI "Eq", []), (identI "Show", [])])
          
         :
@@ -401,10 +402,9 @@ tDecl (ABS.ClassParamImplements (ABS.UIdent (pos,clsName)) params imps ldecls ma
         HS.DataDecl HS.noLoc HS.DataType [] (HS.Ident clsName) [] 
               [HS.QualConDecl HS.noLoc [] [] $ HS.RecDecl (HS.Ident clsName) (map (\ ((ABS.LIdent (_,i)), t) -> ([HS.Ident $ headToLower clsName ++ "_" ++ i], 
                                                                                                                 let t' = tType t
-                                                                                                                in case t' of
-                                                                                                                     HS.TyCon (HS.UnQual (HS.Ident ident)) -> (if ident `elem` ["Int", "Bool", "Rational", "Unit"] then HS.BangedTy else HS.UnBangedTy) (tType t)
-                                                                                                                -- TODO: unpack the pairs+triples
-                                                                                                                     _ -> HS.UnBangedTy (tType t)
+                                                                                                                in HS.BangedTy t' -- case t' of
+                                                                                                                   --   HS.TyCon (HS.UnQual (HS.Ident ident)) -> (if ident `elem` ["Int", "Bool", "Rational", "Unit"] then HS.BangedTy else HS.UnBangedTy) t'
+                                                                                                                   --   _ -> HS.UnBangedTy t'
                                                                                                                )) (M.toAscList allFields))]  []
         :
 
