@@ -1,9 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude, 
   ExistentialQuantification, MultiParamTypeClasses,
-  PatternSignatures, DeriveDataTypeable, DeriveGeneric, InstanceSigs #-}
-{-# OPTIONS_GHC
-  -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
-  #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric, InstanceSigs, FlexibleInstances #-}
 module Lang.ABS.StdLib.LocalDC where
 import qualified Lang.ABS.Runtime.Base as I__
 import Lang.ABS.Runtime.Core as I__

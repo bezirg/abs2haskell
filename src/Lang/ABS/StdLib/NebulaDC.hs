@@ -7,10 +7,7 @@
 -- More about the open-source OpenNebula project at <http://opennebula.org>
 {-# LANGUAGE NoImplicitPrelude,
   ExistentialQuantification, MultiParamTypeClasses,
-  PatternSignatures, DeriveDataTypeable, DeriveGeneric, InstanceSigs #-}
-{-# OPTIONS_GHC
-  -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
-  #-}
+  PatternSignatures, DeriveDataTypeable, DeriveGeneric, InstanceSigs, FlexibleInstances #-}
 module Lang.ABS.StdLib.NebulaDC where
 import qualified Lang.ABS.Runtime.Base as I__
 import qualified Lang.ABS.Runtime.Core as I__

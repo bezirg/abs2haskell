@@ -26,12 +26,12 @@ tModul (ABS.Modul mname@(ABS.QTyp qsegs) exports imports decls maybeMain) = let 
                HS.Module HS.noLoc (HS.ModuleName strModuleName) 
                      [HS.LanguagePragma HS.noLoc [
                                               HS.Ident "NoImplicitPrelude" -- for not importing haskell's prelude
-                                              ,HS.Ident "ExistentialQuantification" -- for heterogenous collections
+                                              ,HS.Ident "ExistentialQuantification" -- for heterogeneous collections
                                               ,HS.Ident "MultiParamTypeClasses" -- for subtyping
                                               ,HS.Ident "PatternSignatures" -- for inlining type annotations
                                               ,HS.Ident "FlexibleContexts" -- for some type inference of methods
                                               ,HS.Ident "DeriveDataTypeable" -- for defining ABS exceptions (exceptions are dynamically typed in haskell)
-                                              ,HS.Ident "DeriveGeneric" -- for deriving Binary instances for object records
+                                              ,HS.Ident "DeriveGeneric" -- for serialization objects, by deriving Binary for object records
                                               ,HS.Ident "TemplateHaskell" -- for cloud-haskell automatic closures boilerplate
                                               ]
                      , HS.OptionsPragma HS.noLoc (Just HS.GHC) "-w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts"

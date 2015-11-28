@@ -1,10 +1,7 @@
-{-# LANGUAGE  NoImplicitPrelude, 
-  ExistentialQuantification, MultiParamTypeClasses,
-  PatternSignatures, DeriveDataTypeable, TemplateHaskell #-}
-{-# OPTIONS_GHC
-  -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
-  #-}
+{-# LANGUAGE ExistentialQuantification, MultiParamTypeClasses, FlexibleInstances #-}
+
 module Lang.ABS.StdLib.DC where
+
 import Lang.ABS.Runtime.Prim
 import Lang.ABS.Runtime.Base
 import qualified Lang.ABS.Compiler.Include as I__
@@ -27,7 +24,7 @@ import qualified Data.Binary as B__
 
 -- | The deployment component ("IDC_") interface extends the "Object__" root-interface. Thus, deployment components are objects.
 --
--- All DC classes must implement two methods: 'shutdown' and 'getLoad'.
+-- All DC classes must implement two methods: 'shutdown' and 'load'.
 class (Root_ a) => IDC_ a where
         shutdown :: Obj a -> ABS Unit
         load :: Obj a -> ABS (Triple Rat Rat Rat)

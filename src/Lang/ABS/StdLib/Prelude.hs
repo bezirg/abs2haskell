@@ -5,7 +5,7 @@ module Lang.ABS.StdLib.Prelude
      -- * ABS builtin types
 
      -- | All of them synonyms to standard Haskell datastructures.
-     Int, Rat, Prelude.Bool (..) , Unit, List, Lang.ABS.Runtime.Base.Fut, Lang.ABS.Runtime.Base.Promise, Prelude.String, Array,
+     Int, Rat, Prelude.Bool (..) , Unit, List, Lang.ABS.Runtime.Base.Fut, Lang.ABS.Runtime.Base.Promise, Prelude.String, 
      -- * Operations on numbers
      (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%), Prelude.abs, pow, Prelude.truncate,
      -- * Boolean Operations 
@@ -17,8 +17,6 @@ module Lang.ABS.StdLib.Prelude
      Prelude.Either (..), left, right, isLeft, isRight,
      -- * Functions for "List" datastructures
      list, Prelude.tail, Prelude.head, length, isEmpty, nth, concatenate, appendright, without, Prelude.repeat, Prelude.reverse, copy,
-     -- * Functions for boxed "Array" datastructures
-     listArray, replace, elemAt,
      -- * The ABS Map datatype and its functions
      M.Map, map, _emptyMap, put, insert, lookupUnsafe, lookupMaybe, lookupDefault, removeKey, keys, values,
      -- * The ABS Set datatype and its functions
@@ -49,8 +47,6 @@ import Control.Applicative (pure, (<*>))
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Maybe (fromJust, isJust)
-import qualified Data.Array.IArray as BArray
-import Data.Array.Unboxed (listArray)
 import Data.List (length)
 import Control.Monad.IO.Class (liftIO)
 
@@ -260,21 +256,6 @@ left _ = Prelude.error "not a left-Either"
 right :: Prelude.Either a b -> b
 right (Prelude.Right a) = a
 right _ = Prelude.error "not a right-Either"
-
--------- PURE ARRAYS--------
-----------------------------
-
--- | A pure (persistent) array with O(1) random access
-type Array = BArray.Array
-
-{-# INLINE replace #-}
-replace :: (BArray.IArray a e, BArray.Ix i) => a i e -> [(i, e)] -> a i e
-replace a cs = a BArray.// cs
-
-{-# INLINE elemAt #-}
-elemAt :: (BArray.IArray a e, BArray.Ix i) => (a i e, i) -> e
-elemAt(a, i) = a BArray.! i
-
 
 -------- STRINGS------------
 ----------------------------
