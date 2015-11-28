@@ -1,0 +1,3017 @@
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 16:27:17 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+"Machines connected"
+TimeSpec {sec = 57218, nsec = 540734058}
+beat
+TimeSpec {sec = 57229, nsec = 401879206}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57238, nsec = 410370917}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57247, nsec = 419108513}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57256, nsec = 428086958}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57262, nsec = 431458890}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57271, nsec = 436615577}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57280, nsec = 443653772}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 57289, nsec = 451025129}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57298, nsec = 458343903}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57307, nsec = 465924557}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57316, nsec = 473794517}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57325, nsec = 482036315}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57334, nsec = 490261183}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57343, nsec = 498552921}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57352, nsec = 506840245}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57361, nsec = 515322811}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57370, nsec = 522709817}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57379, nsec = 531687193}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57385, nsec = 535031481}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+needs bigger
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 16:30:59 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+TimeSpec {sec = 57394, nsec = 541623687}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57403, nsec = 550421037}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57412, nsec = 557805890}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57421, nsec = 565570977}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57430, nsec = 572901774}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57439, nsec = 580089432}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+"Machines connected"
+beat
+TimeSpec {sec = 57448, nsec = 585575110}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57451, nsec = 585912435}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57457, nsec = 589186296}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57460, nsec = 589551947}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57466, nsec = 593881838}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57469, nsec = 594175820}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57475, nsec = 597755457}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57478, nsec = 598445715}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57487, nsec = 604586575}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57487, nsec = 604657140}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57496, nsec = 611529525}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57496, nsec = 611768524}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57505, nsec = 618552495}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57505, nsec = 618798367}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57514, nsec = 625706732}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57514, nsec = 625780067}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57523, nsec = 632136849}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57523, nsec = 632428230}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57532, nsec = 639315851}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57535, nsec = 642315421}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57541, nsec = 645676403}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57544, nsec = 648480760}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57550, nsec = 651757643}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 57553, nsec = 654083543}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57559, nsec = 657320286}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57562, nsec = 659551353}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57568, nsec = 662905539}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57571, nsec = 664293345}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57577, nsec = 667704568}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57580, nsec = 668304035}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57586, nsec = 671999415}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57592, nsec = 677702272}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57595, nsec = 678565712}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57601, nsec = 683773418}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57604, nsec = 684569367}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57610, nsec = 689344203}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57613, nsec = 689975952}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57619, nsec = 694611521}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57622, nsec = 694987020}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57628, nsec = 699639681}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57631, nsec = 699916234}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57637, nsec = 704100701}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57640, nsec = 704336569}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57646, nsec = 708238190}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57649, nsec = 708758202}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57655, nsec = 712038118}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57658, nsec = 712685262}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57667, nsec = 719534531}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57667, nsec = 719573990}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57676, nsec = 726696210}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57676, nsec = 726971211}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57685, nsec = 736917276}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57685, nsec = 737104099}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57694, nsec = 743581383}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57694, nsec = 743616475}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57703, nsec = 751278307}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57706, nsec = 754027636}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57712, nsec = 758996982}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57715, nsec = 760713083}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57721, nsec = 764086679}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57724, nsec = 764769463}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57730, nsec = 770537431}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57736, nsec = 776081710}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57739, nsec = 778964548}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57745, nsec = 782221209}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57745, nsec = 782259978}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57754, nsec = 788657765}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57754, nsec = 788705288}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57763, nsec = 794866003}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57763, nsec = 794903419}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57772, nsec = 801907873}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+needs bigger
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 16:37:18 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+TimeSpec {sec = 57775, nsec = 804138503}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57781, nsec = 808606925}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57784, nsec = 809659457}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57790, nsec = 814477970}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57793, nsec = 815145119}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57799, nsec = 820256548}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57802, nsec = 820750782}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57808, nsec = 825826221}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57814, nsec = 831630523}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57817, nsec = 833935918}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57823, nsec = 839543575}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+"Machines connected"
+beat
+TimeSpec {sec = 57826, nsec = 840425462}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57832, nsec = 846017560}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57835, nsec = 848683624}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57838, nsec = 850988785}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57841, nsec = 853251343}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57844, nsec = 856050785}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57847, nsec = 856937142}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57850, nsec = 857138738}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57850, nsec = 857461871}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57856, nsec = 860763865}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57859, nsec = 861091090}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57859, nsec = 861343773}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57868, nsec = 867909244}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57868, nsec = 868218158}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57868, nsec = 868388365}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57877, nsec = 874814239}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57877, nsec = 875075803}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57877, nsec = 875262563}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57886, nsec = 880207882}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57886, nsec = 880253105}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57886, nsec = 880262255}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57895, nsec = 886821488}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57898, nsec = 889358657}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57898, nsec = 889404192}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57904, nsec = 892689494}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57907, nsec = 893922260}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57907, nsec = 893968986}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57916, nsec = 902573766}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57916, nsec = 902627711}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57919, nsec = 905011307}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57925, nsec = 910633945}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57925, nsec = 910679267}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57928, nsec = 911476361}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57934, nsec = 916610862}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57934, nsec = 916664707}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57937, nsec = 916891075}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57943, nsec = 921779613}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57943, nsec = 921824826}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57949, nsec = 926357539}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57952, nsec = 928495300}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57952, nsec = 928539760}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57958, nsec = 931863791}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57961, nsec = 933679119}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57961, nsec = 933723241}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57970, nsec = 940898981}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57970, nsec = 940944428}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57970, nsec = 940956283}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57979, nsec = 947243539}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57979, nsec = 947566991}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57979, nsec = 947758458}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57988, nsec = 954479392}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57988, nsec = 954523642}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57991, nsec = 956227676}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57997, nsec = 959506651}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 57997, nsec = 959550574}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58000, nsec = 959871902}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58006, nsec = 965722726}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58009, nsec = 968183446}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58012, nsec = 969956494}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58015, nsec = 972942437}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58018, nsec = 974812407}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58021, nsec = 975124297}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58024, nsec = 978137477}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58027, nsec = 979445105}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 58033, nsec = 984242960}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58033, nsec = 984285047}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58036, nsec = 984999858}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58042, nsec = 988354159}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58042, nsec = 988565064}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58045, nsec = 989055120}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58051, nsec = 994132207}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58054, nsec = 994362362}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58054, nsec = 994419825}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58060, nsec = 999332912}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58063, nsec = 999667550}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58067, nsec = 2465633}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58070, nsec = 4147223}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58076, nsec = 8941969}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58076, nsec = 8985799}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58079, nsec = 10508173}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58085, nsec = 13914152}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58085, nsec = 13958430}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58088, nsec = 15286048}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58094, nsec = 20623350}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58097, nsec = 21738405}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58097, nsec = 21796908}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58103, nsec = 27423434}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58106, nsec = 27931038}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58106, nsec = 28217176}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58112, nsec = 34059526}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58115, nsec = 35360997}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58118, nsec = 37399140}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58121, nsec = 40083215}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58124, nsec = 41214680}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58127, nsec = 41414810}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58130, nsec = 43792190}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58133, nsec = 45057939}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58139, nsec = 49869257}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58139, nsec = 50103725}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58142, nsec = 51277549}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58148, nsec = 54663677}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58148, nsec = 54716767}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58151, nsec = 55873767}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58157, nsec = 60309209}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58160, nsec = 61669119}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58160, nsec = 61718165}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58166, nsec = 65479250}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58169, nsec = 65814016}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58169, nsec = 65877704}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58175, nsec = 69230927}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58178, nsec = 71463824}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58181, nsec = 72130767}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58187, nsec = 77384802}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58187, nsec = 77427325}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58193, nsec = 83356926}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58196, nsec = 84082171}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58196, nsec = 84223213}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58202, nsec = 88539448}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58205, nsec = 91013254}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58205, nsec = 91058909}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58214, nsec = 98988049}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58214, nsec = 99031700}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58214, nsec = 99044173}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58223, nsec = 106334702}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58223, nsec = 106524303}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58223, nsec = 106612550}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58232, nsec = 114540866}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58232, nsec = 114586927}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58235, nsec = 117383769}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58241, nsec = 122353375}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58241, nsec = 122544948}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58244, nsec = 123746420}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58250, nsec = 128519046}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58250, nsec = 128562579}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58256, nsec = 133940998}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58259, nsec = 135634484}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58259, nsec = 135682952}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58265, nsec = 140070087}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58268, nsec = 141672535}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58268, nsec = 141867803}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58274, nsec = 145352119}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58277, nsec = 146674140}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58277, nsec = 146719256}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58286, nsec = 153560067}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58286, nsec = 153619849}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58286, nsec = 153632403}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58295, nsec = 160066912}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58295, nsec = 160120392}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58295, nsec = 160136430}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58304, nsec = 166828694}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58304, nsec = 166873084}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58307, nsec = 169825243}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58313, nsec = 174997321}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58316, nsec = 177101496}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58316, nsec = 177145965}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58322, nsec = 182448821}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58325, nsec = 183925209}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58325, nsec = 183972246}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58331, nsec = 189347803}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58334, nsec = 190224144}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58334, nsec = 190268618}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58340, nsec = 195610237}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58343, nsec = 196540285}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58346, nsec = 199352098}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58349, nsec = 200091361}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58352, nsec = 200700865}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58355, nsec = 202737165}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58358, nsec = 204867684}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+needs bigger
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 16:47:05 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+TimeSpec {sec = 58361, nsec = 205217970}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58364, nsec = 206165714}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58367, nsec = 207783482}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58370, nsec = 209751407}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58376, nsec = 214299793}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58376, nsec = 214341944}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58382, nsec = 220100757}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58385, nsec = 221305366}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58385, nsec = 221481182}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58391, nsec = 227115170}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58394, nsec = 227630900}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58394, nsec = 227677297}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58400, nsec = 232850336}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+"Machines connected"
+beat
+TimeSpec {sec = 58403, nsec = 233614976}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58406, nsec = 236550681}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58409, nsec = 238915269}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58412, nsec = 239701857}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58415, nsec = 241123759}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58415, nsec = 241168585}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58418, nsec = 243600157}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58421, nsec = 244476535}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58424, nsec = 244722290}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58427, nsec = 246517979}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58427, nsec = 246566119}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58430, nsec = 247032357}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58436, nsec = 252062993}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58436, nsec = 252125161}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58439, nsec = 252321911}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58439, nsec = 252550186}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58445, nsec = 256390872}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58445, nsec = 256607667}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58448, nsec = 256942307}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58451, nsec = 258638309}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58454, nsec = 260531157}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58457, nsec = 263081885}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58460, nsec = 265377529}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58463, nsec = 267029918}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58463, nsec = 267077531}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58466, nsec = 268061679}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58469, nsec = 270039993}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58472, nsec = 272307305}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58475, nsec = 274118252}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58478, nsec = 276272433}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58478, nsec = 276396058}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58481, nsec = 278592956}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58487, nsec = 282879689}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58487, nsec = 282926007}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58487, nsec = 282938598}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58490, nsec = 284969991}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58496, nsec = 288966968}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58496, nsec = 289324164}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58499, nsec = 290744530}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58499, nsec = 290955745}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58505, nsec = 296683962}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58508, nsec = 297161185}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58508, nsec = 297222614}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58511, nsec = 299041504}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58514, nsec = 301844015}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58517, nsec = 302398247}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58517, nsec = 302718047}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58523, nsec = 307364376}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58523, nsec = 307409854}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58526, nsec = 307841252}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58526, nsec = 307916132}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58532, nsec = 313620702}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58535, nsec = 314401322}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58535, nsec = 314667427}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58538, nsec = 317217071}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58541, nsec = 320223982}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58544, nsec = 321195685}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58547, nsec = 322528418}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58547, nsec = 322785765}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58550, nsec = 325878425}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58553, nsec = 326578757}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58559, nsec = 330677215}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58559, nsec = 330735754}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58559, nsec = 330751558}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58565, nsec = 336802339}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58568, nsec = 338615036}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58568, nsec = 338663624}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58571, nsec = 339632404}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58574, nsec = 342336888}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58577, nsec = 343323404}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58577, nsec = 343511103}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58583, nsec = 348740938}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58583, nsec = 348794455}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58586, nsec = 349599331}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58586, nsec = 349648922}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58592, nsec = 355389836}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58595, nsec = 355646756}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58595, nsec = 355690079}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58595, nsec = 355700837}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58601, nsec = 361316358}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58604, nsec = 362606247}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58607, nsec = 364936305}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58607, nsec = 364981625}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58610, nsec = 367079845}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58613, nsec = 368510229}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58616, nsec = 370395022}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58619, nsec = 372232852}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58619, nsec = 372285577}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58622, nsec = 373534893}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58625, nsec = 374540625}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58628, nsec = 376145774}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58631, nsec = 377282395}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58631, nsec = 377326790}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58634, nsec = 377643545}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58637, nsec = 379241000}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58640, nsec = 380095106}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58643, nsec = 382438317}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58646, nsec = 383897232}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58646, nsec = 384017331}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58649, nsec = 385325212}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58655, nsec = 389404392}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58655, nsec = 389598008}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58655, nsec = 389703122}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58658, nsec = 391318528}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58664, nsec = 394792964}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58664, nsec = 394838128}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58667, nsec = 396630686}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58667, nsec = 396670677}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58673, nsec = 399943496}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58673, nsec = 400120386}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58676, nsec = 401700010}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58679, nsec = 404218745}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58682, nsec = 404631547}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58682, nsec = 404687354}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58685, nsec = 405874969}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58691, nsec = 409384365}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58691, nsec = 409444565}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58691, nsec = 409462456}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58694, nsec = 410651951}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58700, nsec = 414299195}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58700, nsec = 414343920}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58703, nsec = 415227065}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58703, nsec = 415279887}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58709, nsec = 418913591}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58712, nsec = 419949196}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58712, nsec = 420030989}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58715, nsec = 422695474}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58718, nsec = 423106808}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58721, nsec = 424337464}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58721, nsec = 424382950}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 58727, nsec = 427568162}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58727, nsec = 427774805}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58730, nsec = 429233257}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58730, nsec = 429438378}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58739, nsec = 437026975}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58739, nsec = 437073545}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58739, nsec = 437087090}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58739, nsec = 437099086}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58748, nsec = 444296751}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58748, nsec = 444339338}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58748, nsec = 444351394}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58751, nsec = 446479855}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58754, nsec = 446768053}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58757, nsec = 447743760}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58757, nsec = 447787460}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58763, nsec = 451121847}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58763, nsec = 451312903}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58766, nsec = 452311557}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58766, nsec = 452515217}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58772, nsec = 455886934}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58775, nsec = 456267294}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58775, nsec = 456517093}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58775, nsec = 456583172}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58784, nsec = 463732054}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58784, nsec = 463775553}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58787, nsec = 466283076}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58787, nsec = 466331464}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58793, nsec = 470607784}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58793, nsec = 470650591}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58796, nsec = 474750441}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58799, nsec = 477195307}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58802, nsec = 478825769}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58802, nsec = 478871838}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58805, nsec = 480904240}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58811, nsec = 485309173}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58811, nsec = 485350239}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58811, nsec = 485363372}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58814, nsec = 487024186}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58820, nsec = 491017801}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58820, nsec = 491064834}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58823, nsec = 493107346}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58826, nsec = 495296136}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58829, nsec = 495962349}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58829, nsec = 496012271}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58835, nsec = 501033634}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58838, nsec = 501566086}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58838, nsec = 501615852}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58838, nsec = 501628677}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58847, nsec = 508036432}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58847, nsec = 508340395}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58847, nsec = 508510572}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58850, nsec = 512028985}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58856, nsec = 515383708}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58856, nsec = 515626544}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58859, nsec = 517857199}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58862, nsec = 519545580}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58865, nsec = 520048204}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58865, nsec = 520093031}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58871, nsec = 525062632}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58874, nsec = 525594342}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58874, nsec = 525658895}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58874, nsec = 525679424}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58883, nsec = 532254091}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58883, nsec = 532295250}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58883, nsec = 532306368}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58886, nsec = 534159509}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58892, nsec = 537724242}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58892, nsec = 537767332}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58895, nsec = 540019834}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58898, nsec = 542082596}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58901, nsec = 542592338}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58901, nsec = 542654814}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58907, nsec = 547717747}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58910, nsec = 549002758}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58910, nsec = 549047950}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58913, nsec = 551978770}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58919, nsec = 556626852}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58919, nsec = 556682109}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58922, nsec = 558297390}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58922, nsec = 558428237}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58928, nsec = 563105154}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58931, nsec = 564666788}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58931, nsec = 564712179}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58934, nsec = 566320576}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58937, nsec = 568275069}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58940, nsec = 569653800}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58943, nsec = 571234034}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58946, nsec = 572754685}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58946, nsec = 572801904}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58949, nsec = 573955088}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58955, nsec = 577763252}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58955, nsec = 577807107}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58958, nsec = 578270966}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58958, nsec = 578482817}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58964, nsec = 583975280}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58967, nsec = 584780282}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58970, nsec = 585274757}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58970, nsec = 585535549}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58973, nsec = 588206735}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58979, nsec = 591475199}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58979, nsec = 591521383}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58982, nsec = 593199372}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58982, nsec = 593256795}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58988, nsec = 598489886}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58991, nsec = 599300359}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58991, nsec = 599343117}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58994, nsec = 601381468}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 58997, nsec = 603535160}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59000, nsec = 605755507}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59003, nsec = 608184600}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59006, nsec = 609996125}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59006, nsec = 610042055}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59009, nsec = 612057896}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59015, nsec = 616977444}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59015, nsec = 617038581}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59018, nsec = 618874246}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59018, nsec = 618918778}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+needs bigger
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 16:58:07 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+TimeSpec {sec = 59024, nsec = 624043613}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59027, nsec = 625771747}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59027, nsec = 625817679}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59030, nsec = 627937658}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59033, nsec = 630463249}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59036, nsec = 632345092}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59039, nsec = 633691519}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59042, nsec = 635562507}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59042, nsec = 635678675}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59045, nsec = 637271076}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59051, nsec = 642033442}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59051, nsec = 642078557}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59054, nsec = 643193066}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59054, nsec = 643254426}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59060, nsec = 649250205}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59063, nsec = 650533181}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59063, nsec = 650581082}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59066, nsec = 650759540}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59066, nsec = 650800252}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59072, nsec = 654977713}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59075, nsec = 656685194}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+"Machines connected"
+beat
+TimeSpec {sec = 59078, nsec = 658044793}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59078, nsec = 658088794}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59081, nsec = 658595128}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59087, nsec = 662873565}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59087, nsec = 662922359}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59090, nsec = 663251176}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59093, nsec = 663667161}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59093, nsec = 663707584}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59099, nsec = 667126180}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59099, nsec = 667370471}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59102, nsec = 667807869}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59102, nsec = 667854264}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59078, nsec = 658044793}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59078, nsec = 658088794}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59081, nsec = 658595128}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59087, nsec = 662873565}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59087, nsec = 662922359}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59090, nsec = 663251176}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59093, nsec = 663667161}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59093, nsec = 663707584}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59099, nsec = 667126180}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59099, nsec = 667370471}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59102, nsec = 667807869}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59102, nsec = 667854264}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59108, nsec = 671097720}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59108, nsec = 671142574}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59108, nsec = 671155195}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59111, nsec = 671630959}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59117, nsec = 677558019}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59120, nsec = 678313403}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59120, nsec = 678528359}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59120, nsec = 678629352}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59123, nsec = 680120425}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59129, nsec = 683982183}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59129, nsec = 684041350}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59132, nsec = 686476815}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59135, nsec = 687879721}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59138, nsec = 689110692}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59138, nsec = 689374070}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59138, nsec = 689501191}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59147, nsec = 695899851}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59147, nsec = 695942557}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59147, nsec = 695955322}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59150, nsec = 697224617}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59153, nsec = 698714145}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59156, nsec = 699065655}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59156, nsec = 699283289}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59162, nsec = 705030538}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59165, nsec = 705272726}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59165, nsec = 705455738}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59168, nsec = 707133773}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59171, nsec = 710170759}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59174, nsec = 710889005}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59177, nsec = 714004168}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59180, nsec = 715422481}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59183, nsec = 716217230}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59183, nsec = 716517676}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59186, nsec = 719552574}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59192, nsec = 723668743}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59192, nsec = 723950164}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59195, nsec = 725291980}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59198, nsec = 727347742}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59201, nsec = 728185097}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59201, nsec = 728360494}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59207, nsec = 734256964}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59210, nsec = 734978443}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59210, nsec = 735176592}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59213, nsec = 735436229}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59213, nsec = 735679344}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59222, nsec = 741336033}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59222, nsec = 741575335}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59225, nsec = 741882832}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59228, nsec = 742366725}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59228, nsec = 742545183}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59231, nsec = 744981357}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59237, nsec = 750746888}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59240, nsec = 752312166}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59240, nsec = 752666707}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59243, nsec = 754775926}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59246, nsec = 757887562}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59249, nsec = 760520554}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59252, nsec = 763157753}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59255, nsec = 764751631}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59258, nsec = 766829939}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59258, nsec = 766876877}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59261, nsec = 769659853}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59267, nsec = 776520753}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59267, nsec = 776566814}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59270, nsec = 778636761}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59273, nsec = 780834499}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59276, nsec = 783313960}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59276, nsec = 783387153}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59282, nsec = 789162523}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59285, nsec = 790917614}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59285, nsec = 790983021}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59288, nsec = 791159172}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59288, nsec = 791469250}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59294, nsec = 794893275}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59294, nsec = 794938906}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59300, nsec = 800271998}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59303, nsec = 802301268}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59303, nsec = 802349847}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59306, nsec = 804650409}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59312, nsec = 810529256}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59312, nsec = 810573098}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59315, nsec = 811754868}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59318, nsec = 812037388}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59318, nsec = 812221380}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59321, nsec = 814723233}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59327, nsec = 818110320}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59327, nsec = 818492573}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59330, nsec = 819397246}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59333, nsec = 821134354}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59336, nsec = 821708176}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59336, nsec = 822031235}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59342, nsec = 828050175}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59345, nsec = 828537434}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59345, nsec = 828830694}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59348, nsec = 830549143}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59351, nsec = 833394929}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59354, nsec = 834164806}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59357, nsec = 837197821}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59360, nsec = 838450698}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59363, nsec = 838825326}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59363, nsec = 838888933}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59363, nsec = 838914338}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59372, nsec = 845871904}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59372, nsec = 846132805}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59375, nsec = 847701296}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59378, nsec = 848338523}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+needs bigger
+Sending:
+POST http://one-xmlrpc.calligo.sara.nl:2633/RPC2 HTTP/1.1
+User-Agent: Haskell XmlRpcClient/0.1
+Content-Type: text/xml
+Content-Length: 2506
+Host: one-xmlrpc.calligo.sara.nl:2633
+
+
+proxy uri host: 10.0.212.3, port: :3128
+Creating new connection to 10.0.212.3:3128
+Received:
+HTTP/1.0 200 OK 
+Content-Type: text/xml; charset="utf-8"
+Content-Length: 255
+Date: Mon, 27 Jul 2015 17:04:05 UTC
+Server: Xmlrpc-c_Abyss/1.16.24
+X-Cache: MISS from squid-vm-01.calligo.sara.nl
+X-Cache-Lookup: MISS from squid-vm-01.calligo.sara.nl:3128
+Via: 1.0 squid-vm-01.calligo.sara.nl (squid/3.1.10)
+Connection: keep-alive
+
+
+TimeSpec {sec = 59381, nsec = 849213611}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59381, nsec = 849266808}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59384, nsec = 849480016}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59390, nsec = 853777819}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59390, nsec = 853820364}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59393, nsec = 855232003}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59396, nsec = 858047115}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59399, nsec = 859347050}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59402, nsec = 862485482}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59405, nsec = 863957190}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59408, nsec = 865248683}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59408, nsec = 865464857}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59411, nsec = 868233120}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59417, nsec = 872817556}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59417, nsec = 872877752}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59420, nsec = 874328282}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59423, nsec = 875670732}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59426, nsec = 877405744}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59426, nsec = 877450674}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+"Machines connected"
+beat
+TimeSpec {sec = 59432, nsec = 879879931}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59435, nsec = 881343721}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59435, nsec = 881675617}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59438, nsec = 883096908}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59444, nsec = 887630575}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59444, nsec = 887772834}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59450, nsec = 893677904}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59450, nsec = 893782519}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59453, nsec = 895385925}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59453, nsec = 895427556}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59456, nsec = 895625287}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59459, nsec = 896722882}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59462, nsec = 898097720}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59462, nsec = 898307773}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59468, nsec = 902499966}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59471, nsec = 903641503}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59471, nsec = 903698730}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59474, nsec = 905294369}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59477, nsec = 905913682}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59480, nsec = 907565213}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59480, nsec = 907690696}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59486, nsec = 913206300}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59489, nsec = 914643587}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59489, nsec = 914690957}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59492, nsec = 915782295}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59495, nsec = 917528349}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59498, nsec = 919090699}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59498, nsec = 919135483}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59504, nsec = 926331747}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59507, nsec = 927933741}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59507, nsec = 927984103}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59510, nsec = 929479044}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59513, nsec = 931279325}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59516, nsec = 933064997}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59516, nsec = 933119557}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59522, nsec = 938725284}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59525, nsec = 940794480}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59525, nsec = 940857798}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59528, nsec = 941387428}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59531, nsec = 943121184}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59534, nsec = 945438307}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59534, nsec = 945495486}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59540, nsec = 951206433}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59543, nsec = 953666773}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59543, nsec = 953788730}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59546, nsec = 955767510}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59549, nsec = 957047540}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59552, nsec = 959286845}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59552, nsec = 959359152}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59558, nsec = 964897817}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59561, nsec = 967266580}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59561, nsec = 967462245}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59567, nsec = 970819355}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59567, nsec = 970976634}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59567, nsec = 971081451}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59570, nsec = 973059719}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59576, nsec = 978838295}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59579, nsec = 980151223}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59579, nsec = 980198049}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59582, nsec = 981501203}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59585, nsec = 981949395}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59585, nsec = 982269647}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59588, nsec = 983085005}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59594, nsec = 988842810}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59597, nsec = 991296176}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59600, nsec = 992479400}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59600, nsec = 992523214}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59603, nsec = 992823884}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59603, nsec = 992860991}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59609, nsec = 998252912}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59613, nsec = 108212}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59616, nsec = 2770170}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59619, nsec = 4063754}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59619, nsec = 4110276}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59622, nsec = 5369167}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59625, nsec = 8130883}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59628, nsec = 10144142}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59631, nsec = 13066833}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59634, nsec = 15601134}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59637, nsec = 17849023}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59640, nsec = 18064338}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59640, nsec = 18172705}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59643, nsec = 20769747}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59646, nsec = 23120828}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59649, nsec = 25828997}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59652, nsec = 28379759}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59655, nsec = 29686986}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59655, nsec = 29744129}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59658, nsec = 31100755}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59661, nsec = 32068956}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59664, nsec = 34988690}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59667, nsec = 37102621}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59670, nsec = 37246415}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59670, nsec = 37409369}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59673, nsec = 37647087}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59676, nsec = 39044917}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59679, nsec = 39392801}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59679, nsec = 39691871}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59685, nsec = 45559935}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59688, nsec = 46187735}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59688, nsec = 46417562}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59691, nsec = 47276267}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59694, nsec = 48247301}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59697, nsec = 49183531}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59697, nsec = 49254943}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59703, nsec = 54591832}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59706, nsec = 55567777}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59706, nsec = 55612599}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59709, nsec = 55833410}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59712, nsec = 57431158}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59715, nsec = 58757530}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59715, nsec = 60424907}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59721, nsec = 66237431}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59724, nsec = 67719136}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59724, nsec = 68027869}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59727, nsec = 69618810}
+TimeSpec {sec = 59730, nsec = 70557801}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59733, nsec = 71685611}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59733, nsec = 71763841}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59739, nsec = 77155642}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59742, nsec = 77784821}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59742, nsec = 77831382}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59745, nsec = 78556834}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59748, nsec = 79342034}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59751, nsec = 80362266}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59751, nsec = 80438709}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59757, nsec = 86437038}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59760, nsec = 87277721}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59760, nsec = 87349026}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59763, nsec = 88902696}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59766, nsec = 89900521}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59769, nsec = 90959852}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59769, nsec = 91023876}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59775, nsec = 96358201}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59778, nsec = 97366357}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59778, nsec = 97410025}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59781, nsec = 98956074}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59784, nsec = 100102933}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59787, nsec = 101446987}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59787, nsec = 101504750}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59793, nsec = 106915399}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59796, nsec = 108456267}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59796, nsec = 108524163}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59799, nsec = 110338464}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59802, nsec = 111589449}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59805, nsec = 113593178}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59805, nsec = 113643065}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59811, nsec = 119308401}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59814, nsec = 121277166}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59814, nsec = 121321887}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59817, nsec = 122633782}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59820, nsec = 124104829}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59823, nsec = 126270275}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59823, nsec = 126315645}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59829, nsec = 132064731}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59832, nsec = 134254152}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59832, nsec = 134302410}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59835, nsec = 134792725}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59838, nsec = 136405110}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59841, nsec = 138806450}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59841, nsec = 138855305}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59847, nsec = 144417005}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59850, nsec = 146839613}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59850, nsec = 146888766}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59853, nsec = 147247893}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59856, nsec = 148947183}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59859, nsec = 151649669}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59859, nsec = 151710240}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59865, nsec = 157278254}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59868, nsec = 159975727}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59868, nsec = 160095134}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59871, nsec = 161253397}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59874, nsec = 162865463}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59877, nsec = 165461591}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59877, nsec = 165508952}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59883, nsec = 168789063}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59883, nsec = 168983491}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59886, nsec = 171353784}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59889, nsec = 171540777}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59892, nsec = 171904010}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59892, nsec = 172133438}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59895, nsec = 174970391}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59901, nsec = 180805711}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59904, nsec = 182831968}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59904, nsec = 182896603}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59907, nsec = 184313932}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59910, nsec = 185778165}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59913, nsec = 188108705}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59913, nsec = 188150035}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59919, nsec = 193941468}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59922, nsec = 196327384}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59922, nsec = 196373540}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59925, nsec = 197775047}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59928, nsec = 199363587}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59931, nsec = 202128197}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59931, nsec = 202172761}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59937, nsec = 208044088}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59940, nsec = 210644551}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59940, nsec = 210691810}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59943, nsec = 212065166}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59946, nsec = 212273818}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59946, nsec = 212317951}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59949, nsec = 214913813}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59955, nsec = 218416252}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59955, nsec = 218487743}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59958, nsec = 221378439}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59961, nsec = 222806093}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59964, nsec = 223228365}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59964, nsec = 223454665}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59967, nsec = 226313743}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59973, nsec = 230330636}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59973, nsec = 230669668}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59976, nsec = 232947405}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59979, nsec = 234058060}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59982, nsec = 234677896}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59982, nsec = 234930272}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59985, nsec = 237882016}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+does not need bigger
+beat
+TimeSpec {sec = 59991, nsec = 241719907}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59991, nsec = 241764901}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59994, nsec = 243991309}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 59997, nsec = 245275988}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60000, nsec = 245948826}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60000, nsec = 245994572}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60003, nsec = 248956192}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60009, nsec = 253004947}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60009, nsec = 253088613}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60012, nsec = 256155298}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60015, nsec = 257502946}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60018, nsec = 257669921}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60018, nsec = 257710092}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60018, nsec = 257721679}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60027, nsec = 264562964}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60027, nsec = 264612621}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60030, nsec = 267031913}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60033, nsec = 268684041}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60036, nsec = 269366211}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60036, nsec = 269626947}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60039, nsec = 272816401}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60045, nsec = 276675350}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60045, nsec = 276752395}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60048, nsec = 279185022}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60051, nsec = 281084372}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60054, nsec = 281897033}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60054, nsec = 281943226}
+39088169
+"main finishedpid://10.0.212.37:9000:0:10"
+TimeSpec {sec = 60057, nsec = 284708390}
+39088169

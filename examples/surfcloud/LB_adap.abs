@@ -1,0 +1,134 @@
+module LB_adap;
+
+import * from NebulaDC;
+fimport threadDelay from Control.Concurrent;
+
+// data Req = Req(Client client, Content co);
+// type Res = Res(Client client, Content co);
+// type Content = Int; // for fibonacci
+type Req = Int;
+type Res = Int;
+
+interface Balancer {
+    Unit forwardReq(Client c, Req r);
+    Unit forwardRes(Client c, Res r);
+    Unit addToFarm(Server s);
+}
+
+interface Server {
+    Unit serve(Client c, Req r);
+    Rat server_load();
+}
+
+interface Client {
+    Unit respond(Res r);
+}
+
+// simplistic load balancer of jobs
+class B(Int initFarmSize) implements Balancer {
+   List<Server> farm = Nil;
+   Int rr = 0;                  // the farm index in a round-robin
+   {
+       Int i = initFarmSize;
+       List<IDC> dcs = Nil;
+       IDC dc;
+       while (i > 0) {          // create the VMs for the farm
+           dc = new NebulaDC(1,8192);
+           dcs = Cons(dc, dcs);
+           i = i-1;
+       }
+       Server s;
+       while (dcs != Nil) { // start a server in each VM
+            dc = head(dcs);
+            s = dc spawns S(this);      //should be spawns
+            farm = Cons(s,farm);
+            i = i+1;
+            dcs=tail(dcs);
+       }
+       new Heartbeater(farm, this);
+   }
+   Unit forwardReq(Client c, Req req) {
+       nth(farm,rr) ! serve(c,req);
+       rr = if (rr >= length(farm)-1) then 0 else rr+1;
+   }
+   Unit forwardRes(Client c, Res rsp) { c ! respond(rsp); }
+
+   Unit addToFarm(Server s) { farm = Cons(s,farm); }
+
+   // Bool serverIdle(Server s) {
+   //     Bool canStop = False;
+   //     if (length(farm)>0) { // we keep 1 at list
+   //         //farm = delete(s,farm); // remove serv from servs
+   //         canStop = True;
+   //     }
+   //     return canStop;
+   // }
+}
+
+class Heartbeater(List<Server> farm, Balancer b) {
+    Unit run() {
+      List<Server> farm' = farm;
+      Server s;
+      Fut<Rat> f;
+      Rat r = 0;
+      Rat sum = 0;
+      IDC dc;
+
+      while(True) {
+          farm' = farm;
+	  sum = 0;
+          while (farm' != Nil) {
+              s = head(farm');
+              f = s ! server_load();
+              await f?;
+              r = f.get;
+              sum = sum + r;
+              farm' = tail(farm');
+          }
+          r = sum / length(farm);
+          if (r > 80/100) {
+              println("needs bigger");
+              dc = new NebulaDC(1,8192);
+              s = dc spawns Server();
+	      farm = Cons(s,farm);
+              b ! addToFarm(s);
+          }
+          threadDelay(60000000);
+    }
+  }
+}
+
+
+
+class S(Balancer b) implements Server {
+    Unit serve(Client c, Req r) {
+        Res res = fib(38);
+        b ! forwardRes(c, res);
+    }
+    Rat server_load() {
+        // (s1: s5: s15: _) <- I__.liftIO (words <$!> (readFile "/proc/loadavg"))
+        return (9/10);
+    }
+
+}
+
+class C implements Client {
+    Unit respond(Res r) {
+        println(toString(r));
+    }
+} 
+
+
+//this will not show, this generates the requests
+{
+ Int f = 4;
+ Balancer b = new B(f);
+ Int cs = 1000;
+ Client c;
+ while (cs>0) {
+     c = new local C();
+     b ! forwardReq(c, 4);
+     // should wait for a while
+     cs=cs-1;
+ }
+}
