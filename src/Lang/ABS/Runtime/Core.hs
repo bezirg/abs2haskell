@@ -226,7 +226,6 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
         Right respToFutStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let (FutureRef _ (COG (_,creatorPid)) i) = decode (B64.decodeLenient (C8.pack respToFutStr)) :: Fut a
-                    let creatorNodeAddress = CH.nodeAddress (CH.processNodeId creatorPid)
                     runProcess myLocalNode (do
                                              CH.send creatorPid (MachineUp fwdPid i) -- send ack to creatorPid
                                              loop c fwdPid M.empty M.empty 1) -- start the COG process (this cog is needed, because it runs dc's methods)

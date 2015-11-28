@@ -329,9 +329,9 @@ instance Binary Job where
                       put (encodeFingerprint$ fingerprint a) >> put a
                       put c
                       put i
-    put (MachineUp nid fut_id) = do
+    put (MachineUp pid fut_id) = do
       put (2 :: Word8)
-      put nid
+      put pid
       put fut_id
     put (LocalJob _ _ _) = error "compiler error, LocalJob should not be transmitted."
     get = do
@@ -437,10 +437,12 @@ myIP = case ip conf of
                         Just nic -> show (ipv4 nic)
                         _ -> "127.0.0.1"
 
+{-# NOINLINE myNodeId #-}
 myNodeId :: CH.NodeId
 myNodeId = CH.NodeId $ encodeEndPointAddress myIP (case port conf of
                                                       Just port' -> show port'
                                                       _ ->  "9000") 0
 
+{-# NOINLINE fm #-}
 fm :: MVar ForeignMap
 fm = unsafePerformIO $ newMVar M.empty

@@ -15,7 +15,7 @@ import Lang.ABS.Runtime.Prim
 import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.StdLib
 import OpenNebula hiding (main)
-import Control.Distributed.Process (NodeId)
+import Control.Distributed.Process (ProcessId, processNodeId)
 import Control.Distributed.Process.Internal.Types (nullProcessId) -- DC is under a null COG-process
 import System.IO (readFile)
 import Data.List (words)
@@ -42,7 +42,7 @@ import Data.Rank1Typeable
 
 data NebulaDC = NebulaDC{
                          nebulaDC_cpu :: Int, nebulaDC_load :: Int, nebulaDC_memory :: Int,
-                         nebulaDC_nid :: Fut NodeId, nebulaDC_vmId :: Int}
+                         nebulaDC_pid :: Fut ProcessId, nebulaDC_vmId :: Int}
               deriving (I__.Typeable, I__.Generic)
 
 __nebulaDC cpu memory
@@ -98,7 +98,7 @@ instance I__.Root_ NebulaDC where
           __astate@(I__.AState{I__.aCounter = __counter}) <- I__.lift I__.get
           I__.lift (I__.put (__astate{I__.aCounter = __counter + 1}))
           let __f = I__.FutureRef __mvar thisCOG __counter
-          I__.set 1 (\ v__ c__ -> c__{nebulaDC_nid = v__}) __f this
+          I__.set 1 (\ v__ c__ -> c__{nebulaDC_pid = v__}) __f this
 
 
           myProgName <- I__.liftIO getProgName
@@ -141,10 +141,11 @@ instance IDC_ NebulaDC where
                    return (toRational (read s1 :: Double), toRational (read s5 :: Double), toRational (read s15 :: Double))
         spawns :: forall o. (I__.Root_ o) => o -> I__.Obj NebulaDC -> I__.ABS (I__.Obj o)
         spawns smart this = do
-             fnid <- nebulaDC_nid <$!> I__.readThis this
-             nid <- get fnid
+             fpid <- nebulaDC_pid <$!> I__.readThis this
+             dc_main_pid <- get fpid
              println (pure "before spawn")
-             s <- I__.lift (I__.lift (call' nid (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
+             s <- I__.lift (I__.lift (call' (processNodeId dc_main_pid)
+                                               (I__.spawnClosure (staticLabel ((I__.show (typeOf (I__.undefined :: o))) ++ "__rootDict")) smart)))
              println(pure "after spawn")
              return s
 
@@ -178,7 +179,7 @@ thisDC = IDC (I__.ObjectRef (unsafePerformIO (newIORef (
                                                                  nebulaDC_cpu = -1, -- TODO
                                                                  nebulaDC_memory = -1, -- TODO
                                                                  nebulaDC_load = -1, -- it's for sim purposes
-                                                                 nebulaDC_nid = I__.NullFutureRef, -- TODO
+                                                                 nebulaDC_pid = I__.NullFutureRef, -- TODO
                                                                  nebulaDC_vmId = myVmId}
                                                        ))) 
               (I__.COG (I__.undefined,nullProcessId I__.myNodeId))         -- no processid (ForwarderCOG ID) associated with the DC object

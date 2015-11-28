@@ -2,11 +2,11 @@ module PrintLocal;
 
 import * from LocalDC;
 
-interface IPrint {
+interface IPrinter {
     Unit print(String b);
 }
 
-class Print1 implements IPrint {
+class Printer1 implements IPrinter {
     {
       println("print1 is up");
     }
@@ -15,7 +15,7 @@ class Print1 implements IPrint {
     }
 }
 
-class Print2 implements IPrint {
+class Printer2 implements IPrinter {
     {
       println("print2 is also up");
     }
@@ -36,11 +36,11 @@ class Print2 implements IPrint {
 
   IDC dc = new local LocalDC(9001); // local for now, to make it need no threadDelay
 
-  IPrint o = dc spawns Print1();
+  IPrinter o = dc spawns Printer1();
 
   o ! print("hello");
 
-  o = dc spawns Print2();
+  o = dc spawns Printer2();
 
   Fut<Unit> f = o ! print("hi there");
   await f?;
