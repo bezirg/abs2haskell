@@ -13,6 +13,9 @@ module Lang.ABS.Runtime.Core
     ,new_local
     ,set
     ,spawnClosure
+    ,demo_vms
+    ,demo_reqs
+    ,demo_name
     ,RootDict(..)
     ) where
 
@@ -66,6 +69,9 @@ import Data.Binary (encode,decode)
 
 -- for demo
 import Web.Scotty as Web
+import System.IO.Unsafe (unsafePerformIO)
+import Data.IORef (IORef, readIORef, atomicModifyIORef')
+import Control.Monad.IO.Class (liftIO)
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -222,11 +228,11 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           forkIO $ Web.scotty 80 (Web.get "/" $ text "mplo")
+           forkIO $ demo_server
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right "" -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           forkIO $ Web.scotty 80 (Web.get "/" $ text "mplo")
+           forkIO $ demo_server
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right respToFutStr -> do -- there is a Creator PID; extract its NodeId
@@ -404,4 +410,55 @@ spawnClosure dict objv = Static.closure decoder (encode objv)
     decoder :: Static.Static (BS.ByteString -> CH.Process (Obj a))
     decoder = (spawnDictStatic `Static.staticApply` dict) `Static.staticCompose` (rootDecodeDictStatic `Static.staticApply` dict)
 
+
+{-# NOINLINE demo_vms #-}
+demo_vms :: IORef Int
+demo_vms = unsafePerformIO $ newIORef 0
+
+{-# NOINLINE demo_reqs #-}
+demo_reqs :: IORef Int
+demo_reqs = unsafePerformIO $ newIORef 0
+
+{-# NOINLINE demo_name #-}
+demo_name :: IORef String
+demo_name = unsafePerformIO $ newIORef "Demo"
+
+demo_server :: IO ()
+demo_server = Web.scotty 80 $ do
+    -- homepage            
+    Web.get "/" $ html "<html><head><script type='text/javascript' src='smoothie.js'></script></head><body> \
+                        \ <h1 id='name'>Demo</h1> \
+                        \ <canvas id='mycanvas' width='800' height='300'></canvas> \
+                        \ <h2 id='vms'>Running VMs: 0</h2> \
+                        \ <script type='text/javascript'> \
+                        \ var line1 = new TimeSeries(); \
+                        \ setInterval(function() { \
+                        \    var request = new XMLHttpRequest(); \
+                        \    request.open('GET', '/ajax', false); \
+                        \    request.send(); \
+                        \    var rsp = JSON.parse(request.responseText); \
+                        \    document.getElementById('name').innerHTML = rsp[2]; \
+                        \    document.getElementById('vms').innerHTML = 'Running VMs: ' + rsp[0]; \
+                        \    line1.append(new Date().getTime(), rsp[1]); \
+                        \ }, 10000); \
+                        \ var smoothie = new SmoothieChart({labels:{fontSize:19},millisPerPixel:100, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
+                        \ smoothie.addTimeSeries(line1, { strokeStyle: 'rgb(0, 255, 0)', fillStyle: 'rgba(0, 255, 0, 0.4)', lineWidth: 3 }); \
+                        \ smoothie.streamTo(document.getElementById('mycanvas'), 1000); \
+                        \ </script></body></html>"
+
+
+    -- static js chart library, should be in current dir (next to the executable)
+    -- todo: add it to cabal inlc. datafiles
+    Web.get "/smoothie.js" $ do
+                          Web.setHeader "Content-Type" "text/javascript"
+                          Web.file "./smoothie.js"
+
+
+    -- refreshed data ajax
+    -- upon refresh, it zeroes the reqs counter
+    Web.get "/ajax" $ do
+      vms <- liftIO $ readIORef demo_vms
+      name <- liftIO $ readIORef demo_name
+      reqs <- liftIO $ atomicModifyIORef' demo_reqs (\ reqs -> (0, reqs))
+      json (vms,reqs,name)
 

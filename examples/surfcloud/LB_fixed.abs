@@ -1,6 +1,6 @@
 module LB_fixed;
 
-import * from NebulaDC;
+import * from LocalDC;
 
 //interface IDC { }  // stub for non-haskell backend
 
@@ -35,7 +35,7 @@ class Balancer(Int initFarmSize) implements IBalancer {
        List<IDC> dcs = Nil;
        IDC dc;
        while (i > 0) {          // create the VMs for the farm
-           dc = new NebulaDC(1,8192);  // null; for non-haskell backend
+           dc = new LocalDC(9000+i);  // null; for non-haskell backend
            dcs = Cons(dc, dcs);
            i = i-1;
        }

@@ -11,8 +11,10 @@ import qualified Lang.ABS.Compiler.Include as I__
 import Lang.ABS.Runtime.Prim
 import Lang.ABS.StdLib
 import qualified Data.Binary as B__
-import NebulaDC hiding (main)
-import Control.Concurrent (threadDelay)
+import LocalDC hiding (main)
+
+-- added
+import Data.IORef (atomicModifyIORef')
  
 type Req = Int
  
@@ -246,10 +248,12 @@ instance I__.Root_ Balancer where
                dcs :: I__.IORef (List IDC) <- I__.newRef (pure [])
                dc :: I__.IORef IDC <- I__.newRef (pure (I__.up null))
                while ((>) <$!> (I__.fromIntegral <$!> I__.readRef i) <*> pure 0)
-                 (do I__.writeRef dc
+                 (do i_ <- I__.readRef i
+                     I__.liftIO (atomicModifyIORef' I__.demo_vms (\ v-> (v+1,())))
+                     I__.writeRef dc
                        (IDC <$!>
                           (I__.join
-                             (I__.new <$!> (pure __nebulaDC <*> pure 1 <*> pure 8192))))
+                             (I__.new_local <$!> (pure __localDC <*> pure (9000+i_)) <*> pure this)))
                      I__.writeRef dcs
                        ((:) <$!> ((I__.up <$!> I__.readRef dc)) <*> ((I__.readRef dcs)))
                      I__.writeRef i
@@ -317,7 +321,8 @@ instance IBalancer_ Balancer where
           = do (I__.join
                   ((\ __wrap@(IClient __obj@(I__.ObjectRef _ (I__.COG (_, __pid)) _))
                       ->
-                      if I__.processNodeId __pid == I__.myNodeId then
+                      if I__.processNodeId __pid == I__.myNodeId then do
+                        I__.liftIO (atomicModifyIORef' I__.demo_reqs (\ v-> (v+1,())))
                         I__.join
                           (this ^!! __obj <$!> (pure processResponse <*> (pure rsp)))
                         else
@@ -386,7 +391,9 @@ __rtable
         (I__.toDynamic
            (I__.SerializableDict :: I__.SerializableDict (I__.Obj Server)))
 mainABS this
-  = do fixedFarmSize :: I__.IORef Int <- I__.newRef (pure 4)
+  = do 
+       I__.writeRef I__.demo_name (pure "Demo: Load-balancer Fixed")
+       fixedFarmSize :: I__.IORef Int <- I__.newRef (pure 4)
        b :: I__.IORef IBalancer <- I__.newRef
                                      (IBalancer <$!>
                                         (I__.join
@@ -396,7 +403,7 @@ mainABS this
                                                     I__.readRef fixedFarmSize)))))
        numberOfClients :: I__.IORef Int <- I__.newRef (pure 1000)
        c :: I__.IORef IClient <- I__.newRef (pure (I__.up null))
-       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 38)
+       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 33)
        while
          ((>) <$!> (I__.fromIntegral <$!> I__.readRef numberOfClients) <*>
             pure 0)
@@ -423,6 +430,6 @@ mainABS this
                ((-) <$!> (I__.fromIntegral <$!> I__.readRef numberOfClients) <*>
                   pure 1)
              return ())
-       I__.liftIO (I__.join ((pure threadDelay <*> pure 30000000)))
+       --I__.liftIO (I__.join ((pure threadDelay <*> pure 30000000)))
        return ()
 main = I__.main_is mainABS (__rtable I__.initRemoteTable)
