@@ -20,7 +20,7 @@ import qualified Control.Distributed.Process as CH
 import Control.Distributed.Process.Closure
  
 -- added
-import qualified Prelude (read, Double,(/),(!!))
+import qualified Prelude (read, Double,(/),(!!),subtract,fromRational)
 import Data.List (words)
 import Data.IORef (atomicModifyIORef', readIORef)
 import System.IO (readFile)
@@ -34,17 +34,17 @@ import Data.IORef (newIORef)
 
 {-# NOINLINE nid1 #-}
 nid1 :: Fut CH.ProcessId
-nid1 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "" "9000" 0))))) (I__.COG I__.undefined) (-1)
+nid1 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.2" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
 
 {-# NOINLINE nid2 #-}
 nid2 :: Fut CH.ProcessId
-nid2 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "" "9000" 0))))) (I__.COG I__.undefined) (-1)
+nid2 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.3" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
 
 
 {-# NOINLINE __allocdcs #-}
 __allocdcs :: [IDC]
-__allocdcs = [IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid1 (-1)))) (I__.COG I__.undefined) (-1))
-             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid2 (-1)))) (I__.COG I__.undefined) (-1))
+__allocdcs = [IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid1 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
+             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid2 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
              ] 
 
 fib 0 = 0
@@ -295,7 +295,7 @@ instance I__.Root_ B where
                dcs :: I__.IORef (List IDC) <- I__.newRef (pure [])
                dc :: I__.IORef IDC <- I__.newRef (pure (I__.up null))
                while ((>) <$!> (I__.fromIntegral <$!> I__.readRef i) <*> pure 0)
-                 (do I__.writeRef dc (nth <$!> pure __allocdcs <*> I__.readRef i)
+                 (do I__.writeRef dc (nth <$!> pure __allocdcs <*> (Prelude.subtract 1 <$!> I__.readRef i))
                        -- (IDC <$!>
                        --    (I__.join
                        --       (I__.new_local <$!> (pure __nebulaDC <*> pure 1 <*> pure 8192) <*> pure this)))
@@ -374,7 +374,8 @@ instance Balancer_ B where
           = do (I__.join
                   ((\ __wrap@(Client __obj@(I__.ObjectRef _ (I__.COG (_, __pid)) _))
                       ->
-                      if I__.processNodeId __pid == I__.myNodeId then
+                      if I__.processNodeId __pid == I__.myNodeId then do
+                        I__.liftIO (atomicModifyIORef' I__.demo_reqs (\ v-> (v+1,())))
                         I__.join (this ^!! __obj <$!> (pure respond <*> (pure rsp))) else
                         do __args <- (,) <$!> (pure rsp) <*> pure __wrap
                            (^@@) this __obj ($( I__.mkClosure 'respond__remote ) __args))
@@ -439,6 +440,8 @@ instance I__.Root_ Heartbeater where
                                   \ Heartbeater{heartbeater_farm = __farm} ->
                                     ((/) <$!> ((I__.readRef sum)) <*>
                                        (I__.fromIntegral <$!> (pure length <*> (pure __farm)))))
+                             avg_load <- I__.readRef r
+                             I__.liftIO (atomicModifyIORef' I__.demo_load (\ _ -> ((Prelude.fromRational avg_load)*100,())))
                              ifthenelseM
                                ((>) <$!> ((I__.readRef r)) <*> ((/) <$!> pure 80 <*> pure 100))
                                (do 
