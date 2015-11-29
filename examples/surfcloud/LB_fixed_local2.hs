@@ -407,9 +407,9 @@ mainABS this
                                               (pure __balancer <*>
                                                  (I__.fromIntegral <$!>
                                                     I__.readRef fixedFarmSize)))))
-       numberOfClients :: I__.IORef Int <- I__.newRef (pure 10000)
+       numberOfClients :: I__.IORef Int <- I__.newRef (pure 30000)
        c :: I__.IORef IClient <- I__.newRef (pure (I__.up null))
-       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 32)
+       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 33)
        while
          ((>) <$!> (I__.fromIntegral <$!> I__.readRef numberOfClients) <*>
             pure 0)

@@ -476,7 +476,7 @@ instance B__.Binary Heartbeater
  
 instance Server_ S where
         serve c r this
-          = do res :: I__.IORef Res <- I__.newRef ((pure fib <*> pure 32))
+          = do res :: I__.IORef Res <- I__.newRef ((pure fib <*> pure 33))
                (I__.readThis this >>=
                   \ S{s_b = __b} ->
                     (I__.join
@@ -543,7 +543,7 @@ mainABS this
                                        (I__.join
                                           (I__.new <$!>
                                              (pure __b <*> (I__.fromIntegral <$!> I__.readRef f)))))
-       cs :: I__.IORef Int <- I__.newRef (pure 10000)
+       cs :: I__.IORef Int <- I__.newRef (pure 30000)
        c :: I__.IORef Client <- I__.newRef (pure (I__.up null))
        while ((>) <$!> (I__.fromIntegral <$!> I__.readRef cs) <*> pure 0)
          (do I__.writeRef c

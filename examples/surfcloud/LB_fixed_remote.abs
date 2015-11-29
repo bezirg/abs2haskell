@@ -76,12 +76,12 @@ class Client implements IClient {
 // main
 {
 
- Int fixedFarmSize = 4;
+ Int fixedFarmSize = 2;
  IBalancer b = new Balancer(fixedFarmSize);
 
- Int numberOfClients = 10000;
+ Int numberOfClients = 30000;
  IClient c;
- Int fixedJobSize = 32;
+ Int fixedJobSize = 33;
  while (numberOfClients>0) {
      c = new local Client();
      b ! forwardReq(c, fixedJobSize);
