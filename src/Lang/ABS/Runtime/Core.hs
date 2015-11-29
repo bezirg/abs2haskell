@@ -16,6 +16,7 @@ module Lang.ABS.Runtime.Core
     ,demo_vms
     ,demo_reqs
     ,demo_name
+    ,demo_load
     ,RootDict(..)
     ) where
 
@@ -423,27 +424,39 @@ demo_reqs = unsafePerformIO $ newIORef 0
 demo_name :: IORef String
 demo_name = unsafePerformIO $ newIORef "Demo"
 
+{-# NOINLINE demo_load #-}
+demo_load :: IORef Double
+demo_load = unsafePerformIO $ newIORef 0
+
 demo_server :: IO ()
 demo_server = Web.scotty 80 $ do
     -- homepage            
-    Web.get "/" $ html "<html><head><script type='text/javascript' src='smoothie.js'></script></head><body> \
+    Web.get "/" $ html "<html><head><script type='text/javascript' src='smoothie.js'></script></head><body><center> \
                         \ <h1 id='name'>Demo</h1> \
-                        \ <canvas id='mycanvas' width='800' height='300'></canvas> \
-                        \ <h2 id='vms'>Running VMs: 0</h2> \
+                        \ <font size='5'>Finished jobs/10s:</font> <canvas id='canvas1' width='800' height='200'></canvas> \
+                        \ <hr/> \
+                        \ <h1 id='vms'>Running VMs: 0</h1> \
+                        \ <hr/> \
+                        \ <font size='5'>Average Cpu Load:</font> <canvas id='canvas2' width='800' height='200'></canvas></center> \
                         \ <script type='text/javascript'> \
                         \ var line1 = new TimeSeries(); \
+                        \ var line2 = new TimeSeries(); \
                         \ setInterval(function() { \
                         \    var request = new XMLHttpRequest(); \
                         \    request.open('GET', '/ajax', false); \
                         \    request.send(); \
                         \    var rsp = JSON.parse(request.responseText); \
                         \    document.getElementById('name').innerHTML = rsp[2]; \
-                        \    document.getElementById('vms').innerHTML = 'Running VMs: ' + rsp[0]; \
+                        \    document.getElementById('vms').innerHTML = 'Running VMs: <b>' + rsp[0]; +'</b>'; \
                         \    line1.append(new Date().getTime(), rsp[1]); \
+                        \    line2.append(new Date().getTime(), rsp[3]); \
                         \ }, 10000); \
-                        \ var smoothie = new SmoothieChart({labels:{fontSize:19},millisPerPixel:100, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
-                        \ smoothie.addTimeSeries(line1, { strokeStyle: 'rgb(0, 255, 0)', fillStyle: 'rgba(0, 255, 0, 0.4)', lineWidth: 3 }); \
-                        \ smoothie.streamTo(document.getElementById('mycanvas'), 1000); \
+                        \ var smoothie1 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:200, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
+                        \ smoothie1.addTimeSeries(line1, { strokeStyle: 'rgb(0, 255, 0)', fillStyle: 'rgba(0, 255, 0, 0.4)', lineWidth: 3 }); \
+                        \ smoothie1.streamTo(document.getElementById('canvas1'), 1000); \
+                        \ var smoothie2 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:200, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
+                        \ smoothie2.addTimeSeries(line2, { strokeStyle: 'rgb(255, 0, 0)', fillStyle: 'rgba(255, 0, 0, 0.4)', lineWidth: 3 }); \
+                        \ smoothie2.streamTo(document.getElementById('canvas2'), 1000); \
                         \ </script></body></html>"
 
 
@@ -459,6 +472,7 @@ demo_server = Web.scotty 80 $ do
     Web.get "/ajax" $ do
       vms <- liftIO $ readIORef demo_vms
       name <- liftIO $ readIORef demo_name
+      load <- liftIO $ readIORef demo_load
       reqs <- liftIO $ atomicModifyIORef' demo_reqs (\ reqs -> (0, reqs))
-      json (vms,reqs,name)
+      json (vms,reqs,name,load)
 

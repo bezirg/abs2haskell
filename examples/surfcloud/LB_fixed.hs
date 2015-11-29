@@ -14,7 +14,12 @@ import qualified Data.Binary as B__
 import LocalDC hiding (main)
 
 -- added
-import Data.IORef (atomicModifyIORef')
+import qualified Prelude (read, Double,(/))
+import Data.List (words)
+import Data.IORef (atomicModifyIORef', readIORef)
+import System.IO (readFile)
+import Control.Monad(forever)
+import Control.Concurrent (forkIO, threadDelay)
  
 type Req = Int
  
@@ -394,6 +399,7 @@ mainABS this
   = do 
        I__.writeRef I__.demo_name (pure "Demo: Load-balancer Fixed")
        fixedFarmSize :: I__.IORef Int <- I__.newRef (pure 4)
+       I__.liftIO (forkIO (load_updater 4))
        b :: I__.IORef IBalancer <- I__.newRef
                                      (IBalancer <$!>
                                         (I__.join
@@ -433,3 +439,14 @@ mainABS this
        --I__.liftIO (I__.join ((pure threadDelay <*> pure 30000000)))
        return ()
 main = I__.main_is mainABS (__rtable I__.initRemoteTable)
+
+load_updater fixedFarmSize = forever (do
+     (s1: s5: s15: _) <- (words <$!> (readFile "/proc/loadavg"))
+     atomicModifyIORef' I__.demo_load (\ _ -> 
+                                           (
+                                            ((Prelude.read s1 :: Prelude.Double) * 100 Prelude./ I__.fromIntegral (fixedFarmSize :: Int)), 
+                                            ())
+                                      )
+     threadDelay 60000000
+                                     )
+
