@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.8.5
+version:               1.8.6
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -52,7 +52,10 @@ library
 
                       -- for command-line arguments menu
                       cmdargs,
-                      cabal-file-th
+                      cabal-file-th,
+
+                      -- for demo with graphs
+                      scotty>=0.10.2
 
   exposed-modules:    
                      -- imitating the abslang.abs

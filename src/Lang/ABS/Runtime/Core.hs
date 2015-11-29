@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, GADTs, DeriveDataTypeable, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, GADTs, DeriveDataTypeable, ScopedTypeVariables, OverloadedStrings #-}
 -- | The core of the ABS-Haskell runtime execution. 
 --
 -- This module implements the execution-logic of 
@@ -22,6 +22,7 @@ import Lang.ABS.Runtime.Conf
 
 -- shared memory
 import Data.IORef (newIORef, modifyIORef')
+import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (readMVar, putMVar)
 import Control.Concurrent.Chan (newChan, readChan, writeChan, Chan)
 
@@ -62,6 +63,9 @@ import Data.Rank1Dynamic
 import Data.Rank1Typeable
 import Unsafe.Coerce (unsafeCoerce)
 import Data.Binary (encode,decode)
+
+-- for demo
+import Web.Scotty as Web
 
 -- NOTE: the loops must be tail-recursive (not necessarily syntactically tail-recursive) to avoid stack leaks
 
@@ -218,9 +222,11 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       maybeCreatorPidStr <- tryIOError (getEnv "FROM_PID" )
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
+           forkIO $ Web.scotty 80 (Web.get "/" $ text "mplo")
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right "" -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
+           forkIO $ Web.scotty 80 (Web.get "/" $ text "mplo")
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right respToFutStr -> do -- there is a Creator PID; extract its NodeId
