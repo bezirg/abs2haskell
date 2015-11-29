@@ -233,9 +233,7 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
            runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
         Right "" -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
-           forkIO $ demo_server
-           writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
-           runProcess myLocalNode (loop c fwdPid M.empty M.empty 1) -- start the COG process
+           runProcess myLocalNode (loop c fwdPid M.empty M.empty 1)
         Right respToFutStr -> do -- there is a Creator PID; extract its NodeId
                     -- try to establish TCP connection with the creator
                     let (FutureRef _ (COG (_,creatorPid)) i) = decode (B64.decodeLenient (C8.pack respToFutStr)) :: Fut a
@@ -433,11 +431,11 @@ demo_server = Web.scotty 80 $ do
     -- homepage            
     Web.get "/" $ html "<html><head><script type='text/javascript' src='smoothie.js'></script></head><body><center> \
                         \ <h1 id='name'>Demo</h1> \
-                        \ <font size='5'>Finished jobs/10s:</font> <canvas id='canvas1' width='800' height='200'></canvas> \
+                        \ <font size='5'>Finished jobs/10s:</font> <canvas id='canvas1' width='1000' height='200'></canvas> \
                         \ <hr/> \
                         \ <h1 id='vms'>Running VMs: 0</h1> \
                         \ <hr/> \
-                        \ <font size='5'>Average Cpu Load:</font> <canvas id='canvas2' width='800' height='200'></canvas></center> \
+                        \ <font size='5'>Average Cpu Load:</font> <canvas id='canvas2' width='1000' height='200'></canvas></center> \
                         \ <script type='text/javascript'> \
                         \ var line1 = new TimeSeries(); \
                         \ var line2 = new TimeSeries(); \
@@ -451,10 +449,10 @@ demo_server = Web.scotty 80 $ do
                         \    line1.append(new Date().getTime(), rsp[1]); \
                         \    line2.append(new Date().getTime(), rsp[3]); \
                         \ }, 10000); \
-                        \ var smoothie1 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:200, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
+                        \ var smoothie1 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:400, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
                         \ smoothie1.addTimeSeries(line1, { strokeStyle: 'rgb(0, 255, 0)', fillStyle: 'rgba(0, 255, 0, 0.4)', lineWidth: 3 }); \
                         \ smoothie1.streamTo(document.getElementById('canvas1'), 1000); \
-                        \ var smoothie2 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:200, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
+                        \ var smoothie2 = new SmoothieChart({labels:{fontSize:19},millisPerPixel:400, minValue: 0, timestampFormatter:SmoothieChart.timeFormatter, grid: {lineWidth: 1, millisPerLine: 30000, verticalSections: 9 } }); \
                         \ smoothie2.addTimeSeries(line2, { strokeStyle: 'rgb(255, 0, 0)', fillStyle: 'rgba(255, 0, 0, 0.4)', lineWidth: 3 }); \
                         \ smoothie2.streamTo(document.getElementById('canvas2'), 1000); \
                         \ </script></body></html>"

@@ -1,6 +1,6 @@
-module LB_fixed;
+module LB_fixed_remote;
 
-import * from LocalDC;
+import * from NebulaDC;
 
 //interface IDC { }  // stub for non-haskell backend
 
@@ -35,7 +35,7 @@ class Balancer(Int initFarmSize) implements IBalancer {
        List<IDC> dcs = Nil;
        IDC dc;
        while (i > 0) {          // create the VMs for the farm
-           dc = new LocalDC(9000+i);  // null; for non-haskell backend
+           dc = new NebulaDC(1,8192);  // null; for non-haskell backend
            dcs = Cons(dc, dcs);
            i = i-1;
        }
@@ -48,11 +48,15 @@ class Balancer(Int initFarmSize) implements IBalancer {
             dcs=tail(dcs);
        }
    }
+
    Unit forwardReq(IClient c, Req req) {
        nth(farm,rr) ! processRequest(c,req);
        rr = if (rr >= length(farm)-1) then 0 else rr+1;
    }
-   Unit forwardRes(IClient c, Res rsp) { c ! processResponse(rsp); }
+
+   Unit forwardRes(IClient c, Res rsp) { 
+       c ! processResponse(rsp); 
+   }
 }
 
 class Server(IBalancer b) implements IServer {
@@ -75,9 +79,9 @@ class Client implements IClient {
  Int fixedFarmSize = 4;
  IBalancer b = new Balancer(fixedFarmSize);
 
- Int numberOfClients = 1000;
+ Int numberOfClients = 10000;
  IClient c;
- Int fixedJobSize = 38;
+ Int fixedJobSize = 32;
  while (numberOfClients>0) {
      c = new local Client();
      b ! forwardReq(c, fixedJobSize);

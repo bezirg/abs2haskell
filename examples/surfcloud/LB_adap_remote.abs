@@ -1,0 +1,148 @@
+module LB_adap;
+
+import * from NebulaDC;
+fimport threadDelay from Control.Concurrent;
+
+//interface IDC { }  // stub for non-haskell backend
+
+type Req = Int;
+type Res = Int;
+
+def Int fib(Int n) = case n {
+       0 => 0;
+       1 => 1;
+       n_ => fib(n-1) + fib(n-2);
+};
+
+interface IBalancer {
+    Unit forwardReq(IClient c, Req r);
+    Unit forwardRes(IClient c, Res r);
+    Unit addToFarm(IServer s);
+}
+
+interface IServer {
+    Unit processRequest(IClient c, Req r);
+    Rat server_load();
+}
+
+interface IClient {
+    Unit processResponse(Res r);
+}
+
+class Balancer(Int initFarmSize) implements IBalancer {
+   List<IServer> farm = Nil;
+   Int rr = 0;                  // the farm index in a round-robin
+   {
+       Int i = initFarmSize;
+       List<IDC> dcs = Nil;
+       IDC dc;
+       // Creation of INITIAL VM-FARM
+       while (i > 0) {          
+           dc = new NebulaDC(1,8192);
+           dcs = Cons(dc, dcs);
+           i = i-1;
+       }
+       IServer s;
+       while (dcs != Nil) { // for each initial VM, start a server
+            dc = head(dcs);
+            s = dc spawns S(this);      
+            farm = Cons(s,farm);
+            i = i+1;
+            dcs=tail(dcs);
+       }
+       new Heartbeater(farm, this);
+   }
+
+   Unit forwardReq(IClient c, Req req) {
+       nth(farm,rr) ! processRequest(c,req);
+       rr = if (rr >= length(farm)-1) then 0 else rr+1;
+   }
+
+   Unit forwardRes(IClient c, Res rsp) { 
+       c ! processResponse(rsp); 
+   }
+
+   Unit addToFarm(IServer s) { 
+       farm = Cons(s,farm); 
+   }
+
+}
+
+class Heartbeater(List<IServer> farm, IBalancer b) {
+    Unit run() {
+      List<IServer> farm_ = farm;
+      IServer s;
+      Fut<Rat> f;
+      Rat r = 0;
+      Rat avgLoad = 0;
+      Rat sum = 0;
+      IDC dc;
+      // loops every 60s forever
+      while(True) {
+
+          farm_ = farm;
+      	  sum = 0;
+          while (farm_ != Nil) {
+              s = head(farm_);
+              f = s ! server_load();
+              await f?;
+              r = f.get;
+              sum = sum + r;
+              farm_ = tail(farm_);
+          }
+          avgLoad = sum / length(farm);
+
+          // CHECK: should we spawn another machine?
+          if (avgLoad > 80/100) {
+              println("Needs extra machine");
+              dc = new NebulaDC(1,8192);
+              s = dc spawns Server();
+    	      farm = Cons(s,farm);
+              b ! addToFarm(s);
+          }
+
+
+          threadDelay(60000000); // 60s delay between loops
+
+    }
+  }
+}
+
+
+
+class Server(IBalancer b) implements IServer {
+    Unit processRequest(IClient c, Req r) {
+        Res res = fib(r);
+        b ! forwardRes(c, res);
+    }
+    Rat server_load() {
+       Triple<Rat,Rat,Rat> myLoad = thisDC ! load();
+       return(fstT(myLoad));
+    }
+
+}
+
+class Client implements IClient {
+    Unit processResponse(Res r) {
+        println("Job done:");
+        println(toString(r));
+    }
+} 
+
+
+//main
+{
+
+ Int initialFarmSize = 1;
+ IBalancer b = new Balancer(initialFarmSize);
+
+ Int numberOfClients = 10000;
+ IClient c;
+ Int fixedJobSize = 32;
+ while (numberOfClients>0) {
+     c = new local Client();
+     b ! forwardReq(c, fixedJobSize);
+     numberOfClients=numberOfClients-1;
+ }
+
+}

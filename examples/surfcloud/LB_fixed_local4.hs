@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
-module LB_fixed (main) where
+module LB_fixed_local4 (main) where
 import qualified Lang.ABS.Runtime.Base as I__
 import qualified Lang.ABS.Runtime.Core as I__
 import qualified Lang.ABS.Compiler.Include as I__
@@ -407,9 +407,9 @@ mainABS this
                                               (pure __balancer <*>
                                                  (I__.fromIntegral <$!>
                                                     I__.readRef fixedFarmSize)))))
-       numberOfClients :: I__.IORef Int <- I__.newRef (pure 1000)
+       numberOfClients :: I__.IORef Int <- I__.newRef (pure 10000)
        c :: I__.IORef IClient <- I__.newRef (pure (I__.up null))
-       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 33)
+       fixedJobSize :: I__.IORef Int <- I__.newRef (pure 32)
        while
          ((>) <$!> (I__.fromIntegral <$!> I__.readRef numberOfClients) <*>
             pure 0)
@@ -435,8 +435,11 @@ mainABS this
              I__.writeRef numberOfClients
                ((-) <$!> (I__.fromIntegral <$!> I__.readRef numberOfClients) <*>
                   pure 1)
-             return ())
-       --I__.liftIO (I__.join ((pure threadDelay <*> pure 30000000)))
+             I__.liftIO (I__.join ((pure threadDelay <*> pure 300000)))
+             suspend -- for clients to run
+             return ()
+         )
+
        return ()
 main = I__.main_is mainABS (__rtable I__.initRemoteTable)
 
@@ -447,6 +450,6 @@ load_updater fixedFarmSize = forever (do
                                             ((Prelude.read s1 :: Prelude.Double) * 100 Prelude./ I__.fromIntegral (fixedFarmSize :: Int)), 
                                             ())
                                       )
-     threadDelay 60000000
+     threadDelay 30000000
                                      )
 
