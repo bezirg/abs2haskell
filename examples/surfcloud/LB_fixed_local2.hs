@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC
   -w -Werror -fforce-recomp -fwarn-missing-methods -fno-ignore-asserts
   #-}
-module LB_fixed_local4 (main) where
+module LB_fixed_local2 (main) where
 import qualified Lang.ABS.Runtime.Base as I__
 import qualified Lang.ABS.Runtime.Core as I__
 import qualified Lang.ABS.Compiler.Include as I__
@@ -398,8 +398,8 @@ __rtable
 mainABS this
   = do 
        I__.writeRef I__.demo_name (pure "Demo: Load-balancer Fixed")
-       fixedFarmSize :: I__.IORef Int <- I__.newRef (pure 4)
-       I__.liftIO (forkIO (load_updater 4))
+       fixedFarmSize :: I__.IORef Int <- I__.newRef (pure 2)
+       I__.liftIO (forkIO (load_updater 2))
        b :: I__.IORef IBalancer <- I__.newRef
                                      (IBalancer <$!>
                                         (I__.join

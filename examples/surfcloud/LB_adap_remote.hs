@@ -32,19 +32,29 @@ import Network.Transport.TCP (encodeEndPointAddress)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef (newIORef)
 
-{-# NOINLINE nid1 #-}
-nid1 :: Fut CH.ProcessId
-nid1 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.2" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
-
 {-# NOINLINE nid2 #-}
 nid2 :: Fut CH.ProcessId
-nid2 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.3" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
+nid2 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.2" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
+
+{-# NOINLINE nid3 #-}
+nid3 :: Fut CH.ProcessId
+nid3 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.3" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
+
+{-# NOINLINE nid4 #-}
+nid4 :: Fut CH.ProcessId
+nid4 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.4" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
+
+{-# NOINLINE nid5 #-}
+nid5 :: Fut CH.ProcessId
+nid5 = I__.FutureRef (unsafePerformIO (newMVar (nullProcessId (NodeId (encodeEndPointAddress "10.100.67.5" "9000" 0))))) (I__.COG (I__.undefined,I__.undefined)) (-1)
 
 
 {-# NOINLINE __allocdcs #-}
 __allocdcs :: [IDC]
-__allocdcs = [IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid1 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
-             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid2 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
+__allocdcs = [IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid2 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
+             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid3 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
+             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid4 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
+             ,IDC (I__.ObjectRef (unsafePerformIO (newIORef (NebulaDC (-1) (-1) (-1) nid5 (-1)))) (I__.COG (I__.undefined,I__.undefined)) (-1))
              ] 
 
 fib 0 = 0
