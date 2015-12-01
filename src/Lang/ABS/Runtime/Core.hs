@@ -230,7 +230,11 @@ main_is mainABS outsideRemoteTable = withSocketsDo $ do -- for windows fix
       case maybeCreatorPidStr of
         Left _ex -> do -- no creator, this is the START-SYSTEM and runs MAIN-BLOCK
            forkIO $ demo_server
-           forkIO $ forever (atomicModifyIORef' demo_reqs (\ _ -> (0, ())) >> threadDelay 10000000)
+           forkIO $ forever (do
+                              top_reqs <- atomicModifyIORef' demo_reqs (\ reqs -> (0, reqs))
+                              atomicModifyIORef' demo_reqs' (\ _ -> (top_reqs,()))
+                              threadDelay 10000000
+                            )
            -- reqs <- liftIO $ atomicModifyIORef' demo_reqs (\ reqs -> (0, reqs))
 
            writeChan c (LocalJob ((error "not this at top-level") :: Obj Null) NullFutureRef (mainABS $ ObjectRef undefined (COG (c,fwdPid)) (-1))) -- send the Main Block as the 1st created process
@@ -421,6 +425,10 @@ demo_vms = unsafePerformIO $ newIORef 0
 demo_reqs :: IORef Int
 demo_reqs = unsafePerformIO $ newIORef 0
 
+{-# NOINLINE demo_reqs' #-}
+demo_reqs' :: IORef Int
+demo_reqs' = unsafePerformIO $ newIORef 0
+
 {-# NOINLINE demo_name #-}
 demo_name :: IORef String
 demo_name = unsafePerformIO $ newIORef "Demo"
@@ -474,6 +482,6 @@ demo_server = Web.scotty 80 $ do
       vms <- liftIO $ readIORef demo_vms
       name <- liftIO $ readIORef demo_name
       load <- liftIO $ readIORef demo_load
-      reqs <- liftIO $ readIORef demo_reqs
+      reqs <- liftIO $ readIORef demo_reqs'
       json (vms,reqs,name,load)
 
