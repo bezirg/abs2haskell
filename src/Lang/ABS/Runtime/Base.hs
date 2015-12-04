@@ -152,6 +152,8 @@ data AwaitGuardCompiled b = FutureLocalGuard (Fut b)
 -- * COG related
 
 -- | a COG is identified by its jobqueue+processid
+--
+-- Implementation: ThreadId is needed to create an Ord instance of COG for the Set in the promise datatype
 newtype COG = COG { fromCOG :: (Chan Job, ThreadId)}
 
 instance Eq COG where
@@ -163,7 +165,7 @@ instance Ord COG where
 
 -- | Incoming jobs to the COG thread
 data Job = LocalJob (ABS ())
-         | forall a . WakeupSignal a !COG !Int
+         | WakeupSignal !COG !Int
 
 -- ** COG-held datastructures
 
@@ -174,14 +176,14 @@ data Job = LocalJob (ABS ())
 -- The COG will strictly not re-schedule this processes until the object-field is modified.
 -- 
 -- A mapping of (object-id,field-id) to list of suspended jobs
-type ObjectMap = M.Map (Int, Int) [(Job, Maybe ((COG,Int), Int))] 
+type ObjectMap = M.Map (Int, Int) [(ABS (), Maybe ((COG,Int), Int))] 
 
 -- | A mapping of futures to list of disabled processes.
 --
 -- It represents sleeping procesess that wait on some futures to become resolved. e.g. await f?
 --
 -- The COG will strictly not re-schedule this processes until the future-key is resolved.
-type FutureMap = M.Map (COG,Int) [(Job, Maybe ((Int, Int), Int))]
+type FutureMap = M.Map (COG,Int) [(ABS (), Maybe ((Int, Int), Int))]
 
 -- * Builtin Exception-constructors for ABS
 data BlockedAwaitException = BlockedAwaitException

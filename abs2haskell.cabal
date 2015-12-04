@@ -1,5 +1,5 @@
 name:                  abs2haskell
-version:               1.9.8
+version:               1.9.9
 synopsis:              a transcompiler from the ABS language to Haskell
 description:           a transcompiler from the ABS language to Haskell
 author:                Nikolaos Bezirgiannis
@@ -20,7 +20,7 @@ Source-repository head
 library
   build-depends:      base >= 4.4 && < 5,
                       -- temporal support for arrays in ABS (PA case study)
-                      random, clock, array,
+                      mwc-random, clock, vector,
                       transformers>=0.4,
                       -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
                       containers>=0.5.0.0,
