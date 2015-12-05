@@ -44,6 +44,7 @@ alex_accept = listArray (0::Int,33) [AlexAccNone,AlexAccNone,AlexAccNone,AlexAcc
 {-# LINE 40 "Lang/ABS/Compiler/BNFC/LexABS.x" #-}
 
 
+tok :: (Posn -> String -> Token) -> (Posn -> String -> Token)
 tok f p s = f p s
 
 share :: String -> String
@@ -61,24 +62,33 @@ data Tok =
 
  deriving (Eq,Show,Ord)
 
-data Token = 
+data Token =
    PT  Posn Tok
  | Err Posn
   deriving (Eq,Show,Ord)
 
+tokenPos :: [Token] -> String
 tokenPos (PT (Pn _ l _) _ :_) = "line " ++ show l
 tokenPos (Err (Pn _ l _) :_) = "line " ++ show l
 tokenPos _ = "end of file"
 
+tokenPosn :: Token -> Posn
 tokenPosn (PT p _) = p
 tokenPosn (Err p) = p
+
+tokenLineCol :: Token -> (Int, Int)
 tokenLineCol = posLineCol . tokenPosn
+
+posLineCol :: Posn -> (Int, Int)
 posLineCol (Pn _ l c) = (l,c)
+
+mkPosToken :: Token -> ((Int, Int), String)
 mkPosToken t@(PT p _) = (posLineCol p, prToken t)
 
+prToken :: Token -> String
 prToken t = case t of
   PT _ (TS s _) -> s
-  PT _ (TL s)   -> s
+  PT _ (TL s)   -> show s
   PT _ (TI s)   -> s
   PT _ (TV s)   -> s
   PT _ (TD s)   -> s
@@ -97,7 +107,8 @@ eitherResIdent tv s = treeFind resWords
                               | s > a  = treeFind right
                               | s == a = t
 
-resWords = b "export" 38 (b "=" 19 (b "+" 10 (b "&" 5 (b "$" 3 (b "!=" 2 (b "!" 1 N N) N) (b "%" 4 N N)) (b ")" 8 (b "(" 7 (b "&&" 6 N N) N) (b "*" 9 N N))) (b ":" 15 (b "." 13 (b "-" 12 (b "," 11 N N) N) (b "/" 14 N N)) (b "<" 17 (b ";" 16 N N) (b "<=" 18 N N)))) (b "await" 29 (b "?" 24 (b ">" 22 (b "=>" 21 (b "==" 20 N N) N) (b ">=" 23 N N)) (b "_" 27 (b "]" 26 (b "[" 25 N N) N) (b "assert" 28 N N))) (b "data" 34 (b "catch" 32 (b "case" 31 (b "builtin" 30 N N) N) (b "class" 33 N N)) (b "else" 36 (b "def" 35 N N) (b "exception" 37 N N))))) (b "pro_isempty" 57 (b "interface" 48 (b "get" 43 (b "finally" 41 (b "fimport" 40 (b "extends" 39 N N) N) (b "from" 42 N N)) (b "import" 46 (b "implements" 45 (b "if" 44 N N) N) (b "in" 47 N N))) (b "null" 53 (b "module" 51 (b "local" 50 (b "let" 49 N N) N) (b "new" 52 N N)) (b "pro_get" 55 (b "println" 54 N N) (b "pro_give" 56 N N)))) (b "throw" 66 (b "suspend" 62 (b "skip" 60 (b "return" 59 (b "pro_new" 58 N N) N) (b "spawns" 61 N N)) (b "this" 64 (b "then" 63 N N) (b "thisDC" 65 N N))) (b "|" 71 (b "while" 69 (b "type" 68 (b "try" 67 N N) N) (b "{" 70 N N)) (b "}" 73 (b "||" 72 N N) (b "~" 74 N N)))))
+resWords :: BTree
+resWords = b "export" 38 (b "=" 19 (b "+" 10 (b "&" 5 (b "$" 3 (b "!=" 2 (b "!" 1 N N) N) (b "%" 4 N N)) (b ")" 8 (b "(" 7 (b "&&" 6 N N) N) (b "*" 9 N N))) (b ":" 15 (b "." 13 (b "-" 12 (b "," 11 N N) N) (b "/" 14 N N)) (b "<" 17 (b ";" 16 N N) (b "<=" 18 N N)))) (b "await" 29 (b "?" 24 (b ">" 22 (b "=>" 21 (b "==" 20 N N) N) (b ">=" 23 N N)) (b "_" 27 (b "]" 26 (b "[" 25 N N) N) (b "assert" 28 N N))) (b "data" 34 (b "catch" 32 (b "case" 31 (b "builtin" 30 N N) N) (b "class" 33 N N)) (b "else" 36 (b "def" 35 N N) (b "exception" 37 N N))))) (b "pro_isempty" 57 (b "interface" 48 (b "get" 43 (b "finally" 41 (b "fimport" 40 (b "extends" 39 N N) N) (b "from" 42 N N)) (b "import" 46 (b "implements" 45 (b "if" 44 N N) N) (b "in" 47 N N))) (b "null" 53 (b "module" 51 (b "local" 50 (b "let" 49 N N) N) (b "new" 52 N N)) (b "pro_get" 55 (b "println" 54 N N) (b "pro_give" 56 N N)))) (b "throw" 67 (b "spawns" 62 (b "return" 60 (b "pro_try" 59 (b "pro_new" 58 N N) N) (b "skip" 61 N N)) (b "this" 65 (b "then" 64 (b "suspend" 63 N N) N) (b "thisDC" 66 N N))) (b "|" 72 (b "while" 70 (b "type" 69 (b "try" 68 N N) N) (b "{" 71 N N)) (b "}" 74 (b "||" 73 N N) (b "~" 75 N N)))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 
@@ -158,7 +169,7 @@ alexGetByte (p, _, [], s) =
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar (p, c, bs, s) = c
 
-  -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
+-- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
 utf8Encode = map fromIntegral . go . ord
  where
@@ -189,7 +200,7 @@ alex_action_8 =  tok (\p s -> PT p (TI $ share s))
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
 {-# LINE 1 "<command-line>" #-}
-{-# LINE 9 "<command-line>" #-}
+{-# LINE 10 "<command-line>" #-}
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 
 # 17 "/usr/include/stdc-predef.h" 3 4
@@ -235,7 +246,31 @@ alex_action_8 =  tok (\p s -> PT p (TI $ share s))
 
 
 
-{-# LINE 9 "<command-line>" #-}
+
+
+
+
+
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/usr/lib/ghc-7.10.1/include/ghcversion.h" #-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LINE 10 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- -----------------------------------------------------------------------------
 -- ALEX TEMPLATE

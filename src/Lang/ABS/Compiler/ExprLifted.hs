@@ -68,6 +68,7 @@ tEffExpWrap eexp cls = do
                          ABS.Get pexp -> [pexp]
                          ABS.ProGet pexp -> [pexp]
                          ABS.ProEmpty pexp -> [pexp]
+                         ABS.ProTry pexp -> [pexp]
                          ABS.ProNew -> []
                          ABS.New _ pexps  -> pexps
                          ABS.Spawns pexp1 _ pexps2 -> pexp1:pexps2
@@ -643,6 +644,10 @@ tEffExp' (ABS.ProGet pexp) = do
 tEffExp' (ABS.ProEmpty pexp) = do
   texp <- tPureExp' pexp []
   return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "pro_isempty'") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
+
+tEffExp' (ABS.ProTry pexp) = do
+  texp <- tPureExp' pexp []
+  return $ HS.Paren $ HS.InfixApp (HS.Var $ HS.UnQual $ HS.Ident "pro_try'") (HS.QVarOp $ HS.UnQual $ HS.Symbol "=<<") texp
 
 tEffExp' ABS.ProNew = return $ HS.Paren $ HS.App (HS.Var $ HS.UnQual $ HS.Ident "pro_new'") (HS.Var $ HS.UnQual $ HS.Ident "this")
 

@@ -2,8 +2,8 @@
 module Lang.ABS.Runtime.Prim
     (
      -- * Basic ABS primitives
-     suspend', await', while', get', pro_new', pro_get', pro_give'
-    , pro_isempty', ifthenM', ifthenelseM', ifthenelse', null'
+     suspend', await', while', get', pro_new', pro_get', pro_give', pro_isempty', pro_try'
+    , ifthenM', ifthenelseM', ifthenelse', null'
      -- * The async, async-optimized and sync calls
     ,async', osync', sync'
     ,main_is', new', newon', newlocal', set'
@@ -163,6 +163,10 @@ pro_get' (PromiseRef mvar _ _ _) = lift $ Control.Exception.evaluate =<< readMVa
 {-# INLINE pro_isempty' #-}
 pro_isempty' :: Promise f -> ABS Bool
 pro_isempty' (PromiseRef mvar _ _ _) = lift $ isEmptyMVar mvar 
+
+{-# INLINE pro_try' #-}
+pro_try' :: Promise f -> ABS (Maybe f)
+pro_try' (PromiseRef mvar _ _ _) = lift $ tryReadMVar mvar 
 
 -- forces the reading of the future-box to whnf, so when the future-box is opened (through get) then the remote future exception will be raised
 
