@@ -58,7 +58,7 @@ library
     -- the ABS-RTS-options
     Lang.ABS.Runtime.Conf
   extensions: LambdaCase
-  ghc-options: -Wall -ddump-minimal-imports
+  ghc-options: -Wall
   hs-source-dirs: src
 
 -- The ABS to Haskell transcompiler written also in Haskell.
@@ -110,5 +110,5 @@ executable a2h
   extensions:
     LambdaCase,
     ImplicitParams
-  ghc-options: -Wall -ddump-minimal-imports
+  ghc-options: -Wall
   hs-source-dirs: src
