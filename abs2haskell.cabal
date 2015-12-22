@@ -1,106 +1,113 @@
-name:                  abs2haskell
-version:               1.9.9
+name: abs2haskell
+version: 1.9.9
 
-license:               BSD3
-license-file:          LICENSE
-author:                Nikolaos Bezirgiannis
-maintainer:            Nikolaos Bezirgiannis <bezirgia@cwi.nl>
-copyright:             Copyright (c) 2013-2015, The Envisage Consortium
-homepage:              http://abs-models.org
-bug-reports:           https://github.com/bezirg/abs2haskell/issues
+license: BSD3
+license-file: LICENSE
+author: Nikolaos Bezirgiannis
+maintainer: Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+copyright: Copyright (c) 2013-2015, The Envisage Consortium
+homepage: http://abs-models.org
+bug-reports: https://github.com/bezirg/abs2haskell/issues
 
-stability:             provisional
-tested-with:           GHC == 7.8.4, GHC == 7.10.1, GHC == 7.10.2                      
-build-type:            Simple
-cabal-version:         >= 1.8
+stability: provisional
+tested-with: GHC == 7.8.4, GHC == 7.10.1, GHC == 7.10.2, GHC == 7.10.3
+build-type: Simple
+cabal-version: >= 1.8
 
-category:              Concurrency, Distributed Computing
-synopsis:              A transcompiler from the ABS language to Haskell.
-description:           
-   A transcompiler from the ABS language to Haskell.
-   This Haskell package includes both the ABS stdlib & ABS runtime expressed in Haskell, 
-   as well as the transcompiler to translate ABS code to Haskell code.
+category: Concurrency, Distributed Computing
+synopsis: A transcompiler from the ABS language to Haskell.
+description:
+  A transcompiler from the ABS language to Haskell.
+  This Haskell package includes both the ABS stdlib & ABS runtime expressed in Haskell,
+  as well as the transcompiler to translate ABS code to Haskell code.
 extra-source-files:
 
 source-repository head
-  type:     git
+  type: git
   location: git://github.com/bezirg/abs2haskell.git
   branch: smp
 
 -- The ABS stdlib & runtime expressed in Haskell.
 library
-  build-depends:      base >= 4.6 && < 5,
-                      transformers>=0.4,
-                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
-                      containers>=0.5.0.0,
-                      -- for lifting exceptions to ABS monad
-                      exceptions>=0.6.1,
-                      cmdargs,
-                      -- for injecting package version into cmdargs --help menu
-                      cabal-file-th
-  exposed-modules:    
-                     -- imitating the abslang.abs
-                     Lang.ABS.StdLib,
-                     -- the ABS-Haskell runtime system
-                     -- declarations of data structures used in the Runtime
-                     Lang.ABS.Runtime.Base,
-                     -- runtime building-blocks reflecting the primitives of the ABS language (its keywords/statements)
-                     Lang.ABS.Runtime.Prim,
-                     -- compiler generates Haskell-code that depends on this wrapper module of helper functions 
-                     -- to make generated code short and readable
-                     Lang.ABS.Compiler.Include
+  build-depends:
+    -- base<=4.6 (i.e. GHC<=7.6.3) not supported because of no `tryReadMVar`
+    base >= 4.7 && < 5,
+    transformers>=0.4,
+    -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+    containers>=0.5.0.0,
+    -- for lifting exceptions to ABS monad
+    exceptions>=0.6.1,
+    cmdargs,
+    -- for injecting package version into cmdargs --help menu
+    cabal-file-th
+  exposed-modules:
+    -- imitating the abslang.abs
+    Lang.ABS.StdLib,
+    -- the ABS-Haskell runtime system
+    -- declarations of data structures used in the Runtime
+    Lang.ABS.Runtime.Base,
+    -- runtime building-blocks reflecting the primitives of the ABS language (its keywords/statements)
+    Lang.ABS.Runtime.Prim,
+    -- compiler generates Haskell-code that depends on this wrapper module of helper functions
+    -- to make generated code short and readable
+    Lang.ABS.Compiler.Include
   other-modules:
-                     -- the underlying modules of the ABS stdlib
-                     Lang.ABS.StdLib.Prelude,                    
-                     -- the ABS-RTS-options
-                     Lang.ABS.Runtime.Conf
-  extensions:         LambdaCase
-  ghc-options:       -Wall
-  hs-source-dirs:    src
+    -- the underlying modules of the ABS stdlib
+    Lang.ABS.StdLib.Prelude,
+    -- the ABS-RTS-options
+    Lang.ABS.Runtime.Conf
+  extensions: LambdaCase
+  ghc-options: -Wall
+  hs-source-dirs: src
 
 -- The ABS to Haskell transcompiler written also in Haskell.
 executable a2h
-  main-is:            Lang/ABS/Compiler/Main.hs
+  main-is: Lang/ABS/Compiler/Main.hs
   other-modules:
-                      -- compiler options passed to compiler program
-                      Lang.ABS.Compiler.Conf,
-                      -- datatypes used during the compilation phase
-                      Lang.ABS.Compiler.Base,
-                      -- the translate-functions for top-level ABS code
-                      Lang.ABS.Compiler.Top,
-                      -- the translate-functions for ABS statements
-                      Lang.ABS.Compiler.Stmt,
-                      -- the translate-functions for pure-expressions and effectful expressions, running in the ABS-object-layer  
-                      Lang.ABS.Compiler.ExprLifted,
+    -- compiler options passed to compiler program
+    Lang.ABS.Compiler.Conf,
+    -- datatypes used during the compilation phase
+    Lang.ABS.Compiler.Base,
+    -- the translate-functions for top-level ABS code
+    Lang.ABS.Compiler.Top,
+    -- the translate-functions for ABS statements
+    Lang.ABS.Compiler.Stmt,
+    -- the translate-functions for pure-expressions and effectful expressions, running in the ABS-object-layer
+    Lang.ABS.Compiler.ExprLifted,
                       -- the translate-functions for the (pure) functional core of ABS
-                      Lang.ABS.Compiler.Expr,
-                      -- utility functions used by Main,Top,Stmt,Expr
-                      Lang.ABS.Compiler.Utils,
-                      -- lexer (generated by BNFC)
-                      Lang.ABS.Compiler.BNFC.LexABS,
-                      -- parser (generated by BNFC)             
-                      Lang.ABS.Compiler.BNFC.ParABS,
-                      -- abstract-syntax-tree AST (generated by BNFC)
-                      Lang.ABS.Compiler.BNFC.AbsABS
-                      -- -- pretty-printer for ABS language (generated by BNFC, not needed right now)
-                      -- PrintABS, 
-                      -- -- example compiler skeleton (generated by BNFC, not needed in the library)
-                      -- SkelABS
+    Lang.ABS.Compiler.Expr,
+    -- utility functions used by Main,Top,Stmt,Expr
+    Lang.ABS.Compiler.Utils,
+    -- lexer (generated by BNFC)
+    Lang.ABS.Compiler.BNFC.LexABS,
+    -- parser (generated by BNFC)
+    Lang.ABS.Compiler.BNFC.ParABS,
+    -- abstract-syntax-tree AST (generated by BNFC)
+    Lang.ABS.Compiler.BNFC.AbsABS,
+    -- accompanied module for errors in parsing (generated by BNFC)
+    Lang.ABS.Compiler.BNFC.ErrM
+    -- pretty-printer for ABS language (generated by BNFC, not needed right now)
+    -- PrintABS,
+    -- example compiler skeleton (generated by BNFC, not needed in the library)
+    -- SkelABS
 
-  build-depends:      base >= 4.6 && < 5,
-                      -- array needed by generated parser
-                      array,
-                      transformers>=0.4,
-                      -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
-                      containers>=0.5.0.0,
-                      cmdargs,
-                      filepath,
-                      directory,
-                      -- hse 1.16, datatype-incompatible
-                      haskell-src-exts<1.16,
-                      -- for injecting package version into cmdargs --help menu
-                      cabal-file-th
-  extensions:         LambdaCase,
-                      ImplicitParams
-  ghc-options:        -Wall 
-  hs-source-dirs:     src
+  build-depends:
+    -- constraint only to match the GHC build-depends of the runtime lib
+    base >= 4.7 && < 5,
+    -- array needed by generated parser
+    array,
+    transformers>=0.4,
+    -- containers-0.5.0.0 introduces strict containers, comes bundled with ghc>=7.6.3
+    containers>=0.5.0.0,
+    cmdargs,
+    filepath,
+    directory,
+    -- hse 1.16, datatype-incompatible
+    haskell-src-exts<1.16,
+    -- for injecting package version into cmdargs --help menu
+    cabal-file-th
+  extensions:
+    LambdaCase,
+    ImplicitParams
+  ghc-options: -Wall
+  hs-source-dirs: src
