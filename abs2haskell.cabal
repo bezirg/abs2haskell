@@ -21,6 +21,7 @@ description:
   This Haskell package includes both the ABS stdlib & ABS runtime expressed in Haskell,
   as well as the transcompiler to translate ABS code to Haskell code.
 extra-source-files:
+  README.md
 
 source-repository head
   type: git
@@ -57,7 +58,7 @@ library
     -- the ABS-RTS-options
     Lang.ABS.Runtime.Conf
   extensions: LambdaCase
-  ghc-options: -Wall
+  ghc-options: -Wall -ddump-minimal-imports
   hs-source-dirs: src
 
 -- The ABS to Haskell transcompiler written also in Haskell.
@@ -109,5 +110,5 @@ executable a2h
   extensions:
     LambdaCase,
     ImplicitParams
-  ghc-options: -Wall
+  ghc-options: -Wall -ddump-minimal-imports
   hs-source-dirs: src

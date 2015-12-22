@@ -1,23 +1,18 @@
-# haskell related
+# HASKELL
+dist/
 *.hi
 *.o
-TAGS
+*.dyn_o
+*.dyn_hi
+*.th.hs
+*.hcr
 
-# cabal sandbox related
+# CABAL
 .cabal-sandbox/
 cabal.sandbox.config
-/cabal.config
+cabal.config
 
-# doc related
-doc/*.html
-README.html
-dist/
-*.aux
-*.dvi
-*.log
-*.ps
-
-# generated files by BNFC
+# BNFC
 ParABS.y
 LexABS.x
 ParABS.y.bak
@@ -29,14 +24,25 @@ PrintABS.hs.bak
 SkelABS.hs.bak
 TestABS.hs
 
-# output of abs2haskell on ABS tests
+# TEST-SUITE
 test/compiler/*/*.hs
 test/compiler/*/*.out
 *.stderr
 *.stdout
 
-# extra files
-
+# OTHER
 *.ast
 *_flymake.abs
+*_flymake.hs
+TAGS
 
+# OS
+*~
+*#
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
