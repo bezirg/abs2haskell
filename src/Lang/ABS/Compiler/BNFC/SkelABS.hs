@@ -119,6 +119,7 @@ transStm x = case x of
   SAssert pureexp -> failure x
   SAwait awaitguard -> failure x
   SThrow pureexp -> failure x
+  SCase pureexp catchbranchs -> failure x
   SGive pureexp1 pureexp2 -> failure x
   STryCatchFinally annotstm catchbranchs maybefinally -> failure x
   SPrint pureexp -> failure x

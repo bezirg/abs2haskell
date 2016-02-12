@@ -227,6 +227,7 @@ instance Print Stm where
     SAssert pureexp -> prPrec i 0 (concatD [doc (showString "assert"), prt 0 pureexp, doc (showString ";")])
     SAwait awaitguard -> prPrec i 0 (concatD [doc (showString "await"), prt 0 awaitguard, doc (showString ";")])
     SThrow pureexp -> prPrec i 0 (concatD [doc (showString "throw"), prt 0 pureexp, doc (showString ";")])
+    SCase pureexp catchbranchs -> prPrec i 0 (concatD [doc (showString "case"), prt 0 pureexp, doc (showString "{"), prt 0 catchbranchs, doc (showString "}")])
     SGive pureexp1 pureexp2 -> prPrec i 0 (concatD [prt 0 pureexp1, doc (showString "."), doc (showString "pro_give"), doc (showString "("), prt 0 pureexp2, doc (showString ")"), doc (showString ";")])
     STryCatchFinally annotstm catchbranchs maybefinally -> prPrec i 0 (concatD [doc (showString "try"), prt 0 annotstm, doc (showString "catch"), doc (showString "{"), prt 0 catchbranchs, doc (showString "}"), prt 0 maybefinally])
     SPrint pureexp -> prPrec i 0 (concatD [doc (showString "println"), prt 0 pureexp, doc (showString ";")])
@@ -234,7 +235,7 @@ instance Print Stm where
 instance Print CatchBranch where
   prt i e = case e of
     CatchBranc pattern annotstm -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "=>"), prt 0 annotstm])
-  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print MaybeFinally where
   prt i e = case e of

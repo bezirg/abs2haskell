@@ -122,6 +122,7 @@ data Stm
     | SAssert PureExp
     | SAwait AwaitGuard
     | SThrow PureExp
+    | SCase PureExp [CatchBranch]
     | SGive PureExp PureExp
     | STryCatchFinally AnnotStm [CatchBranch] MaybeFinally
     | SPrint PureExp

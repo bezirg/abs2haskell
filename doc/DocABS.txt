@@ -155,11 +155,12 @@ All other symbols are terminals.
   |  |  **|**  | ``assert`` //PureExp// ``;`` 
   |  |  **|**  | ``await`` //AwaitGuard// ``;`` 
   |  |  **|**  | ``throw`` //PureExp// ``;`` 
+  |  |  **|**  | ``case`` //PureExp// ``{`` //[CatchBranch]// ``}`` 
   |  |  **|**  | //PureExp// ``.`` ``pro_give`` ``(`` //PureExp// ``)`` ``;`` 
   |  |  **|**  | ``try`` //AnnotStm// ``catch`` ``{`` //[CatchBranch]// ``}`` //MaybeFinally// 
   |  |  **|**  | ``println`` //PureExp// ``;`` 
   | //CatchBranch// | -> | //Pattern// ``=>`` //AnnotStm// 
-  | //[CatchBranch]// | -> | **eps**
+  | //[CatchBranch]// | -> | //CatchBranch// 
   |  |  **|**  | //CatchBranch// //[CatchBranch]// 
   | //MaybeFinally// | -> | ``finally`` //AnnotStm// 
   |  |  **|**  | **eps**

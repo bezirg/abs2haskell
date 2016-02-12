@@ -4,7 +4,7 @@ module Lang.ABS.StdLib.Prelude
     (
      -- * ABS builtin types
 
-     -- | All of them synonyms to standard Haskell datastructures.
+     -- | The ABS standard datatypes, most coming from standard Haskell, except Fut&Promise coming from @abs-has-runtime@ package
      Int, Rat, Prelude.Bool (..) , Unit, List, Lang.ABS.Runtime.Base.Fut, Lang.ABS.Runtime.Base.Promise, Prelude.String,
      -- * Operations on numbers
      (Prelude.<), (Prelude.<=), (Prelude.>=), (Prelude.>), (Prelude.+), (Prelude.-), (Prelude.*), (/), (%), Prelude.abs, pow, Prelude.truncate,
@@ -39,11 +39,9 @@ module Lang.ABS.StdLib.Prelude
     )
         where
 
-import qualified Prelude as Prelude
 import Lang.ABS.Runtime.Base
-
+import qualified Prelude as Prelude
 import Control.Applicative (pure, (<*>))
-
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Maybe (fromJust, isJust)
