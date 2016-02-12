@@ -413,6 +413,20 @@ tStmt (ABS.SGive pro val) = do
                           tval] -- paren are necessary here
   
 
+tStmt (ABS.SCase pexp cbranches) = do
+  texp <- tPureExpStmt pexp
+  tbranches <- mapM (\ (ABS.CatchBranc pat cstm) -> do
+                        tcstm <- tBlock [cstm] False
+                        return $ HS.Alt HS.noLoc (tPattern pat)
+                                   (HS.UnGuardedAlt $ HS.Paren tcstm) (HS.BDecls [])
+                   ) cbranches
+
+  return [HS.Qualifier $ HS.InfixApp texp 
+                (HS.QVarOp $ HS.UnQual $ HS.Symbol ">>=")
+                (HS.Lambda HS.noLoc [HS.PVar $ HS.Ident "__0"] $ 
+                   HS.Case (HS.Var $ HS.UnQual $ HS.Ident "__0") tbranches
+                )]
+
 tStmt (ABS.STryCatchFinally try_stm cbranches mfinally) = do
   tfin <- case mfinally of
            ABS.NoFinally -> return id

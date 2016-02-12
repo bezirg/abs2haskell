@@ -1,0 +1,13 @@
+module CaseStmt;
+
+{
+ Maybe<Int> x = Nothing;
+ // case x {
+ //     // Nothing  => 3; // broken, confused between case-exp and case-stmt
+ //     Just(_) => println("False");
+ // }
+ case x {
+     Just(_) => println("False");
+     Nothing => println("True");
+  }
+}
